@@ -6,9 +6,9 @@ const COLUMNS = 3;
 const CELL_WIDTH = 220;
 const CELL_HEIGHT = 140;
 
-/** Spec §8's "Scale 1.0 (World View)": layers as bounded containers,
+/** Spec §8's "Scale 1.0 (World View)": domains as bounded containers,
  *  A/M mediation stacks as the edges between them. Navigating here is an
- *  explicit click (select a layer to drill into its Language View, click a
+ *  explicit click (select a domain to drill into its Language View, click a
  *  mediation edge to open its Tau Binding View) rather than a continuous
  *  scroll-to-zoom gesture — the three scales the spec describes are real
  *  views you can navigate between; wiring them to one continuous zoom
@@ -20,10 +20,10 @@ export function WorldView() {
   const [implId, setImplId] = useState("");
 
   const { nodes, edges } = useMemo(() => {
-    const nodes: Node[] = state.layers.map((layer, i) => ({
-      id: layer.id,
+    const nodes: Node[] = state.domains.map((domain, i) => ({
+      id: domain.id,
       position: { x: (i % COLUMNS) * CELL_WIDTH, y: Math.floor(i / COLUMNS) * CELL_HEIGHT },
-      data: { label: `${layer.name}\n${layer.isPure ? "(pure)" : `(${layer.languages.size} languages)`}` },
+      data: { label: `${domain.name}\n${domain.isPure ? "(pure)" : `(${domain.languageIds.size} languages)`}` },
       style: {
         background: "#171717",
         color: "#e5e5e5",
@@ -39,8 +39,8 @@ export function WorldView() {
 
     const edges: Edge[] = state.mediations.map((mediation) => ({
       id: mediation.id,
-      source: mediation.intentLayerId,
-      target: mediation.mediatorLayerId,
+      source: mediation.intentDomainId,
+      target: mediation.mediatorDomainId,
       label: "A / M",
       animated: mediation.id === state.selectedMediationId,
       style: {
@@ -51,7 +51,7 @@ export function WorldView() {
     }));
 
     return { nodes, edges };
-  }, [state.layers, state.mediations, state.selectedMediationId]);
+  }, [state.domains, state.mediations, state.selectedMediationId]);
 
   return (
     <div className="flex h-full flex-col">
@@ -59,7 +59,7 @@ export function WorldView() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodeClick={(_evt, node) => dispatch({ type: "SELECT_LAYER", layerId: node.id })}
+          onNodeClick={(_evt, node) => dispatch({ type: "SELECT_DOMAIN", domainId: node.id })}
           onEdgeClick={(_evt, edge) => dispatch({ type: "SELECT_MEDIATION", mediationId: edge.id })}
           onPaneClick={() => dispatch({ type: "SELECT_MEDIATION", mediationId: null })}
           fitView
@@ -77,9 +77,9 @@ export function WorldView() {
           if (!intentId || !mediatorId || !implId) return;
           dispatch({
             type: "ADD_MEDIATION",
-            intentLayerId: intentId,
-            mediatorLayerId: mediatorId,
-            implementationLayerId: implId,
+            intentDomainId: intentId,
+            mediatorDomainId: mediatorId,
+            implementationDomainId: implId,
           });
           setIntentId("");
           setMediatorId("");
@@ -92,10 +92,10 @@ export function WorldView() {
           value={intentId}
           onChange={(evt) => setIntentId(evt.target.value)}
         >
-          <option value="">intent layer (A)…</option>
-          {state.layers.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
+          <option value="">intent domain (A)…</option>
+          {state.domains.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
             </option>
           ))}
         </select>
@@ -104,10 +104,10 @@ export function WorldView() {
           value={mediatorId}
           onChange={(evt) => setMediatorId(evt.target.value)}
         >
-          <option value="">mediator layer (M)…</option>
-          {state.layers.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
+          <option value="">mediator domain (M)…</option>
+          {state.domains.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
             </option>
           ))}
         </select>
@@ -116,10 +116,10 @@ export function WorldView() {
           value={implId}
           onChange={(evt) => setImplId(evt.target.value)}
         >
-          <option value="">implementation layer (holds τ)…</option>
-          {state.layers.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
+          <option value="">implementation domain (holds τ)…</option>
+          {state.domains.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
             </option>
           ))}
         </select>

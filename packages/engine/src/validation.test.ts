@@ -6,8 +6,10 @@ import {
   addLanguage,
   addRelationship,
   addTransformation,
-  createLayer,
+  createDomain,
+  unreferenceLanguage,
 } from "./builders.js";
+import type { Project } from "./types.js";
 import {
   checkActionPurity,
   checkInteractionAlignment,
@@ -16,103 +18,110 @@ import {
   checkTauCompleteness,
 } from "./validation.js";
 
-function twoLanguageLayer() {
-  let layers = [createLayer("Tycoon Domain")];
-  const layerId = layers[0].id;
-  layers = addLanguage(layers, layerId, "Tycoon");
-  layers = addLanguage(layers, layerId, "HTTP");
-  const [tycoonId, httpId] = Array.from(layers[0].languages.keys());
-  return { layers, layerId, tycoonId, httpId };
+function emptyProject(): Project {
+  return { languages: new Map(), domains: [], mediations: [] };
+}
+
+/** One domain referencing two languages — the common case where an
+ *  interaction between them is expected to validate cleanly. */
+function twoLanguageDomain() {
+  const domain = createDomain("Tycoon Domain");
+  let project: Project = { ...emptyProject(), domains: [domain] };
+  project = addLanguage(project, domain.id, "Tycoon");
+  project = addLanguage(project, domain.id, "HTTP");
+  const [tycoonId, httpId] = Array.from(project.languages.keys());
+  return { project, domainId: domain.id, tycoonId, httpId };
 }
 
 describe("checkActionPurity", () => {
   it("passes when an action's types stay within its own language", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, tycoonId, "Guest");
-    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
-    l = addAction(l, layerId, tycoonId, parkId, "Admit", [guestId], guestId);
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addAction(p, tycoonId, parkId, "Admit", [guestId], guestId);
 
-    expect(checkActionPurity(l)).toHaveLength(0);
+    expect(checkActionPurity(p)).toHaveLength(0);
   });
 
   it("flags an action whose input type leaks from another language", () => {
-    const { layers, layerId, tycoonId, httpId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, httpId, "Request");
-    const parkId = Array.from(l[0].languages.get(tycoonId)!.entities.keys())[0];
-    const requestId = Array.from(l[0].languages.get(httpId)!.entities.keys())[0];
-    l = addAction(l, layerId, tycoonId, parkId, "Bill", [requestId], parkId);
+    const { project, tycoonId, httpId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, httpId, "Request");
+    const parkId = Array.from(p.languages.get(tycoonId)!.entities.keys())[0];
+    const requestId = Array.from(p.languages.get(httpId)!.entities.keys())[0];
+    p = addAction(p, tycoonId, parkId, "Bill", [requestId], parkId);
 
-    const findings = checkActionPurity(l);
+    const findings = checkActionPurity(p);
     expect(findings).toHaveLength(1);
     expect(findings[0].message).toBe("Action 'Bill' on Entity 'Park' leaks type from external language.");
   });
 });
 
 describe("checkInteractionAlignment", () => {
-  it("passes when both languages belong to the layer", () => {
-    const { layers, layerId, tycoonId, httpId } = twoLanguageLayer();
-    const l = addInteraction(layers, layerId, "Bill", tycoonId, httpId, [], "");
+  it("passes when a domain references both languages", () => {
+    const { project, tycoonId, httpId } = twoLanguageDomain();
+    const p = addInteraction(project, "Bill", tycoonId, httpId, [], "");
 
-    expect(checkInteractionAlignment(l)).toHaveLength(0);
+    expect(checkInteractionAlignment(p)).toHaveLength(0);
   });
 
-  it("flags an interaction referencing a language outside the layer", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    const l = addInteraction(layers, layerId, "Bill", tycoonId, "not-a-real-language", [], "");
+  it("flags an interaction whose languages share no common domain", () => {
+    const { project, domainId, tycoonId, httpId } = twoLanguageDomain();
+    let p = unreferenceLanguage(project, domainId, httpId);
+    p = addInteraction(p, "Bill", tycoonId, httpId, [], "");
 
-    const findings = checkInteractionAlignment(l);
+    const findings = checkInteractionAlignment(p);
     expect(findings).toHaveLength(1);
     expect(findings[0].message).toBe(
-      "Interaction 'Bill' references language outside containing layer."
+      "Interaction 'Bill' references languages with no common domain."
     );
   });
 });
 
 describe("checkTauCompleteness", () => {
   it("passes when every source entity has a mapping", () => {
-    const { layers, layerId, tycoonId, httpId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    const parkId = Array.from(l[0].languages.get(tycoonId)!.entities.keys())[0];
-    l = addTransformation(l, layerId, tycoonId, httpId, [
+    const { project, domainId, tycoonId, httpId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    const parkId = Array.from(p.languages.get(tycoonId)!.entities.keys())[0];
+    p = addTransformation(p, domainId, tycoonId, httpId, [
       { sourceId: parkId, targetSubgraph: { entityIds: [], interactionIds: [] } },
     ]);
 
-    expect(checkTauCompleteness(l)).toHaveLength(0);
+    expect(checkTauCompleteness(p)).toHaveLength(0);
   });
 
   it("warns about an unmapped source entity", () => {
-    const { layers, layerId, tycoonId, httpId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addTransformation(l, layerId, tycoonId, httpId);
+    const { project, domainId, tycoonId, httpId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addTransformation(p, domainId, tycoonId, httpId);
 
-    const findings = checkTauCompleteness(l);
+    const findings = checkTauCompleteness(p);
     expect(findings).toHaveLength(1);
     expect(findings[0].severity).toBe("warning");
-    expect(findings[0].message).toBe("Unmapped intent entity 'Park' in translation layer.");
+    expect(findings[0].message).toBe("Unmapped intent entity 'Park' in translation domain.");
   });
 });
 
 describe("checkRelationshipCardinality", () => {
   it("passes for a well-formed bound", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, tycoonId, "Guest");
-    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
-    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000]);
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [0, 1000]);
 
-    expect(checkRelationshipCardinality(l)).toHaveLength(0);
+    expect(checkRelationshipCardinality(p)).toHaveLength(0);
   });
 
   it("flags a bound where min exceeds max", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, tycoonId, "Guest");
-    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
-    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [5, 1]);
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [5, 1]);
 
-    const findings = checkRelationshipCardinality(l);
+    const findings = checkRelationshipCardinality(p);
     expect(findings).toHaveLength(1);
     expect(findings[0].message).toBe(
       "Relationship on Entity 'Park' has an invalid cardinality bound [5, 1]."
@@ -122,27 +131,27 @@ describe("checkRelationshipCardinality", () => {
 
 describe("checkRelationshipConstraints", () => {
   it("passes when the predicate holds", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, tycoonId, "Guest");
-    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
-    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000], [
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [0, 1000], [
       { id: "c1", expression: "self.languageId == child.languageId" },
     ]);
 
-    expect(checkRelationshipConstraints(l)).toHaveLength(0);
+    expect(checkRelationshipConstraints(p)).toHaveLength(0);
   });
 
   it("flags a violated predicate", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, tycoonId, "Guest");
-    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
-    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000], [
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [0, 1000], [
       { id: "c1", expression: "self.name == child.name" },
     ]);
 
-    const findings = checkRelationshipConstraints(l);
+    const findings = checkRelationshipConstraints(p);
     expect(findings).toHaveLength(1);
     expect(findings[0].message).toBe(
       "Relationship constraint on Entity 'Park' violated: self.name == child.name"
@@ -150,15 +159,15 @@ describe("checkRelationshipConstraints", () => {
   });
 
   it("flags a malformed predicate as a failed evaluation", () => {
-    const { layers, layerId, tycoonId } = twoLanguageLayer();
-    let l = addEntity(layers, layerId, tycoonId, "Park");
-    l = addEntity(l, layerId, tycoonId, "Guest");
-    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
-    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000], [
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [0, 1000], [
       { id: "c1", expression: "self.bogus == 1" },
     ]);
 
-    const findings = checkRelationshipConstraints(l);
+    const findings = checkRelationshipConstraints(p);
     expect(findings).toHaveLength(1);
     expect(findings[0].message).toContain("failed to evaluate");
   });

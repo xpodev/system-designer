@@ -2,14 +2,8 @@ import type { EntityId } from "@save/engine";
 import React, { useState } from "react";
 import { useWorkspace } from "../state/workspaceStore.js";
 
-function allEntitiesInLayer(layer: NonNullable<ReturnType<typeof useWorkspace>["selectedLayer"]>) {
-  return Array.from(layer.languages.values()).flatMap((language) =>
-    Array.from(language.entities.values()).map((entity) => ({ entity, language }))
-  );
-}
-
 export function EntityPanel() {
-  const { state, dispatch, selectedLayer, selectedEntity } = useWorkspace();
+  const { state, dispatch, selectedLanguage, selectedEntity } = useWorkspace();
   const [newEntityName, setNewEntityName] = useState("");
   const [newActionName, setNewActionName] = useState("");
   const [actionInputs, setActionInputs] = useState<EntityId[]>([]);
@@ -19,28 +13,31 @@ export function EntityPanel() {
   const [relMin, setRelMin] = useState(0);
   const [relMax, setRelMax] = useState(1);
 
-  if (!selectedLayer) return null;
-  const language = state.selectedLanguageId ? selectedLayer.languages.get(state.selectedLanguageId) : null;
-  if (!language) {
+  if (!state.selectedDomainId) return null;
+  if (!selectedLanguage) {
     return <div className="p-3 text-sm text-neutral-500">Select a language to manage its entities.</div>;
   }
 
-  const layerEntities = allEntitiesInLayer(selectedLayer);
+  // Relationships/actions can reference an entity in ANY language in the
+  // project — Languages are shared, top-level resources now, not scoped to
+  // one domain — so the cross-reference dropdowns list every entity.
+  const allEntities = Array.from(state.languages.values()).flatMap((language) =>
+    Array.from(language.entities.values()).map((entity) => ({ entity, language }))
+  );
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-3 text-sm">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-        Entities — {language.name}
+        Entities — {selectedLanguage.name}
       </h2>
 
       <form
         className="flex gap-1"
         onSubmit={(evt) => {
           evt.preventDefault();
-          if (!newEntityName.trim() || !state.selectedLayerId || !state.selectedLanguageId) return;
+          if (!newEntityName.trim() || !state.selectedLanguageId) return;
           dispatch({
             type: "ADD_ENTITY",
-            layerId: state.selectedLayerId,
             languageId: state.selectedLanguageId,
             name: newEntityName.trim(),
           });
@@ -59,7 +56,7 @@ export function EntityPanel() {
       </form>
 
       <ul className="flex flex-col gap-1">
-        {Array.from(language.entities.values()).map((entity) => (
+        {Array.from(selectedLanguage.entities.values()).map((entity) => (
           <li key={entity.id}>
             <button
               className={`w-full rounded px-2 py-1 text-left ${
@@ -80,11 +77,9 @@ export function EntityPanel() {
             <button
               className="rounded bg-red-900 px-2 py-1 text-xs hover:bg-red-800"
               onClick={() =>
-                state.selectedLayerId &&
                 state.selectedLanguageId &&
                 dispatch({
                   type: "REMOVE_ENTITY",
-                  layerId: state.selectedLayerId,
                   languageId: state.selectedLanguageId,
                   entityId: selectedEntity.id,
                 })
@@ -100,7 +95,7 @@ export function EntityPanel() {
             </h3>
             <ul className="text-xs text-neutral-300">
               {selectedEntity.relationships.map((rel) => {
-                const target = layerEntities.find((e) => e.entity.id === rel.targetEntityId);
+                const target = allEntities.find((e) => e.entity.id === rel.targetEntityId);
                 return (
                   <li key={rel.id}>
                     → {target?.entity.name ?? rel.targetEntityId} [{rel.cardinality[0]}, {rel.cardinality[1]}]
@@ -112,10 +107,9 @@ export function EntityPanel() {
               className="mt-1 flex flex-wrap items-center gap-1"
               onSubmit={(evt) => {
                 evt.preventDefault();
-                if (!relTargetId || !state.selectedLayerId || !state.selectedLanguageId) return;
+                if (!relTargetId || !state.selectedLanguageId) return;
                 dispatch({
                   type: "ADD_RELATIONSHIP",
-                  layerId: state.selectedLayerId,
                   languageId: state.selectedLanguageId,
                   entityId: selectedEntity.id,
                   targetEntityId: relTargetId,
@@ -129,7 +123,7 @@ export function EntityPanel() {
                 onChange={(evt) => setRelTargetId(evt.target.value)}
               >
                 <option value="">target entity…</option>
-                {layerEntities.map(({ entity, language: lang }) => (
+                {allEntities.map(({ entity, language: lang }) => (
                   <option key={entity.id} value={entity.id}>
                     {lang.name} / {entity.name}
                   </option>
@@ -161,7 +155,7 @@ export function EntityPanel() {
               {selectedEntity.actions.map((action) => (
                 <li key={action.id}>
                   {action.name}({action.inputTypes.length} in) →{" "}
-                  {layerEntities.find((e) => e.entity.id === action.outputType)?.entity.name ??
+                  {allEntities.find((e) => e.entity.id === action.outputType)?.entity.name ??
                     action.outputType}
                 </li>
               ))}
@@ -170,11 +164,9 @@ export function EntityPanel() {
               className="mt-1 flex flex-col gap-1"
               onSubmit={(evt) => {
                 evt.preventDefault();
-                if (!newActionName.trim() || !actionOutput || !state.selectedLayerId || !state.selectedLanguageId)
-                  return;
+                if (!newActionName.trim() || !actionOutput || !state.selectedLanguageId) return;
                 dispatch({
                   type: "ADD_ACTION",
-                  layerId: state.selectedLayerId,
                   languageId: state.selectedLanguageId,
                   entityId: selectedEntity.id,
                   name: newActionName.trim(),
@@ -203,7 +195,7 @@ export function EntityPanel() {
                     setActionInputs(Array.from(evt.target.selectedOptions).map((o) => o.value))
                   }
                 >
-                  {layerEntities.map(({ entity, language: lang }) => (
+                  {allEntities.map(({ entity, language: lang }) => (
                     <option key={entity.id} value={entity.id}>
                       {lang.name} / {entity.name}
                     </option>
@@ -216,7 +208,7 @@ export function EntityPanel() {
                 onChange={(evt) => setActionOutput(evt.target.value)}
               >
                 <option value="">output type…</option>
-                {layerEntities.map(({ entity, language: lang }) => (
+                {allEntities.map(({ entity, language: lang }) => (
                   <option key={entity.id} value={entity.id}>
                     {lang.name} / {entity.name}
                   </option>
@@ -227,8 +219,8 @@ export function EntityPanel() {
                 value={actionLanguageId}
                 onChange={(evt) => setActionLanguageId(evt.target.value)}
               >
-                <option value="">action language (default: {language.name})</option>
-                {Array.from(selectedLayer.languages.values()).map((lang) => (
+                <option value="">action language (default: {selectedLanguage.name})</option>
+                {Array.from(state.languages.values()).map((lang) => (
                   <option key={lang.id} value={lang.id}>
                     {lang.name}
                   </option>

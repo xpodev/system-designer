@@ -6,15 +6,18 @@ import {
   addMediation,
   addRelationship,
   addTransformation,
-  createLayer,
+  createDomain,
+  referenceLanguage,
   removeEntity,
   removeMediation,
-  validateLayers,
+  unreferenceLanguage,
+  validateProject,
+  type Domain,
+  type DomainId,
   type Entity,
   type EntityId,
   type Finding,
-  type Layer,
-  type LayerId,
+  type Language,
   type LanguageId,
   type MediationNode,
   type Project,
@@ -52,16 +55,36 @@ function newProjectId(): string {
   return crypto.randomUUID();
 }
 
+function emptyProject(): Project {
+  return { languages: new Map(), domains: [], mediations: [] };
+}
+
+/** A project saved before Domains referenced Languages (instead of owning
+ *  them) has no top-level `languages`/`domains` — it has `layers`, each
+ *  owning its own language map. There's no automatic migration for that
+ *  shape; treat it as unreadable rather than crash trying to render it. */
+function isCurrentShape(project: unknown): project is Project {
+  return (
+    typeof project === "object" &&
+    project !== null &&
+    project instanceof Map === false &&
+    "languages" in project &&
+    "domains" in project &&
+    Array.isArray((project as Project).domains)
+  );
+}
+
 export type ViewMode = "world" | "language" | "tau";
 
 export interface WorkspaceState {
   activeProjectId: string;
   projectName: string;
-  layers: Layer[];
+  languages: Map<LanguageId, Language>;
+  domains: Domain[];
   mediations: MediationNode[];
   positions: Record<EntityId, { x: number; y: number }>;
   view: ViewMode;
-  selectedLayerId: LayerId | null;
+  selectedDomainId: DomainId | null;
   selectedLanguageId: LanguageId | null;
   selectedEntityId: EntityId | null;
   selectedMediationId: string | null;
@@ -74,13 +97,14 @@ type Action =
   | { type: "SWITCH_PROJECT"; projectId: string; name: string }
   | { type: "NEW_PROJECT"; projectId: string; name: string }
   | { type: "IMPORTED"; projectId: string; name: string; project: Project }
-  | { type: "ADD_LAYER"; name: string }
-  | { type: "ADD_LANGUAGE"; layerId: LayerId; name: string }
-  | { type: "ADD_ENTITY"; layerId: LayerId; languageId: LanguageId; name: string; position?: { x: number; y: number } }
+  | { type: "ADD_DOMAIN"; name: string }
+  | { type: "ADD_LANGUAGE"; domainId: DomainId; name: string }
+  | { type: "REFERENCE_LANGUAGE"; domainId: DomainId; languageId: LanguageId }
+  | { type: "UNREFERENCE_LANGUAGE"; domainId: DomainId; languageId: LanguageId }
+  | { type: "ADD_ENTITY"; languageId: LanguageId; name: string; position?: { x: number; y: number } }
   | { type: "SET_POSITION"; entityId: EntityId; position: { x: number; y: number } }
   | {
       type: "ADD_RELATIONSHIP";
-      layerId: LayerId;
       languageId: LanguageId;
       entityId: EntityId;
       targetEntityId: EntityId;
@@ -89,7 +113,6 @@ type Action =
     }
   | {
       type: "ADD_ACTION";
-      layerId: LayerId;
       languageId: LanguageId;
       entityId: EntityId;
       name: string;
@@ -99,7 +122,6 @@ type Action =
     }
   | {
       type: "ADD_INTERACTION";
-      layerId: LayerId;
       name: string;
       inputLanguageId: LanguageId;
       outputLanguageId: LanguageId;
@@ -108,156 +130,183 @@ type Action =
     }
   | {
       type: "ADD_TRANSFORMATION";
-      layerId: LayerId;
+      domainId: DomainId;
       sourceLanguageId: LanguageId;
       targetLanguageId: LanguageId;
       entityMappings?: Transformation["entityMappings"];
     }
-  | { type: "REMOVE_ENTITY"; layerId: LayerId; languageId: LanguageId; entityId: EntityId }
-  | { type: "ADD_MEDIATION"; intentLayerId: LayerId; mediatorLayerId: LayerId; implementationLayerId: LayerId }
+  | { type: "REMOVE_ENTITY"; languageId: LanguageId; entityId: EntityId }
+  | { type: "ADD_MEDIATION"; intentDomainId: DomainId; mediatorDomainId: DomainId; implementationDomainId: DomainId }
   | { type: "REMOVE_MEDIATION"; mediationId: string }
   | { type: "SET_VIEW"; view: ViewMode }
-  | { type: "SELECT_LAYER"; layerId: LayerId | null }
+  | { type: "SELECT_DOMAIN"; domainId: DomainId | null }
   | { type: "SELECT_LANGUAGE"; languageId: LanguageId | null }
   | { type: "SELECT_ENTITY"; entityId: EntityId | null }
   | { type: "SELECT_MEDIATION"; mediationId: string | null }
   | { type: "SELECT_TRANSFORMATION"; transformationId: TransformationId | null };
 
+function resetSelections<T extends WorkspaceState>(state: T): T {
+  return {
+    ...state,
+    selectedDomainId: null,
+    selectedLanguageId: null,
+    selectedEntityId: null,
+    selectedMediationId: null,
+    selectedTransformationId: null,
+    view: "world",
+  };
+}
+
 function reducer(state: WorkspaceState, action: Action): WorkspaceState {
   switch (action.type) {
     case "LOADED":
-      return { ...state, layers: action.project.layers, mediations: action.project.mediations, loaded: true };
+      return { ...state, languages: action.project.languages, domains: action.project.domains, mediations: action.project.mediations, loaded: true };
     case "SWITCH_PROJECT":
-      return {
+      return resetSelections({
         ...state,
         activeProjectId: action.projectId,
         projectName: action.name,
-        layers: [],
+        languages: new Map(),
+        domains: [],
         mediations: [],
         positions: {},
-        view: "world",
-        selectedLayerId: null,
-        selectedLanguageId: null,
-        selectedEntityId: null,
-        selectedMediationId: null,
-        selectedTransformationId: null,
         loaded: false,
-      };
+      });
     case "NEW_PROJECT":
-      return {
+      return resetSelections({
         ...state,
         activeProjectId: action.projectId,
         projectName: action.name,
-        layers: [],
+        languages: new Map(),
+        domains: [],
         mediations: [],
         positions: {},
-        view: "world",
-        selectedLayerId: null,
-        selectedLanguageId: null,
-        selectedEntityId: null,
-        selectedMediationId: null,
-        selectedTransformationId: null,
         loaded: true,
-      };
+      });
     case "IMPORTED":
-      return {
+      return resetSelections({
         ...state,
         activeProjectId: action.projectId,
         projectName: action.name,
-        layers: action.project.layers,
+        languages: action.project.languages,
+        domains: action.project.domains,
         mediations: action.project.mediations,
         positions: {},
-        view: "world",
-        selectedLayerId: null,
-        selectedLanguageId: null,
-        selectedEntityId: null,
-        selectedMediationId: null,
-        selectedTransformationId: null,
         loaded: true,
-      };
-    case "ADD_LAYER": {
-      const layer = createLayer(action.name);
-      return { ...state, layers: [...state.layers, layer], selectedLayerId: layer.id };
+      });
+    case "ADD_DOMAIN": {
+      const domain = createDomain(action.name);
+      return { ...state, domains: [...state.domains, domain], selectedDomainId: domain.id };
     }
-    case "ADD_LANGUAGE":
-      return { ...state, layers: addLanguage(state.layers, action.layerId, action.name) };
+    case "ADD_LANGUAGE": {
+      const project = addLanguage(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.domainId,
+        action.name
+      );
+      return { ...state, languages: project.languages, domains: project.domains };
+    }
+    case "REFERENCE_LANGUAGE": {
+      const project = referenceLanguage(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.domainId,
+        action.languageId
+      );
+      return { ...state, domains: project.domains };
+    }
+    case "UNREFERENCE_LANGUAGE": {
+      const project = unreferenceLanguage(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.domainId,
+        action.languageId
+      );
+      return { ...state, domains: project.domains };
+    }
     case "ADD_ENTITY": {
-      const layers = addEntity(state.layers, action.layerId, action.languageId, action.name);
-      const language = layers.find((l) => l.id === action.layerId)?.languages.get(action.languageId);
+      const languages = addEntity(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.languageId,
+        action.name
+      ).languages;
+      const language = languages.get(action.languageId);
       const newEntity = language ? Array.from(language.entities.values()).at(-1) : undefined;
       const positions =
         newEntity && action.position
           ? { ...state.positions, [newEntity.id]: action.position }
           : state.positions;
-      return { ...state, layers, positions };
+      return { ...state, languages, positions };
     }
     case "SET_POSITION":
       return { ...state, positions: { ...state.positions, [action.entityId]: action.position } };
     case "ADD_RELATIONSHIP":
       return {
         ...state,
-        layers: addRelationship(
-          state.layers,
-          action.layerId,
+        languages: addRelationship(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
           action.languageId,
           action.entityId,
           action.targetEntityId,
           action.cardinality,
           action.constraints
-        ),
+        ).languages,
       };
     case "ADD_ACTION":
       return {
         ...state,
-        layers: addAction(
-          state.layers,
-          action.layerId,
+        languages: addAction(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
           action.languageId,
           action.entityId,
           action.name,
           action.inputTypes,
           action.outputType,
           action.actionLanguageId
-        ),
+        ).languages,
       };
     case "ADD_INTERACTION":
       return {
         ...state,
-        layers: addInteraction(
-          state.layers,
-          action.layerId,
+        languages: addInteraction(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
           action.name,
           action.inputLanguageId,
           action.outputLanguageId,
           action.inputEntityIds,
           action.outputEntityId
-        ),
+        ).languages,
       };
     case "ADD_TRANSFORMATION":
       return {
         ...state,
-        layers: addTransformation(
-          state.layers,
-          action.layerId,
+        domains: addTransformation(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
+          action.domainId,
           action.sourceLanguageId,
           action.targetLanguageId,
           action.entityMappings
-        ),
+        ).domains,
       };
-    case "REMOVE_ENTITY":
+    case "REMOVE_ENTITY": {
+      const project = removeEntity(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.languageId,
+        action.entityId
+      );
       return {
         ...state,
-        layers: removeEntity(state.layers, action.layerId, action.languageId, action.entityId),
+        languages: project.languages,
+        domains: project.domains,
         selectedEntityId: state.selectedEntityId === action.entityId ? null : state.selectedEntityId,
       };
+    }
     case "ADD_MEDIATION":
       return {
         ...state,
         mediations: addMediation(
           state.mediations,
-          action.intentLayerId,
-          action.mediatorLayerId,
-          action.implementationLayerId
+          action.intentDomainId,
+          action.mediatorDomainId,
+          action.implementationDomainId
         ),
       };
     case "REMOVE_MEDIATION":
@@ -268,13 +317,13 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
       };
     case "SET_VIEW":
       return { ...state, view: action.view };
-    case "SELECT_LAYER":
+    case "SELECT_DOMAIN":
       return {
         ...state,
-        selectedLayerId: action.layerId,
+        selectedDomainId: action.domainId,
         selectedLanguageId: null,
         selectedEntityId: null,
-        view: action.layerId ? "language" : state.view,
+        view: action.domainId ? "language" : state.view,
       };
     case "SELECT_LANGUAGE":
       return { ...state, selectedLanguageId: action.languageId, selectedEntityId: null };
@@ -294,11 +343,12 @@ function initialState(): WorkspaceState {
   return {
     activeProjectId,
     projectName: lookupProjectName(activeProjectId),
-    layers: [],
+    languages: new Map(),
+    domains: [],
     mediations: [],
     positions: {},
     view: "world",
-    selectedLayerId: null,
+    selectedDomainId: null,
     selectedLanguageId: null,
     selectedEntityId: null,
     selectedMediationId: null,
@@ -311,7 +361,8 @@ interface WorkspaceContextValue {
   state: WorkspaceState;
   dispatch: React.Dispatch<Action>;
   findings: Finding[];
-  selectedLayer: Layer | null;
+  selectedDomain: Domain | null;
+  selectedLanguage: Language | null;
   selectedEntity: Entity | null;
   selectedMediation: MediationNode | null;
   projects: ReturnType<typeof listProjects>;
@@ -339,7 +390,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setActiveProjectId(projectId);
 
     transport.init().then(async () => {
-      const project = await transport.loadProject(projectId);
+      const loaded = await transport.loadProject(projectId);
+      const project = isCurrentShape(loaded) ? loaded : emptyProject();
       if (!cancelled && state.activeProjectId === projectId) {
         dispatch({ type: "LOADED", project });
       }
@@ -357,26 +409,37 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!state.loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void transport.saveProject(state.activeProjectId, { layers: state.layers, mediations: state.mediations });
+      void transport.saveProject(state.activeProjectId, {
+        languages: state.languages,
+        domains: state.domains,
+        mediations: state.mediations,
+      });
       touchProject(state.activeProjectId);
     }, 400);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [state.layers, state.mediations, state.loaded, state.activeProjectId]);
+  }, [state.languages, state.domains, state.mediations, state.loaded, state.activeProjectId]);
 
-  const findings = useMemo(() => validateLayers(state.layers), [state.layers]);
+  const findings = useMemo(
+    () => validateProject({ languages: state.languages, domains: state.domains, mediations: state.mediations }),
+    [state.languages, state.domains, state.mediations]
+  );
 
-  const selectedLayer = useMemo(
-    () => state.layers.find((l) => l.id === state.selectedLayerId) ?? null,
-    [state.layers, state.selectedLayerId]
+  const selectedDomain = useMemo(
+    () => state.domains.find((d) => d.id === state.selectedDomainId) ?? null,
+    [state.domains, state.selectedDomainId]
+  );
+
+  const selectedLanguage = useMemo(
+    () => (state.selectedLanguageId ? state.languages.get(state.selectedLanguageId) ?? null : null),
+    [state.languages, state.selectedLanguageId]
   );
 
   const selectedEntity = useMemo(() => {
-    if (!selectedLayer || !state.selectedLanguageId || !state.selectedEntityId) return null;
-    const language = selectedLayer.languages.get(state.selectedLanguageId);
-    return language?.entities.get(state.selectedEntityId) ?? null;
-  }, [selectedLayer, state.selectedLanguageId, state.selectedEntityId]);
+    if (!selectedLanguage || !state.selectedEntityId) return null;
+    return selectedLanguage.entities.get(state.selectedEntityId) ?? null;
+  }, [selectedLanguage, state.selectedEntityId]);
 
   const selectedMediation = useMemo(
     () => state.mediations.find((m) => m.id === state.selectedMediationId) ?? null,
@@ -394,7 +457,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     registerProject(projectId, name);
     setActiveProjectId(projectId);
     dispatch({ type: "NEW_PROJECT", projectId, name });
-    void transport.saveProject(projectId, { layers: [], mediations: [] });
+    void transport.saveProject(projectId, emptyProject());
   };
 
   const importProject = (name: string, project: Project) => {
@@ -406,7 +469,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const exportProject = () => {
-    const json = JSON.stringify(serializeProject({ layers: state.layers, mediations: state.mediations }), null, 2);
+    const json = JSON.stringify(
+      serializeProject({ languages: state.languages, domains: state.domains, mediations: state.mediations }),
+      null,
+      2
+    );
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -421,7 +488,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       state,
       dispatch,
       findings,
-      selectedLayer,
+      selectedDomain,
+      selectedLanguage,
       selectedEntity,
       selectedMediation,
       projects,
@@ -431,7 +499,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       exportProject,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state, findings, selectedLayer, selectedEntity, selectedMediation, projects]
+    [state, findings, selectedDomain, selectedLanguage, selectedEntity, selectedMediation, projects]
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

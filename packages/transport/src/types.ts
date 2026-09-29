@@ -12,10 +12,11 @@ export interface WorkspaceFile {
  * instance behind this same interface, not a change to anything that depends
  * on it.
  *
- * `loadProject`/`saveProject` carry a `Project` (layers + A/M mediations)
- * rather than bare `Layer[]` — the spec's own `MediationNode` type had no
- * persisted home until `Project` was added; this is that seam's minimal
- * extension, not a divergent redesign.
+ * `loadProject`/`saveProject` carry a `Project` (shared, top-level Languages
+ * + the Domains that reference them + A/M mediations) rather than bare
+ * `Layer[]` — the spec's own `MediationNode` type had no persisted home
+ * until `Project` was added; this is that seam's minimal extension, not a
+ * divergent redesign.
  */
 export interface IStorageTransport {
   init(): Promise<void>;

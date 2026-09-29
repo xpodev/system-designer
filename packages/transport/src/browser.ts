@@ -36,7 +36,8 @@ function withStore<T>(
 /**
  * Real IndexedDB storage, not a stub: `projects` holds `projectId ->
  * Project` (IndexedDB's structured clone supports Map values natively, so
- * Layers — which hold Maps — round-trip without a custom serializer); `files`
+ * Domains and Languages — which hold Maps and Sets — round-trip without a
+ * custom serializer); `files`
  * holds `path -> WorkspaceFile`, giving listFiles/readFile/writeFile a real
  * (if virtual, in-browser) backing store rather than no-ops.
  *
@@ -61,7 +62,7 @@ export class BrowserStorageTransport implements IStorageTransport {
     const project = await withStore<Project | undefined>(db, PROJECTS_STORE, "readonly", (store) =>
       store.get(projectId)
     );
-    return project ?? { layers: [], mediations: [] };
+    return project ?? { languages: new Map(), domains: [], mediations: [] };
   }
 
   async saveProject(projectId: string, project: Project): Promise<void> {

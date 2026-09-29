@@ -1,11 +1,16 @@
 /**
- * The hypergraph AST. Kept close to the spec's own shapes. No dependency on
- * rendering, storage, or a UI framework — this is the closed language the rest
- * of the system talks to only through explicit translation (the transport
- * package, the app), never by reaching into it.
+ * The hypergraph AST. No dependency on rendering, storage, or a UI
+ * framework — this file is the closed language the rest of the system talks
+ * to only through explicit translation (the transport package, the app),
+ * never by reaching into it.
+ *
+ * A Language is a top-level, shared resource: several Domains can reference
+ * the same Language (a Domain does not own the Languages it uses). This is
+ * why Language lives at the Project level, and Domain holds `languageIds`
+ * (a set of references) rather than a `languages` map of owned values.
  */
 
-export type LayerId = string;
+export type DomainId = string;
 export type LanguageId = string;
 export type EntityId = string;
 export type InteractionId = string;
@@ -77,7 +82,7 @@ export interface Transformation {
   interactionMappings: TauMapping<InteractionId, InteractionId>[];
 }
 
-// --- Language & Layer ---
+// --- Language (a shared, top-level resource — see file header) ---
 
 export interface Language {
   id: LanguageId;
@@ -86,12 +91,16 @@ export interface Language {
   interactions: Map<InteractionId, Interaction>;
 }
 
-export interface Layer {
-  id: LayerId;
+// --- Domain (formerly "Layer") ---
+
+export interface Domain {
+  id: DomainId;
   name: string;
-  languages: Map<LanguageId, Language>;
+  /** References into Project.languages — a Domain does not own these.
+   *  The same Language can be referenced by more than one Domain. */
+  languageIds: Set<LanguageId>;
   transformations: Map<TransformationId, Transformation>;
-  /** languages.size === 1 */
+  /** languageIds.size === 1 */
   isPure: boolean;
 }
 
@@ -99,19 +108,16 @@ export interface Layer {
 
 export interface MediationNode {
   id: string;
-  intentLayerId: LayerId;
-  mediatorLayerId: LayerId;
+  intentDomainId: DomainId;
+  mediatorDomainId: DomainId;
   /** Holds the tau mappings. */
-  implementationLayerId: LayerId;
+  implementationDomainId: DomainId;
 }
 
-/**
- * The persisted whole. The spec's IStorageTransport signature was drafted
- * around bare `Layer[]`, before MediationNode had anywhere to live — a
- * Project is the minimal extension that gives A/M mediation stacks a place
- * to be stored and round-tripped, without touching Layer itself.
- */
+/** The persisted whole. Languages are stored once, at the top level;
+ *  Domains reference them by id. */
 export interface Project {
-  layers: Layer[];
+  languages: Map<LanguageId, Language>;
+  domains: Domain[];
   mediations: MediationNode[];
 }

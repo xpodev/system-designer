@@ -1,6 +1,6 @@
 """
 SAVE storage server — the A/M "executor" side of packages/transport's
-HttpStorageTransport. It doesn't know anything about Layer/Language/Entity
+HttpStorageTransport. It doesn't know anything about Domain/Language/Entity
 shapes; it just persists whatever JSON document the client sends for a
 project, and serves a small virtual file store. Modeling the AST server-side
 for a headless validation pipeline is future work (spec 6.1's "Headless

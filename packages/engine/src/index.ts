@@ -1,5 +1,5 @@
 export type {
-  LayerId,
+  DomainId,
   LanguageId,
   EntityId,
   InteractionId,
@@ -12,13 +12,16 @@ export type {
   TauMapping,
   Transformation,
   Language,
-  Layer,
+  Domain,
   MediationNode,
   Project,
 } from "./types.js";
 
 export {
-  createLayer,
+  createDomain,
+  createLanguage,
+  referenceLanguage,
+  unreferenceLanguage,
   addLanguage,
   addEntity,
   addRelationship,
@@ -37,7 +40,7 @@ export {
   checkTauCompleteness,
   checkRelationshipCardinality,
   checkRelationshipConstraints,
-  validateLayers,
+  validateProject,
 } from "./validation.js";
 
 export { PredicateError, evaluatePredicate } from "./predicate.js";

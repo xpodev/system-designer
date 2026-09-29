@@ -18,7 +18,7 @@ export class HttpStorageTransport implements IStorageTransport {
 
   async loadProject(projectId: string): Promise<Project> {
     const res = await fetch(`${this.baseUrl}/api/v1/projects/${projectId}`);
-    if (res.status === 404) return { layers: [], mediations: [] };
+    if (res.status === 404) return { languages: new Map(), domains: [], mediations: [] };
     if (!res.ok) throw new Error(`Failed to load project: ${res.status}`);
     return deserializeProject(await res.json());
   }

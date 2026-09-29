@@ -4,14 +4,14 @@ import { addMediation, removeMediation } from "./mediation.js";
 describe("mediation", () => {
   it("addMediation does not mutate the input array", () => {
     const before: ReturnType<typeof addMediation> = [];
-    const after = addMediation(before, "intent-layer", "mediator-layer", "impl-layer");
+    const after = addMediation(before, "intent-domain", "mediator-domain", "impl-domain");
 
     expect(before).toHaveLength(0);
     expect(after).toHaveLength(1);
     expect(after[0]).toMatchObject({
-      intentLayerId: "intent-layer",
-      mediatorLayerId: "mediator-layer",
-      implementationLayerId: "impl-layer",
+      intentDomainId: "intent-domain",
+      mediatorDomainId: "mediator-domain",
+      implementationDomainId: "impl-domain",
     });
   });
 

@@ -1,12 +1,13 @@
 import type {
   Action,
+  Domain,
+  DomainId,
   Entity,
   EntityId,
   Interaction,
   Language,
   LanguageId,
-  Layer,
-  LayerId,
+  Project,
   Relationship,
   RelationshipConstraint,
   Transformation,
@@ -16,20 +17,30 @@ function id(): string {
   return crypto.randomUUID();
 }
 
-function updateLayer(layers: Layer[], layerId: LayerId, fn: (layer: Layer) => Layer): Layer[] {
-  return layers.map((layer) => (layer.id === layerId ? fn(layer) : layer));
+export function createDomain(name: string): Domain {
+  return {
+    id: id(),
+    name,
+    languageIds: new Set(),
+    transformations: new Map(),
+    isPure: false,
+  };
+}
+
+function updateDomain(project: Project, domainId: DomainId, fn: (domain: Domain) => Domain): Project {
+  return { ...project, domains: project.domains.map((d) => (d.id === domainId ? fn(d) : d)) };
 }
 
 function updateLanguage(
-  layer: Layer,
+  project: Project,
   languageId: LanguageId,
   fn: (language: Language) => Language
-): Layer {
-  const language = layer.languages.get(languageId);
-  if (!language) return layer;
-  const languages = new Map(layer.languages);
+): Project {
+  const language = project.languages.get(languageId);
+  if (!language) return project;
+  const languages = new Map(project.languages);
   languages.set(languageId, fn(language));
-  return { ...layer, languages };
+  return { ...project, languages };
 }
 
 function updateEntity(
@@ -44,58 +55,66 @@ function updateEntity(
   return { ...language, entities };
 }
 
-export function createLayer(name: string): Layer {
-  return {
-    id: id(),
-    name,
-    languages: new Map(),
-    transformations: new Map(),
-    isPure: false,
-  };
+/** Creates a new Language, unreferenced by any Domain. */
+export function createLanguage(project: Project, name: string): Project {
+  const language: Language = { id: id(), name, entities: new Map(), interactions: new Map() };
+  const languages = new Map(project.languages);
+  languages.set(language.id, language);
+  return { ...project, languages };
 }
 
-export function addLanguage(layers: Layer[], layerId: LayerId, name: string): Layer[] {
-  const language: Language = { id: id(), name, entities: new Map(), interactions: new Map() };
-  return updateLayer(layers, layerId, (layer) => {
-    const languages = new Map(layer.languages);
-    languages.set(language.id, language);
-    return { ...layer, languages, isPure: languages.size === 1 };
+/** References an EXISTING Language into a Domain — the operation that lets
+ *  several Domains share one Language. */
+export function referenceLanguage(project: Project, domainId: DomainId, languageId: LanguageId): Project {
+  return updateDomain(project, domainId, (domain) => {
+    const languageIds = new Set(domain.languageIds);
+    languageIds.add(languageId);
+    return { ...domain, languageIds, isPure: languageIds.size === 1 };
   });
 }
 
-export function addEntity(
-  layers: Layer[],
-  layerId: LayerId,
-  languageId: LanguageId,
-  name: string
-): Layer[] {
+export function unreferenceLanguage(project: Project, domainId: DomainId, languageId: LanguageId): Project {
+  return updateDomain(project, domainId, (domain) => {
+    const languageIds = new Set(domain.languageIds);
+    languageIds.delete(languageId);
+    return { ...domain, languageIds, isPure: languageIds.size === 1 };
+  });
+}
+
+/** Convenience: create a new Language and reference it into `domainId` in
+ *  one step — the common case of "add a language to this domain". To reuse
+ *  an existing Language in another domain, use `referenceLanguage` instead. */
+export function addLanguage(project: Project, domainId: DomainId, name: string): Project {
+  const language: Language = { id: id(), name, entities: new Map(), interactions: new Map() };
+  const languages = new Map(project.languages);
+  languages.set(language.id, language);
+  const withLanguage = { ...project, languages };
+  return referenceLanguage(withLanguage, domainId, language.id);
+}
+
+export function addEntity(project: Project, languageId: LanguageId, name: string): Project {
   const entity: Entity = { id: id(), name, languageId, relationships: [], actions: [] };
-  return updateLayer(layers, layerId, (layer) =>
-    updateLanguage(layer, languageId, (language) => {
-      const entities = new Map(language.entities);
-      entities.set(entity.id, entity);
-      return { ...language, entities };
-    })
-  );
+  return updateLanguage(project, languageId, (language) => {
+    const entities = new Map(language.entities);
+    entities.set(entity.id, entity);
+    return { ...language, entities };
+  });
 }
 
 export function addRelationship(
-  layers: Layer[],
-  layerId: LayerId,
+  project: Project,
   languageId: LanguageId,
   entityId: EntityId,
   targetEntityId: EntityId,
   cardinality: [number, number],
   constraints: RelationshipConstraint[] = []
-): Layer[] {
+): Project {
   const relationship: Relationship = { id: id(), targetEntityId, cardinality, constraints };
-  return updateLayer(layers, layerId, (layer) =>
-    updateLanguage(layer, languageId, (language) =>
-      updateEntity(language, entityId, (entity) => ({
-        ...entity,
-        relationships: [...entity.relationships, relationship],
-      }))
-    )
+  return updateLanguage(project, languageId, (language) =>
+    updateEntity(language, entityId, (entity) => ({
+      ...entity,
+      relationships: [...entity.relationships, relationship],
+    }))
   );
 }
 
@@ -103,15 +122,14 @@ export function addRelationship(
  *  caller (or a test) can construct an impure Action on purpose — purity is
  *  something the validator checks, not something the builder enforces. */
 export function addAction(
-  layers: Layer[],
-  layerId: LayerId,
+  project: Project,
   languageId: LanguageId,
   entityId: EntityId,
   name: string,
   inputTypes: EntityId[],
   outputType: EntityId,
   actionLanguageId: LanguageId = languageId
-): Layer[] {
+): Project {
   const action: Action = {
     id: id(),
     name,
@@ -120,27 +138,24 @@ export function addAction(
     inputTypes,
     outputType,
   };
-  return updateLayer(layers, layerId, (layer) =>
-    updateLanguage(layer, languageId, (language) =>
-      updateEntity(language, entityId, (entity) => ({
-        ...entity,
-        actions: [...entity.actions, action],
-      }))
-    )
+  return updateLanguage(project, languageId, (language) =>
+    updateEntity(language, entityId, (entity) => ({
+      ...entity,
+      actions: [...entity.actions, action],
+    }))
   );
 }
 
 /** Stored under the language matching `inputLanguageId` — the language that
  *  initiates the interaction. */
 export function addInteraction(
-  layers: Layer[],
-  layerId: LayerId,
+  project: Project,
   name: string,
   inputLanguageId: LanguageId,
   outputLanguageId: LanguageId,
   inputEntityIds: EntityId[],
   outputEntityId: EntityId
-): Layer[] {
+): Project {
   const interaction: Interaction = {
     id: id(),
     name,
@@ -150,23 +165,23 @@ export function addInteraction(
     outputEntityId,
     isPure: inputLanguageId === outputLanguageId,
   };
-  return updateLayer(layers, layerId, (layer) =>
-    updateLanguage(layer, inputLanguageId, (language) => {
-      const interactions = new Map(language.interactions);
-      interactions.set(interaction.id, interaction);
-      return { ...language, interactions };
-    })
-  );
+  return updateLanguage(project, inputLanguageId, (language) => {
+    const interactions = new Map(language.interactions);
+    interactions.set(interaction.id, interaction);
+    return { ...language, interactions };
+  });
 }
 
+/** A Transformation belongs to the Domain that implements it (the "impl
+ *  layer" holding the tau mappings), not to either Language it connects. */
 export function addTransformation(
-  layers: Layer[],
-  layerId: LayerId,
+  project: Project,
+  domainId: DomainId,
   sourceLanguageId: LanguageId,
   targetLanguageId: LanguageId,
   entityMappings: Transformation["entityMappings"] = [],
   interactionMappings: Transformation["interactionMappings"] = []
-): Layer[] {
+): Project {
   const transformation: Transformation = {
     id: id(),
     sourceLanguageId,
@@ -174,63 +189,57 @@ export function addTransformation(
     entityMappings,
     interactionMappings,
   };
-  return updateLayer(layers, layerId, (layer) => {
-    const transformations = new Map(layer.transformations);
+  return updateDomain(project, domainId, (domain) => {
+    const transformations = new Map(domain.transformations);
     transformations.set(transformation.id, transformation);
-    return { ...layer, transformations };
+    return { ...domain, transformations };
   });
 }
 
-/** Removes an entity and cascades within the same layer: relationships in
- *  other entities that target it, interactions that reference it (in any
- *  language of the layer), and transformation mappings that reference it. */
-export function removeEntity(
-  layers: Layer[],
-  layerId: LayerId,
-  languageId: LanguageId,
-  entityId: EntityId
-): Layer[] {
-  return updateLayer(layers, layerId, (layer) => {
-    const languages = new Map(
-      Array.from(layer.languages.entries()).map(([langId, language]) => {
-        const entities = new Map(
-          Array.from(language.entities.entries())
-            .filter(([eId]) => !(langId === languageId && eId === entityId))
-            .map(([eId, entity]) => [
-              eId,
-              {
-                ...entity,
-                relationships: entity.relationships.filter(
-                  (rel) => rel.targetEntityId !== entityId
-                ),
-              },
-            ])
-        );
-        const interactions = new Map(
-          Array.from(language.interactions.entries()).filter(
-            ([, interaction]) =>
-              !interaction.inputEntityIds.includes(entityId) &&
-              interaction.outputEntityId !== entityId
-          )
-        );
-        return [langId, { ...language, entities, interactions }];
-      })
-    );
+/** Removes an entity and cascades across the whole project (Languages are
+ *  shared, so a reference to this entity could be anywhere): relationships
+ *  in other entities that target it (any language), interactions that
+ *  reference it (any language), and transformation mappings that reference
+ *  it (any domain). */
+export function removeEntity(project: Project, languageId: LanguageId, entityId: EntityId): Project {
+  const languages = new Map(
+    Array.from(project.languages.entries()).map(([langId, language]) => {
+      const entities = new Map(
+        Array.from(language.entities.entries())
+          .filter(([eId]) => !(langId === languageId && eId === entityId))
+          .map(([eId, entity]) => [
+            eId,
+            {
+              ...entity,
+              relationships: entity.relationships.filter((rel) => rel.targetEntityId !== entityId),
+            },
+          ])
+      );
+      const interactions = new Map(
+        Array.from(language.interactions.entries()).filter(
+          ([, interaction]) =>
+            !interaction.inputEntityIds.includes(entityId) && interaction.outputEntityId !== entityId
+        )
+      );
+      return [langId, { ...language, entities, interactions }];
+    })
+  );
 
-    const transformations = new Map(
-      Array.from(layer.transformations.entries()).map(([tId, transformation]) => [
+  const domains = project.domains.map((domain) => ({
+    ...domain,
+    transformations: new Map(
+      Array.from(domain.transformations.entries()).map(([tId, transformation]) => [
         tId,
         {
           ...transformation,
           entityMappings: transformation.entityMappings.filter(
             (mapping) =>
-              mapping.sourceId !== entityId &&
-              !mapping.targetSubgraph.entityIds.includes(entityId)
+              mapping.sourceId !== entityId && !mapping.targetSubgraph.entityIds.includes(entityId)
           ),
         },
       ])
-    );
+    ),
+  }));
 
-    return { ...layer, languages, transformations };
-  });
+  return { ...project, languages, domains };
 }

@@ -7,14 +7,13 @@ const CELL_WIDTH = 200;
 const CELL_HEIGHT = 120;
 
 export function Canvas() {
-  const { state, dispatch, selectedLayer } = useWorkspace();
-  const language = selectedLayer?.languages.get(state.selectedLanguageId ?? "") ?? null;
+  const { state, dispatch, selectedLanguage } = useWorkspace();
   const { screenToFlowPosition } = useReactFlow();
 
   const { nodes, edges } = useMemo(() => {
-    if (!language) return { nodes: [] as Node[], edges: [] as Edge[] };
+    if (!selectedLanguage) return { nodes: [] as Node[], edges: [] as Edge[] };
 
-    const entities = Array.from(language.entities.values());
+    const entities = Array.from(selectedLanguage.entities.values());
     const nodes: Node[] = entities.map((entity, i) => ({
       id: entity.id,
       position: state.positions[entity.id] ?? {
@@ -46,20 +45,20 @@ export function Canvas() {
     );
 
     return { nodes, edges };
-  }, [language, state.selectedEntityId, state.positions]);
+  }, [selectedLanguage, state.selectedEntityId, state.positions]);
 
-  if (!selectedLayer) {
+  if (!state.selectedDomainId) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-        Select or create a layer to begin.
+        Select or create a domain to begin.
       </div>
     );
   }
 
-  if (!language) {
+  if (!selectedLanguage) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-        Select or add a language in this layer to see its entity graph.
+        Select, add, or reference a language in this domain to see its entity graph.
       </div>
     );
   }
@@ -80,13 +79,12 @@ export function Canvas() {
       onDrop={(evt) => {
         evt.preventDefault();
         if (!evt.dataTransfer.getData("application/save-entity")) return;
-        if (!state.selectedLayerId || !state.selectedLanguageId) return;
+        if (!state.selectedLanguageId) return;
         const position = screenToFlowPosition({ x: evt.clientX, y: evt.clientY });
         const name = window.prompt("Entity name", "NewEntity");
         if (!name) return;
         dispatch({
           type: "ADD_ENTITY",
-          layerId: state.selectedLayerId,
           languageId: state.selectedLanguageId,
           name,
           position,

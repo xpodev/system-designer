@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { useWorkspace } from "../state/workspaceStore.js";
 
 export function InteractionsPanel() {
-  const { state, dispatch, selectedLayer } = useWorkspace();
+  const { state, dispatch, selectedDomain } = useWorkspace();
 
   const [interactionName, setInteractionName] = useState("");
   const [inputLangId, setInputLangId] = useState<LanguageId>("");
@@ -15,10 +15,9 @@ export function InteractionsPanel() {
   const [targetLangId, setTargetLangId] = useState<LanguageId>("");
   const [entityMap, setEntityMap] = useState<Record<EntityId, EntityId>>({});
 
-  const languages = useMemo(
-    () => (selectedLayer ? Array.from(selectedLayer.languages.values()) : []),
-    [selectedLayer]
-  );
+  // Interactions and their entity cross-references are project-wide —
+  // Languages are shared resources, not scoped to a domain.
+  const languages = useMemo(() => Array.from(state.languages.values()), [state.languages]);
 
   const interactions = useMemo(
     () => languages.flatMap((lang) => Array.from(lang.interactions.values())),
@@ -26,23 +25,23 @@ export function InteractionsPanel() {
   );
 
   const inputLangEntities = useMemo(
-    () => (inputLangId ? Array.from(selectedLayer!.languages.get(inputLangId)!.entities.values()) : []),
-    [selectedLayer, inputLangId]
+    () => (inputLangId ? Array.from(state.languages.get(inputLangId)?.entities.values() ?? []) : []),
+    [state.languages, inputLangId]
   );
   const outputLangEntities = useMemo(
-    () => (outputLangId ? Array.from(selectedLayer!.languages.get(outputLangId)!.entities.values()) : []),
-    [selectedLayer, outputLangId]
+    () => (outputLangId ? Array.from(state.languages.get(outputLangId)?.entities.values() ?? []) : []),
+    [state.languages, outputLangId]
   );
   const sourceLangEntities = useMemo(
-    () => (sourceLangId ? Array.from(selectedLayer!.languages.get(sourceLangId)!.entities.values()) : []),
-    [selectedLayer, sourceLangId]
+    () => (sourceLangId ? Array.from(state.languages.get(sourceLangId)?.entities.values() ?? []) : []),
+    [state.languages, sourceLangId]
   );
   const targetLangEntities = useMemo(
-    () => (targetLangId ? Array.from(selectedLayer!.languages.get(targetLangId)!.entities.values()) : []),
-    [selectedLayer, targetLangId]
+    () => (targetLangId ? Array.from(state.languages.get(targetLangId)?.entities.values() ?? []) : []),
+    [state.languages, targetLangId]
   );
 
-  if (!selectedLayer) return null;
+  if (!selectedDomain) return null;
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-3 text-sm">
@@ -64,7 +63,6 @@ export function InteractionsPanel() {
             if (!interactionName.trim() || !inputLangId || !outputLangId || !outputEntityId) return;
             dispatch({
               type: "ADD_INTERACTION",
-              layerId: selectedLayer.id,
               name: interactionName.trim(),
               inputLanguageId: inputLangId,
               outputLanguageId: outputLangId,
@@ -146,13 +144,13 @@ export function InteractionsPanel() {
 
       <div className="border-t border-neutral-700 pt-3">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          Transformations ({selectedLayer.transformations.size})
+          Transformations in {selectedDomain.name} ({selectedDomain.transformations.size})
         </h2>
         <ul className="text-xs text-neutral-300">
-          {Array.from(selectedLayer.transformations.values()).map((t) => (
+          {Array.from(selectedDomain.transformations.values()).map((t) => (
             <li key={t.id}>
-              τ: {selectedLayer.languages.get(t.sourceLanguageId)?.name} →{" "}
-              {selectedLayer.languages.get(t.targetLanguageId)?.name} ({t.entityMappings.length} mapped)
+              τ: {state.languages.get(t.sourceLanguageId)?.name} →{" "}
+              {state.languages.get(t.targetLanguageId)?.name} ({t.entityMappings.length} mapped)
             </li>
           ))}
         </ul>
@@ -169,7 +167,7 @@ export function InteractionsPanel() {
               }));
             dispatch({
               type: "ADD_TRANSFORMATION",
-              layerId: selectedLayer.id,
+              domainId: selectedDomain.id,
               sourceLanguageId: sourceLangId,
               targetLanguageId: targetLangId,
               entityMappings,

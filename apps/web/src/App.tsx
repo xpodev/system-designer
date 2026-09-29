@@ -3,9 +3,9 @@ import "dockview/dist/styles/dockview.css";
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from "dockview";
 import React from "react";
 import { CanvasArea } from "./components/CanvasArea.js";
+import { DomainLanguageTree } from "./components/DomainLanguageTree.js";
 import { EntityPanel } from "./components/EntityPanel.js";
 import { InteractionsPanel } from "./components/InteractionsPanel.js";
-import { LayerLanguageTree } from "./components/LayerLanguageTree.js";
 import { Toolbar } from "./components/Toolbar.js";
 import { ValidationPanel } from "./components/ValidationPanel.js";
 import { WorkspaceProvider } from "./state/workspaceStore.js";
@@ -21,7 +21,7 @@ function panel(Component: React.ComponentType): React.FC<IDockviewPanelProps> {
 }
 
 const components = {
-  layers: panel(LayerLanguageTree),
+  domains: panel(DomainLanguageTree),
   canvas: panel(CanvasArea),
   entities: panel(EntityPanel),
   interactions: panel(InteractionsPanel),
@@ -30,12 +30,12 @@ const components = {
 
 function onReady(event: DockviewReadyEvent) {
   const api = event.api;
-  api.addPanel({ id: "layers", component: "layers", title: "Layers" });
+  api.addPanel({ id: "domains", component: "domains", title: "Domains" });
   api.addPanel({
     id: "canvas",
     component: "canvas",
     title: "Canvas",
-    position: { referencePanel: "layers", direction: "right" },
+    position: { referencePanel: "domains", direction: "right" },
   });
   api.addPanel({
     id: "entities",
@@ -53,7 +53,7 @@ function onReady(event: DockviewReadyEvent) {
     id: "validation",
     component: "validation",
     title: "Validation",
-    position: { referencePanel: "layers", direction: "below" },
+    position: { referencePanel: "domains", direction: "below" },
   });
 }
 

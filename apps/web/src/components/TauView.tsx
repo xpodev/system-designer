@@ -1,18 +1,8 @@
 import React from "react";
 import { useWorkspace } from "../state/workspaceStore.js";
 
-function entityName(layers: ReturnType<typeof useWorkspace>["state"]["layers"], entityId: string): string {
-  for (const layer of layers) {
-    for (const language of layer.languages.values()) {
-      const entity = language.entities.get(entityId);
-      if (entity) return entity.name;
-    }
-  }
-  return entityId;
-}
-
 /** Spec §8's "Scale 5.0 (τ Binding View)": opened by selecting an A/M edge in
- *  World View. Shows how the mediation's implementation layer translates
+ *  World View. Shows how the mediation's implementation domain translates
  *  entities/interactions from the intent language to the mediator language. */
 export function TauView() {
   const { state, dispatch, selectedMediation } = useWorkspace();
@@ -25,9 +15,9 @@ export function TauView() {
     );
   }
 
-  const implLayer = state.layers.find((l) => l.id === selectedMediation.implementationLayerId);
-  const intentLayer = state.layers.find((l) => l.id === selectedMediation.intentLayerId);
-  const mediatorLayer = state.layers.find((l) => l.id === selectedMediation.mediatorLayerId);
+  const implDomain = state.domains.find((d) => d.id === selectedMediation.implementationDomainId);
+  const intentDomain = state.domains.find((d) => d.id === selectedMediation.intentDomainId);
+  const mediatorDomain = state.domains.find((d) => d.id === selectedMediation.mediatorDomainId);
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-4 text-sm">
@@ -39,22 +29,22 @@ export function TauView() {
       </button>
 
       <h2 className="text-base font-semibold">
-        {intentLayer?.name ?? "?"} / {mediatorLayer?.name ?? "?"}
+        {intentDomain?.name ?? "?"} / {mediatorDomain?.name ?? "?"}
       </h2>
       <p className="text-xs text-neutral-500">
-        Implementation layer: <strong>{implLayer?.name ?? "?"}</strong>
+        Implementation domain: <strong>{implDomain?.name ?? "?"}</strong>
       </p>
 
-      {!implLayer || implLayer.transformations.size === 0 ? (
+      {!implDomain || implDomain.transformations.size === 0 ? (
         <p className="text-xs text-neutral-500">
-          No transformations recorded in the implementation layer yet — add one from the
-          Interactions panel while that layer is selected.
+          No transformations recorded in the implementation domain yet — add one from the
+          Interactions panel while that domain is selected.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {Array.from(implLayer.transformations.values()).map((t) => {
-            const sourceLang = implLayer.languages.get(t.sourceLanguageId);
-            const targetLang = implLayer.languages.get(t.targetLanguageId);
+          {Array.from(implDomain.transformations.values()).map((t) => {
+            const sourceLang = state.languages.get(t.sourceLanguageId);
+            const targetLang = state.languages.get(t.targetLanguageId);
             return (
               <div key={t.id} className="rounded border border-neutral-800 p-2">
                 <div className="mb-1 font-mono text-xs text-blue-400">
@@ -66,8 +56,8 @@ export function TauView() {
                   )}
                   {t.entityMappings.map((mapping, i) => (
                     <li key={i} className="font-mono">
-                      {entityName(state.layers, mapping.sourceId)} ↦{" "}
-                      {mapping.targetSubgraph.entityIds.map((id) => entityName(state.layers, id)).join(", ") ||
+                      {entityName(state.languages, mapping.sourceId)} ↦{" "}
+                      {mapping.targetSubgraph.entityIds.map((id) => entityName(state.languages, id)).join(", ") ||
                         "(unmapped)"}
                     </li>
                   ))}
@@ -79,4 +69,12 @@ export function TauView() {
       )}
     </div>
   );
+}
+
+function entityName(languages: ReturnType<typeof useWorkspace>["state"]["languages"], entityId: string): string {
+  for (const language of languages.values()) {
+    const entity = language.entities.get(entityId);
+    if (entity) return entity.name;
+  }
+  return entityId;
 }

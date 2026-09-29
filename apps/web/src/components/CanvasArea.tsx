@@ -13,7 +13,7 @@ const VIEWS: { id: ViewMode; label: string }[] = [
 ];
 
 export function CanvasArea() {
-  const { state, dispatch, selectedLayer } = useWorkspace();
+  const { state, dispatch, selectedDomain } = useWorkspace();
 
   return (
     <div className="flex h-full flex-col">
@@ -29,8 +29,8 @@ export function CanvasArea() {
             {v.label}
           </button>
         ))}
-        {state.view === "language" && selectedLayer && (
-          <span className="ml-2 text-neutral-500">— {selectedLayer.name}</span>
+        {state.view === "language" && selectedDomain && (
+          <span className="ml-2 text-neutral-500">— {selectedDomain.name}</span>
         )}
       </div>
 
