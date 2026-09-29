@@ -50,3 +50,5 @@ export {
 } from "./validation.js";
 
 export { PredicateError, evaluatePredicate } from "./predicate.js";
+
+export { isUnboundedMax, formatCardinalityBound, formatCardinality } from "./cardinality.js";

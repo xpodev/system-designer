@@ -127,6 +127,30 @@ describe("checkRelationshipCardinality", () => {
       "Relationship on Entity 'Park' has an invalid cardinality bound [5, 1]."
     );
   });
+
+  it("treats a max of 0 as unbounded (\"N\"), not as an invalid min > max bound", () => {
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [1, 0]);
+
+    expect(checkRelationshipCardinality(p)).toHaveLength(0);
+  });
+
+  it("still flags a negative min even when max is unbounded", () => {
+    const { project, tycoonId } = twoLanguageDomain();
+    let p = addEntity(project, tycoonId, "Park");
+    p = addEntity(p, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(p.languages.get(tycoonId)!.entities.keys());
+    p = addRelationship(p, tycoonId, parkId, guestId, [-1, 0]);
+
+    const findings = checkRelationshipCardinality(p);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].message).toBe(
+      "Relationship on Entity 'Park' has an invalid cardinality bound [-1, N]."
+    );
+  });
 });
 
 describe("checkRelationshipConstraints", () => {

@@ -1,4 +1,4 @@
-import type { EntityId } from "@save/engine";
+import { formatCardinality, type EntityId } from "@save/engine";
 import React, { useState } from "react";
 import { useWorkspace } from "../state/workspaceStore.js";
 
@@ -98,7 +98,7 @@ export function EntityPanel() {
                 return (
                   <li key={rel.id} className="flex items-center justify-between gap-1">
                     <span>
-                      → {target?.entity.name ?? rel.targetEntityId} [{rel.cardinality[0]}, {rel.cardinality[1]}]
+                      → {target?.entity.name ?? rel.targetEntityId} {formatCardinality(rel.cardinality)}
                     </span>
                     <button
                       className="rounded px-1 text-neutral-500 hover:text-red-400"
@@ -148,12 +148,14 @@ export function EntityPanel() {
               <input
                 className="w-12 rounded border border-neutral-700 bg-neutral-900 px-1 py-1"
                 type="number"
+                title="Minimum"
                 value={relMin}
                 onChange={(evt) => setRelMin(Number(evt.target.value))}
               />
               <input
                 className="w-12 rounded border border-neutral-700 bg-neutral-900 px-1 py-1"
                 type="number"
+                title="Maximum — 0 means unbounded (N)"
                 value={relMax}
                 onChange={(evt) => setRelMax(Number(evt.target.value))}
               />
@@ -161,6 +163,7 @@ export function EntityPanel() {
                 Add
               </button>
             </form>
+            <p className="text-xs text-neutral-500">Max of 0 means unbounded (shown as N).</p>
           </div>
 
           <div>

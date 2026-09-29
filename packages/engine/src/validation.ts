@@ -1,3 +1,4 @@
+import { formatCardinality, isUnboundedMax } from "./cardinality.js";
 import { PredicateError, evaluatePredicate } from "./predicate.js";
 import type { Entity, Language, Project } from "./types.js";
 
@@ -109,20 +110,21 @@ export function checkTauCompleteness(project: Project): Finding[] {
 }
 
 /** Spec §7, check 4: a Relationship's [N, M] cardinality bound must be
- *  well-formed (0 <= N <= M). Purely Language/Entity-scoped, no Domain
- *  needed. Evaluating the predicate `constraints` expressions against actual
- *  graph instantiations needs an expression evaluator that doesn't exist
- *  yet — documented extension point, not built in v1. */
+ *  well-formed (0 <= N, and N <= M unless M is the "unbounded" sentinel — see
+ *  cardinality.ts). Purely Language/Entity-scoped, no Domain needed.
+ *  Evaluating the predicate `constraints` expressions against actual graph
+ *  instantiations needs an expression evaluator that doesn't exist yet —
+ *  documented extension point, not built in v1. */
 export function checkRelationshipCardinality(project: Project): Finding[] {
   const findings: Finding[] = [];
   for (const { entity } of allEntities(project)) {
     for (const relationship of entity.relationships) {
       const [min, max] = relationship.cardinality;
-      if (min < 0 || min > max) {
+      if (min < 0 || (!isUnboundedMax(max) && min > max)) {
         findings.push({
           kind: "cardinality",
           severity: "error",
-          message: `Relationship on Entity '${entity.name}' has an invalid cardinality bound [${min}, ${max}].`,
+          message: `Relationship on Entity '${entity.name}' has an invalid cardinality bound ${formatCardinality(relationship.cardinality)}.`,
           entityId: entity.id,
           refId: relationship.id,
         });

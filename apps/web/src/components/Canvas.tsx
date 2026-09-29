@@ -1,4 +1,5 @@
 import { Background, Controls, ReactFlow, useReactFlow, type Edge, type Node } from "@xyflow/react";
+import { formatCardinality } from "@save/engine";
 import React, { useMemo } from "react";
 import { useWorkspace } from "../state/workspaceStore.js";
 
@@ -38,7 +39,7 @@ export function Canvas() {
         id: rel.id,
         source: entity.id,
         target: rel.targetEntityId,
-        label: `[${rel.cardinality[0]}, ${rel.cardinality[1]}]`,
+        label: formatCardinality(rel.cardinality),
         style: { stroke: "#737373" },
         labelStyle: { fill: "#a3a3a3", fontSize: 10 },
       }))
