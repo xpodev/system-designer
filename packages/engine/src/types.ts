@@ -98,8 +98,20 @@ export interface Layer {
 // --- Mediation Stack Expression (A / M) ---
 
 export interface MediationNode {
+  id: string;
   intentLayerId: LayerId;
   mediatorLayerId: LayerId;
   /** Holds the tau mappings. */
   implementationLayerId: LayerId;
+}
+
+/**
+ * The persisted whole. The spec's IStorageTransport signature was drafted
+ * around bare `Layer[]`, before MediationNode had anywhere to live — a
+ * Project is the minimal extension that gives A/M mediation stacks a place
+ * to be stored and round-tripped, without touching Layer itself.
+ */
+export interface Project {
+  layers: Layer[];
+  mediations: MediationNode[];
 }

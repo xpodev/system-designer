@@ -3,10 +3,12 @@ import {
   addEntity,
   addInteraction,
   addLanguage,
+  addMediation,
   addRelationship,
   addTransformation,
   createLayer,
   removeEntity,
+  removeMediation,
   validateLayers,
   type Entity,
   type EntityId,
@@ -14,28 +16,46 @@ import {
   type Layer,
   type LayerId,
   type LanguageId,
+  type MediationNode,
+  type Project,
   type RelationshipConstraint,
   type Transformation,
+  type TransformationId,
 } from "@save/engine";
-import { BrowserStorageTransport } from "@save/transport";
+import { BrowserStorageTransport, HttpStorageTransport, type IStorageTransport } from "@save/transport";
 import React, { createContext, useContext, useEffect, useMemo, useReducer, useRef } from "react";
 
 const PROJECT_ID = "default";
-const transport = new BrowserStorageTransport();
+
+function createTransport(): IStorageTransport {
+  const serverUrl = import.meta.env.VITE_SAVE_SERVER_URL as string | undefined;
+  if (serverUrl) return new HttpStorageTransport(serverUrl);
+  return new BrowserStorageTransport();
+}
+
+const transport = createTransport();
+
+export type ViewMode = "world" | "language" | "tau";
 
 export interface WorkspaceState {
   layers: Layer[];
+  mediations: MediationNode[];
+  positions: Record<EntityId, { x: number; y: number }>;
+  view: ViewMode;
   selectedLayerId: LayerId | null;
   selectedLanguageId: LanguageId | null;
   selectedEntityId: EntityId | null;
+  selectedMediationId: string | null;
+  selectedTransformationId: TransformationId | null;
   loaded: boolean;
 }
 
 type Action =
-  | { type: "LOADED"; layers: Layer[] }
+  | { type: "LOADED"; project: Project }
   | { type: "ADD_LAYER"; name: string }
   | { type: "ADD_LANGUAGE"; layerId: LayerId; name: string }
-  | { type: "ADD_ENTITY"; layerId: LayerId; languageId: LanguageId; name: string }
+  | { type: "ADD_ENTITY"; layerId: LayerId; languageId: LanguageId; name: string; position?: { x: number; y: number } }
+  | { type: "SET_POSITION"; entityId: EntityId; position: { x: number; y: number } }
   | {
       type: "ADD_RELATIONSHIP";
       layerId: LayerId;
@@ -72,25 +92,37 @@ type Action =
       entityMappings?: Transformation["entityMappings"];
     }
   | { type: "REMOVE_ENTITY"; layerId: LayerId; languageId: LanguageId; entityId: EntityId }
+  | { type: "ADD_MEDIATION"; intentLayerId: LayerId; mediatorLayerId: LayerId; implementationLayerId: LayerId }
+  | { type: "REMOVE_MEDIATION"; mediationId: string }
+  | { type: "SET_VIEW"; view: ViewMode }
   | { type: "SELECT_LAYER"; layerId: LayerId | null }
   | { type: "SELECT_LANGUAGE"; languageId: LanguageId | null }
-  | { type: "SELECT_ENTITY"; entityId: EntityId | null };
+  | { type: "SELECT_ENTITY"; entityId: EntityId | null }
+  | { type: "SELECT_MEDIATION"; mediationId: string | null }
+  | { type: "SELECT_TRANSFORMATION"; transformationId: TransformationId | null };
 
 function reducer(state: WorkspaceState, action: Action): WorkspaceState {
   switch (action.type) {
     case "LOADED":
-      return { ...state, layers: action.layers, loaded: true };
+      return { ...state, layers: action.project.layers, mediations: action.project.mediations, loaded: true };
     case "ADD_LAYER": {
       const layer = createLayer(action.name);
       return { ...state, layers: [...state.layers, layer], selectedLayerId: layer.id };
     }
     case "ADD_LANGUAGE":
       return { ...state, layers: addLanguage(state.layers, action.layerId, action.name) };
-    case "ADD_ENTITY":
-      return {
-        ...state,
-        layers: addEntity(state.layers, action.layerId, action.languageId, action.name),
-      };
+    case "ADD_ENTITY": {
+      const layers = addEntity(state.layers, action.layerId, action.languageId, action.name);
+      const language = layers.find((l) => l.id === action.layerId)?.languages.get(action.languageId);
+      const newEntity = language ? Array.from(language.entities.values()).at(-1) : undefined;
+      const positions =
+        newEntity && action.position
+          ? { ...state.positions, [newEntity.id]: action.position }
+          : state.positions;
+      return { ...state, layers, positions };
+    }
+    case "SET_POSITION":
+      return { ...state, positions: { ...state.positions, [action.entityId]: action.position } };
     case "ADD_RELATIONSHIP":
       return {
         ...state,
@@ -148,12 +180,40 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
         layers: removeEntity(state.layers, action.layerId, action.languageId, action.entityId),
         selectedEntityId: state.selectedEntityId === action.entityId ? null : state.selectedEntityId,
       };
+    case "ADD_MEDIATION":
+      return {
+        ...state,
+        mediations: addMediation(
+          state.mediations,
+          action.intentLayerId,
+          action.mediatorLayerId,
+          action.implementationLayerId
+        ),
+      };
+    case "REMOVE_MEDIATION":
+      return {
+        ...state,
+        mediations: removeMediation(state.mediations, action.mediationId),
+        selectedMediationId: state.selectedMediationId === action.mediationId ? null : state.selectedMediationId,
+      };
+    case "SET_VIEW":
+      return { ...state, view: action.view };
     case "SELECT_LAYER":
-      return { ...state, selectedLayerId: action.layerId, selectedLanguageId: null, selectedEntityId: null };
+      return {
+        ...state,
+        selectedLayerId: action.layerId,
+        selectedLanguageId: null,
+        selectedEntityId: null,
+        view: action.layerId ? "language" : state.view,
+      };
     case "SELECT_LANGUAGE":
       return { ...state, selectedLanguageId: action.languageId, selectedEntityId: null };
     case "SELECT_ENTITY":
       return { ...state, selectedEntityId: action.entityId };
+    case "SELECT_MEDIATION":
+      return { ...state, selectedMediationId: action.mediationId, view: action.mediationId ? "tau" : state.view };
+    case "SELECT_TRANSFORMATION":
+      return { ...state, selectedTransformationId: action.transformationId };
     default:
       return state;
   }
@@ -162,9 +222,14 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
 function initialState(): WorkspaceState {
   return {
     layers: [],
+    mediations: [],
+    positions: {},
+    view: "world",
     selectedLayerId: null,
     selectedLanguageId: null,
     selectedEntityId: null,
+    selectedMediationId: null,
+    selectedTransformationId: null,
     loaded: false,
   };
 }
@@ -175,6 +240,7 @@ interface WorkspaceContextValue {
   findings: Finding[];
   selectedLayer: Layer | null;
   selectedEntity: Entity | null;
+  selectedMediation: MediationNode | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -186,8 +252,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     transport.init().then(async () => {
-      const layers = await transport.loadProject(PROJECT_ID);
-      if (!cancelled) dispatch({ type: "LOADED", layers });
+      const project = await transport.loadProject(PROJECT_ID);
+      if (!cancelled) dispatch({ type: "LOADED", project });
     });
     return () => {
       cancelled = true;
@@ -198,12 +264,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!state.loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void transport.saveProject(PROJECT_ID, state.layers);
+      void transport.saveProject(PROJECT_ID, { layers: state.layers, mediations: state.mediations });
     }, 400);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [state.layers, state.loaded]);
+  }, [state.layers, state.mediations, state.loaded]);
 
   const findings = useMemo(() => validateLayers(state.layers), [state.layers]);
 
@@ -218,9 +284,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return language?.entities.get(state.selectedEntityId) ?? null;
   }, [selectedLayer, state.selectedLanguageId, state.selectedEntityId]);
 
+  const selectedMediation = useMemo(
+    () => state.mediations.find((m) => m.id === state.selectedMediationId) ?? null,
+    [state.mediations, state.selectedMediationId]
+  );
+
   const value = useMemo(
-    () => ({ state, dispatch, findings, selectedLayer, selectedEntity }),
-    [state, findings, selectedLayer, selectedEntity]
+    () => ({ state, dispatch, findings, selectedLayer, selectedEntity, selectedMediation }),
+    [state, findings, selectedLayer, selectedEntity, selectedMediation]
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

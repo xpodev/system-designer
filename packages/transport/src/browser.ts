@@ -1,4 +1,4 @@
-import type { Layer } from "@save/engine";
+import type { Project } from "@save/engine";
 import type { IStorageTransport, WorkspaceFile } from "./types.js";
 
 const DB_NAME = "SAVE_LocalWorkspace";
@@ -34,11 +34,11 @@ function withStore<T>(
 }
 
 /**
- * Real IndexedDB storage, not a stub: `projects` holds `projectId -> Layer[]`
- * (IndexedDB's structured clone supports Map values natively, so Layers
- * round-trip without a custom serializer); `files` holds `path ->
- * WorkspaceFile`, giving listFiles/readFile/writeFile a real (if virtual,
- * in-browser) backing store rather than no-ops.
+ * Real IndexedDB storage, not a stub: `projects` holds `projectId ->
+ * Project` (IndexedDB's structured clone supports Map values natively, so
+ * Layers — which hold Maps — round-trip without a custom serializer); `files`
+ * holds `path -> WorkspaceFile`, giving listFiles/readFile/writeFile a real
+ * (if virtual, in-browser) backing store rather than no-ops.
  *
  * `subscribeToChanges` is a no-op unsubscribe, per spec — live file-watching
  * needs the WebSocket-backed HTTP transport, which is a later instance behind
@@ -56,17 +56,17 @@ export class BrowserStorageTransport implements IStorageTransport {
     return this.db;
   }
 
-  async loadProject(projectId: string): Promise<Layer[]> {
+  async loadProject(projectId: string): Promise<Project> {
     const db = await this.getDb();
-    const layers = await withStore<Layer[] | undefined>(db, PROJECTS_STORE, "readonly", (store) =>
+    const project = await withStore<Project | undefined>(db, PROJECTS_STORE, "readonly", (store) =>
       store.get(projectId)
     );
-    return layers ?? [];
+    return project ?? { layers: [], mediations: [] };
   }
 
-  async saveProject(projectId: string, layers: Layer[]): Promise<void> {
+  async saveProject(projectId: string, project: Project): Promise<void> {
     const db = await this.getDb();
-    await withStore(db, PROJECTS_STORE, "readwrite", (store) => store.put(layers, projectId));
+    await withStore(db, PROJECTS_STORE, "readwrite", (store) => store.put(project, projectId));
   }
 
   async listFiles(path: string): Promise<string[]> {

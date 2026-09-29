@@ -12,6 +12,7 @@ import {
   checkActionPurity,
   checkInteractionAlignment,
   checkRelationshipCardinality,
+  checkRelationshipConstraints,
   checkTauCompleteness,
 } from "./validation.js";
 
@@ -116,5 +117,49 @@ describe("checkRelationshipCardinality", () => {
     expect(findings[0].message).toBe(
       "Relationship on Entity 'Park' has an invalid cardinality bound [5, 1]."
     );
+  });
+});
+
+describe("checkRelationshipConstraints", () => {
+  it("passes when the predicate holds", () => {
+    const { layers, layerId, tycoonId } = twoLanguageLayer();
+    let l = addEntity(layers, layerId, tycoonId, "Park");
+    l = addEntity(l, layerId, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
+    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000], [
+      { id: "c1", expression: "self.languageId == child.languageId" },
+    ]);
+
+    expect(checkRelationshipConstraints(l)).toHaveLength(0);
+  });
+
+  it("flags a violated predicate", () => {
+    const { layers, layerId, tycoonId } = twoLanguageLayer();
+    let l = addEntity(layers, layerId, tycoonId, "Park");
+    l = addEntity(l, layerId, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
+    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000], [
+      { id: "c1", expression: "self.name == child.name" },
+    ]);
+
+    const findings = checkRelationshipConstraints(l);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].message).toBe(
+      "Relationship constraint on Entity 'Park' violated: self.name == child.name"
+    );
+  });
+
+  it("flags a malformed predicate as a failed evaluation", () => {
+    const { layers, layerId, tycoonId } = twoLanguageLayer();
+    let l = addEntity(layers, layerId, tycoonId, "Park");
+    l = addEntity(l, layerId, tycoonId, "Guest");
+    const [parkId, guestId] = Array.from(l[0].languages.get(tycoonId)!.entities.keys());
+    l = addRelationship(l, layerId, tycoonId, parkId, guestId, [0, 1000], [
+      { id: "c1", expression: "self.bogus == 1" },
+    ]);
+
+    const findings = checkRelationshipConstraints(l);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].message).toContain("failed to evaluate");
   });
 });

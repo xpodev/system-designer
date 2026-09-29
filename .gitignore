@@ -4,3 +4,7 @@ dist/
 *.log
 .vite/
 *.tsbuildinfo
+apps/server/.venv/
+apps/server/workspace/
+__pycache__/
+*.pyc

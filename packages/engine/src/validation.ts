@@ -1,3 +1,4 @@
+import { PredicateError, evaluatePredicate } from "./predicate.js";
 import type { Entity, Language, Layer } from "./types.js";
 
 export interface Finding {
@@ -131,11 +132,57 @@ export function checkRelationshipCardinality(layers: Layer[]): Finding[] {
   return findings;
 }
 
+/** Spec §7, check 4 (predicate half): evaluates each Relationship's
+ *  `constraints` expressions against `{ self: <owning entity>, child: <entity
+ *  at targetEntityId> }`. A malformed expression or unresolvable property
+ *  path is an error naming the problem; an expression that evaluates cleanly
+ *  to false is an error naming the violated constraint. */
+export function checkRelationshipConstraints(layers: Layer[]): Finding[] {
+  const findings: Finding[] = [];
+  for (const layer of layers) {
+    for (const { entity: self } of allEntities(layer)) {
+      for (const relationship of self.relationships) {
+        const childLanguage = findEntityLanguage(layer, relationship.targetEntityId);
+        const child = childLanguage?.entities.get(relationship.targetEntityId);
+        if (!child) continue;
+
+        for (const constraint of relationship.constraints) {
+          try {
+            const holds = evaluatePredicate(constraint.expression, { self, child });
+            if (!holds) {
+              findings.push({
+                kind: "cardinality",
+                severity: "error",
+                message: `Relationship constraint on Entity '${self.name}' violated: ${constraint.expression}`,
+                layerId: layer.id,
+                entityId: self.id,
+                refId: relationship.id,
+              });
+            }
+          } catch (err) {
+            const reason = err instanceof PredicateError ? err.message : String(err);
+            findings.push({
+              kind: "cardinality",
+              severity: "error",
+              message: `Relationship constraint on Entity '${self.name}' failed to evaluate: ${reason}`,
+              layerId: layer.id,
+              entityId: self.id,
+              refId: relationship.id,
+            });
+          }
+        }
+      }
+    }
+  }
+  return findings;
+}
+
 export function validateLayers(layers: Layer[]): Finding[] {
   return [
     ...checkActionPurity(layers),
     ...checkInteractionAlignment(layers),
     ...checkTauCompleteness(layers),
     ...checkRelationshipCardinality(layers),
+    ...checkRelationshipConstraints(layers),
   ];
 }

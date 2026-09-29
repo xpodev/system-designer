@@ -14,6 +14,7 @@ export type {
   Language,
   Layer,
   MediationNode,
+  Project,
 } from "./types.js";
 
 export {
@@ -27,11 +28,16 @@ export {
   removeEntity,
 } from "./builders.js";
 
+export { addMediation, removeMediation } from "./mediation.js";
+
 export type { Finding } from "./validation.js";
 export {
   checkActionPurity,
   checkInteractionAlignment,
   checkTauCompleteness,
   checkRelationshipCardinality,
+  checkRelationshipConstraints,
   validateLayers,
 } from "./validation.js";
+
+export { PredicateError, evaluatePredicate } from "./predicate.js";

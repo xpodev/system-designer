@@ -1,11 +1,60 @@
 import "@xyflow/react/dist/style.css";
+import "dockview/dist/styles/dockview.css";
+import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from "dockview";
 import React from "react";
-import { Canvas } from "./components/Canvas.js";
+import { CanvasArea } from "./components/CanvasArea.js";
 import { EntityPanel } from "./components/EntityPanel.js";
 import { InteractionsPanel } from "./components/InteractionsPanel.js";
 import { LayerLanguageTree } from "./components/LayerLanguageTree.js";
 import { ValidationPanel } from "./components/ValidationPanel.js";
 import { WorkspaceProvider } from "./state/workspaceStore.js";
+
+function panel(Component: React.ComponentType): React.FC<IDockviewPanelProps> {
+  return function Panel() {
+    return (
+      <div className="h-full overflow-hidden bg-neutral-950 text-neutral-100">
+        <Component />
+      </div>
+    );
+  };
+}
+
+const components = {
+  layers: panel(LayerLanguageTree),
+  canvas: panel(CanvasArea),
+  entities: panel(EntityPanel),
+  interactions: panel(InteractionsPanel),
+  validation: panel(ValidationPanel),
+};
+
+function onReady(event: DockviewReadyEvent) {
+  const api = event.api;
+  api.addPanel({ id: "layers", component: "layers", title: "Layers" });
+  api.addPanel({
+    id: "canvas",
+    component: "canvas",
+    title: "Canvas",
+    position: { referencePanel: "layers", direction: "right" },
+  });
+  api.addPanel({
+    id: "entities",
+    component: "entities",
+    title: "Entities",
+    position: { referencePanel: "canvas", direction: "right" },
+  });
+  api.addPanel({
+    id: "interactions",
+    component: "interactions",
+    title: "Interactions",
+    position: { referencePanel: "entities", direction: "below" },
+  });
+  api.addPanel({
+    id: "validation",
+    component: "validation",
+    title: "Validation",
+    position: { referencePanel: "layers", direction: "below" },
+  });
+}
 
 export function App() {
   return (
@@ -15,24 +64,8 @@ export function App() {
           <strong>SAVE</strong>
           <span className="text-xs text-neutral-500">System Architecture Visual Editor</span>
         </header>
-        <div className="flex min-h-0 flex-1">
-          <aside className="w-64 border-r border-neutral-800">
-            <LayerLanguageTree />
-          </aside>
-          <main className="min-w-0 flex-1 border-r border-neutral-800">
-            <Canvas />
-          </main>
-          <aside className="flex w-80 flex-col border-r border-neutral-800">
-            <div className="h-1/2 min-h-0 overflow-y-auto border-b border-neutral-800">
-              <EntityPanel />
-            </div>
-            <div className="h-1/2 min-h-0 overflow-y-auto">
-              <InteractionsPanel />
-            </div>
-          </aside>
-          <aside className="w-72">
-            <ValidationPanel />
-          </aside>
+        <div className="min-h-0 flex-1">
+          <DockviewReact className="dockview-theme-abyss" components={components} onReady={onReady} />
         </div>
       </div>
     </WorkspaceProvider>
