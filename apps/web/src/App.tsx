@@ -6,6 +6,7 @@ import { CanvasArea } from "./components/CanvasArea.js";
 import { EntityPanel } from "./components/EntityPanel.js";
 import { InteractionsPanel } from "./components/InteractionsPanel.js";
 import { LayerLanguageTree } from "./components/LayerLanguageTree.js";
+import { Toolbar } from "./components/Toolbar.js";
 import { ValidationPanel } from "./components/ValidationPanel.js";
 import { WorkspaceProvider } from "./state/workspaceStore.js";
 
@@ -60,9 +61,12 @@ export function App() {
   return (
     <WorkspaceProvider>
       <div className="flex h-screen flex-col bg-neutral-950 text-neutral-100">
-        <header className="flex items-center gap-2 border-b border-neutral-800 px-4 py-2">
-          <strong>SAVE</strong>
-          <span className="text-xs text-neutral-500">System Architecture Visual Editor</span>
+        <header className="flex items-center gap-4 border-b border-neutral-800 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <strong>SAVE</strong>
+            <span className="text-xs text-neutral-500">System Architecture Visual Editor</span>
+          </div>
+          <Toolbar />
         </header>
         <div className="min-h-0 flex-1">
           <DockviewReact className="dockview-theme-abyss" components={components} onReady={onReady} />
