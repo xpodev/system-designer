@@ -96,8 +96,25 @@ export function EntityPanel() {
               {selectedEntity.relationships.map((rel) => {
                 const target = allEntities.find((e) => e.entity.id === rel.targetEntityId);
                 return (
-                  <li key={rel.id}>
-                    → {target?.entity.name ?? rel.targetEntityId} [{rel.cardinality[0]}, {rel.cardinality[1]}]
+                  <li key={rel.id} className="flex items-center justify-between gap-1">
+                    <span>
+                      → {target?.entity.name ?? rel.targetEntityId} [{rel.cardinality[0]}, {rel.cardinality[1]}]
+                    </span>
+                    <button
+                      className="rounded px-1 text-neutral-500 hover:text-red-400"
+                      title="Delete relationship"
+                      onClick={() =>
+                        state.selectedLanguageId &&
+                        dispatch({
+                          type: "REMOVE_RELATIONSHIP",
+                          languageId: state.selectedLanguageId,
+                          entityId: selectedEntity.id,
+                          relationshipId: rel.id,
+                        })
+                      }
+                    >
+                      ×
+                    </button>
                   </li>
                 );
               })}
@@ -152,10 +169,27 @@ export function EntityPanel() {
             </h3>
             <ul className="text-xs text-neutral-300">
               {selectedEntity.actions.map((action) => (
-                <li key={action.id}>
-                  {action.name}({action.inputTypes.length} in) →{" "}
-                  {allEntities.find((e) => e.entity.id === action.outputType)?.entity.name ??
-                    action.outputType}
+                <li key={action.id} className="flex items-center justify-between gap-1">
+                  <span>
+                    {action.name}({action.inputTypes.length} in) →{" "}
+                    {allEntities.find((e) => e.entity.id === action.outputType)?.entity.name ??
+                      action.outputType}
+                  </span>
+                  <button
+                    className="rounded px-1 text-neutral-500 hover:text-red-400"
+                    title="Delete action"
+                    onClick={() =>
+                      state.selectedLanguageId &&
+                      dispatch({
+                        type: "REMOVE_ACTION",
+                        languageId: state.selectedLanguageId,
+                        entityId: selectedEntity.id,
+                        actionId: action.id,
+                      })
+                    }
+                  >
+                    ×
+                  </button>
                 </li>
               ))}
             </ul>

@@ -4,6 +4,7 @@ import type {
   DomainId,
   Entity,
   EntityId,
+  InteractionId,
   Interaction,
   Language,
   LanguageId,
@@ -11,6 +12,7 @@ import type {
   Relationship,
   RelationshipConstraint,
   Transformation,
+  TransformationId,
 } from "./types.js";
 
 function id(): string {
@@ -242,4 +244,123 @@ export function removeEntity(project: Project, languageId: LanguageId, entityId:
   }));
 
   return { ...project, languages, domains };
+}
+
+export function removeRelationship(
+  project: Project,
+  languageId: LanguageId,
+  entityId: EntityId,
+  relationshipId: string
+): Project {
+  return updateLanguage(project, languageId, (language) =>
+    updateEntity(language, entityId, (entity) => ({
+      ...entity,
+      relationships: entity.relationships.filter((rel) => rel.id !== relationshipId),
+    }))
+  );
+}
+
+export function removeAction(
+  project: Project,
+  languageId: LanguageId,
+  entityId: EntityId,
+  actionId: string
+): Project {
+  return updateLanguage(project, languageId, (language) =>
+    updateEntity(language, entityId, (entity) => ({
+      ...entity,
+      actions: entity.actions.filter((action) => action.id !== actionId),
+    }))
+  );
+}
+
+/** Removes an interaction and cascades to any transformation mapping that
+ *  references it (any domain). */
+export function removeInteraction(
+  project: Project,
+  languageId: LanguageId,
+  interactionId: InteractionId
+): Project {
+  const withoutInteraction = updateLanguage(project, languageId, (language) => {
+    const interactions = new Map(language.interactions);
+    interactions.delete(interactionId);
+    return { ...language, interactions };
+  });
+
+  const domains = withoutInteraction.domains.map((domain) => ({
+    ...domain,
+    transformations: new Map(
+      Array.from(domain.transformations.entries()).map(([tId, transformation]) => [
+        tId,
+        {
+          ...transformation,
+          interactionMappings: transformation.interactionMappings.filter(
+            (mapping) =>
+              mapping.sourceId !== interactionId &&
+              !mapping.targetSubgraph.interactionIds.includes(interactionId)
+          ),
+        },
+      ])
+    ),
+  }));
+
+  return { ...withoutInteraction, domains };
+}
+
+export function removeTransformation(
+  project: Project,
+  domainId: DomainId,
+  transformationId: TransformationId
+): Project {
+  return updateDomain(project, domainId, (domain) => {
+    const transformations = new Map(domain.transformations);
+    transformations.delete(transformationId);
+    return { ...domain, transformations };
+  });
+}
+
+/** Removes a Domain. Since Domains only reference Languages, no Language is
+ *  deleted — just this Domain's references to them (which disappear with the
+ *  Domain itself) and any A/M mediation that named this Domain in any of its
+ *  three roles, which would otherwise dangle. */
+export function removeDomain(project: Project, domainId: DomainId): Project {
+  const domains = project.domains.filter((d) => d.id !== domainId);
+  const mediations = project.mediations.filter(
+    (m) =>
+      m.intentDomainId !== domainId &&
+      m.mediatorDomainId !== domainId &&
+      m.implementationDomainId !== domainId
+  );
+  return { ...project, domains, mediations };
+}
+
+/** Removes a Language and everything that lived in it: its entities cascade
+ *  through `removeEntity` (cleaning up relationships/interactions/mappings
+ *  that reference them from anywhere in the project), then any Domain's
+ *  reference to this Language and any Transformation naming it as its
+ *  source or target are cleared too, so nothing is left dangling. */
+export function removeLanguage(project: Project, languageId: LanguageId): Project {
+  const language = project.languages.get(languageId);
+  if (!language) return project;
+
+  let working = project;
+  for (const entityId of Array.from(language.entities.keys())) {
+    working = removeEntity(working, languageId, entityId);
+  }
+
+  const languages = new Map(working.languages);
+  languages.delete(languageId);
+
+  const domains = working.domains.map((domain) => {
+    const languageIds = new Set(domain.languageIds);
+    languageIds.delete(languageId);
+    const transformations = new Map(
+      Array.from(domain.transformations.entries()).filter(
+        ([, t]) => t.sourceLanguageId !== languageId && t.targetLanguageId !== languageId
+      )
+    );
+    return { ...domain, languageIds, isPure: languageIds.size === 1, transformations };
+  });
+
+  return { ...working, languages, domains };
 }

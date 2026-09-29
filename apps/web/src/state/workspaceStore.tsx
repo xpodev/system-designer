@@ -9,8 +9,14 @@ import {
   createDomain,
   createLanguage,
   referenceLanguage,
+  removeAction,
+  removeDomain,
   removeEntity,
+  removeInteraction,
+  removeLanguage,
   removeMediation,
+  removeRelationship,
+  removeTransformation,
   unreferenceLanguage,
   validateProject,
   type Domain,
@@ -138,6 +144,12 @@ type Action =
       entityMappings?: Transformation["entityMappings"];
     }
   | { type: "REMOVE_ENTITY"; languageId: LanguageId; entityId: EntityId }
+  | { type: "REMOVE_RELATIONSHIP"; languageId: LanguageId; entityId: EntityId; relationshipId: string }
+  | { type: "REMOVE_ACTION"; languageId: LanguageId; entityId: EntityId; actionId: string }
+  | { type: "REMOVE_INTERACTION"; languageId: LanguageId; interactionId: string }
+  | { type: "REMOVE_TRANSFORMATION"; domainId: DomainId; transformationId: TransformationId }
+  | { type: "REMOVE_DOMAIN"; domainId: DomainId }
+  | { type: "REMOVE_LANGUAGE"; languageId: LanguageId }
   | { type: "ADD_MEDIATION"; intentDomainId: DomainId; mediatorDomainId: DomainId; implementationDomainId: DomainId }
   | { type: "REMOVE_MEDIATION"; mediationId: string }
   | { type: "SET_VIEW"; view: ViewMode }
@@ -314,6 +326,69 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
         languages: project.languages,
         domains: project.domains,
         selectedEntityId: state.selectedEntityId === action.entityId ? null : state.selectedEntityId,
+      };
+    }
+    case "REMOVE_RELATIONSHIP":
+      return {
+        ...state,
+        languages: removeRelationship(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
+          action.languageId,
+          action.entityId,
+          action.relationshipId
+        ).languages,
+      };
+    case "REMOVE_ACTION":
+      return {
+        ...state,
+        languages: removeAction(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
+          action.languageId,
+          action.entityId,
+          action.actionId
+        ).languages,
+      };
+    case "REMOVE_INTERACTION": {
+      const project = removeInteraction(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.languageId,
+        action.interactionId
+      );
+      return { ...state, languages: project.languages, domains: project.domains };
+    }
+    case "REMOVE_TRANSFORMATION":
+      return {
+        ...state,
+        domains: removeTransformation(
+          { languages: state.languages, domains: state.domains, mediations: state.mediations },
+          action.domainId,
+          action.transformationId
+        ).domains,
+      };
+    case "REMOVE_DOMAIN": {
+      const project = removeDomain(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.domainId
+      );
+      return {
+        ...state,
+        domains: project.domains,
+        mediations: project.mediations,
+        selectedDomainId: state.selectedDomainId === action.domainId ? null : state.selectedDomainId,
+        selectedMediationId: null,
+      };
+    }
+    case "REMOVE_LANGUAGE": {
+      const project = removeLanguage(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.languageId
+      );
+      return {
+        ...state,
+        languages: project.languages,
+        domains: project.domains,
+        selectedLanguageId: state.selectedLanguageId === action.languageId ? null : state.selectedLanguageId,
+        selectedEntityId: state.selectedLanguageId === action.languageId ? null : state.selectedEntityId,
       };
     }
     case "ADD_MEDIATION":

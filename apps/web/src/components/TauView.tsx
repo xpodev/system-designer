@@ -21,12 +21,23 @@ export function TauView() {
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-4 text-sm">
-      <button
-        className="w-fit rounded bg-neutral-700 px-2 py-1 text-xs hover:bg-neutral-600"
-        onClick={() => dispatch({ type: "SET_VIEW", view: "world" })}
-      >
-        ← Back to World
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          className="w-fit rounded bg-neutral-700 px-2 py-1 text-xs hover:bg-neutral-600"
+          onClick={() => dispatch({ type: "SET_VIEW", view: "world" })}
+        >
+          ← Back to World
+        </button>
+        <button
+          className="w-fit rounded bg-red-900 px-2 py-1 text-xs hover:bg-red-800"
+          onClick={() => {
+            dispatch({ type: "REMOVE_MEDIATION", mediationId: selectedMediation.id });
+            dispatch({ type: "SET_VIEW", view: "world" });
+          }}
+        >
+          Delete mediation
+        </button>
+      </div>
 
       <h2 className="text-base font-semibold">
         {intentDomain?.name ?? "?"} / {mediatorDomain?.name ?? "?"}

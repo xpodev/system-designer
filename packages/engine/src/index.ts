@@ -29,6 +29,12 @@ export {
   addInteraction,
   addTransformation,
   removeEntity,
+  removeRelationship,
+  removeAction,
+  removeInteraction,
+  removeTransformation,
+  removeDomain,
+  removeLanguage,
 } from "./builders.js";
 
 export { addMediation, removeMediation } from "./mediation.js";

@@ -51,8 +51,23 @@ export function InteractionsPanel() {
         </h2>
         <ul className="text-xs text-neutral-300">
           {interactions.map((interaction) => (
-            <li key={interaction.id}>
-              {interaction.name}: {interaction.inputLanguageId === interaction.outputLanguageId ? "pure" : "impure"}
+            <li key={interaction.id} className="flex items-center justify-between gap-1">
+              <span>
+                {interaction.name}: {interaction.inputLanguageId === interaction.outputLanguageId ? "pure" : "impure"}
+              </span>
+              <button
+                className="rounded px-1 text-neutral-500 hover:text-red-400"
+                title="Delete interaction"
+                onClick={() =>
+                  dispatch({
+                    type: "REMOVE_INTERACTION",
+                    languageId: interaction.inputLanguageId,
+                    interactionId: interaction.id,
+                  })
+                }
+              >
+                ×
+              </button>
             </li>
           ))}
         </ul>
@@ -148,9 +163,24 @@ export function InteractionsPanel() {
         </h2>
         <ul className="text-xs text-neutral-300">
           {Array.from(selectedDomain.transformations.values()).map((t) => (
-            <li key={t.id}>
-              τ: {state.languages.get(t.sourceLanguageId)?.name} →{" "}
-              {state.languages.get(t.targetLanguageId)?.name} ({t.entityMappings.length} mapped)
+            <li key={t.id} className="flex items-center justify-between gap-1">
+              <span>
+                τ: {state.languages.get(t.sourceLanguageId)?.name} →{" "}
+                {state.languages.get(t.targetLanguageId)?.name} ({t.entityMappings.length} mapped)
+              </span>
+              <button
+                className="rounded px-1 text-neutral-500 hover:text-red-400"
+                title="Delete transformation"
+                onClick={() =>
+                  dispatch({
+                    type: "REMOVE_TRANSFORMATION",
+                    domainId: selectedDomain.id,
+                    transformationId: t.id,
+                  })
+                }
+              >
+                ×
+              </button>
             </li>
           ))}
         </ul>

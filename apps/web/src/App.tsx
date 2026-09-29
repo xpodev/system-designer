@@ -3,9 +3,10 @@ import "dockview/dist/styles/dockview.css";
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from "dockview";
 import React from "react";
 import { CanvasArea } from "./components/CanvasArea.js";
-import { DomainLanguageTree } from "./components/DomainLanguageTree.js";
+import { DomainsPanel } from "./components/DomainsPanel.js";
 import { EntityPanel } from "./components/EntityPanel.js";
 import { InteractionsPanel } from "./components/InteractionsPanel.js";
+import { LanguagesPanel } from "./components/LanguagesPanel.js";
 import { Toolbar } from "./components/Toolbar.js";
 import { ValidationPanel } from "./components/ValidationPanel.js";
 import { WorkspaceProvider } from "./state/workspaceStore.js";
@@ -21,7 +22,8 @@ function panel(Component: React.ComponentType): React.FC<IDockviewPanelProps> {
 }
 
 const components = {
-  domains: panel(DomainLanguageTree),
+  domains: panel(DomainsPanel),
+  languages: panel(LanguagesPanel),
   canvas: panel(CanvasArea),
   entities: panel(EntityPanel),
   interactions: panel(InteractionsPanel),
@@ -31,6 +33,12 @@ const components = {
 function onReady(event: DockviewReadyEvent) {
   const api = event.api;
   api.addPanel({ id: "domains", component: "domains", title: "Domains" });
+  api.addPanel({
+    id: "languages",
+    component: "languages",
+    title: "Languages",
+    position: { referencePanel: "domains", direction: "within" },
+  });
   api.addPanel({
     id: "canvas",
     component: "canvas",

@@ -1,71 +1,20 @@
 import React, { useState } from "react";
 import { useWorkspace } from "../state/workspaceStore.js";
 
-/** Domains reference Languages rather than own them, so this tree shows, per
+/** Domains reference Languages rather than own them, so this shows, per
  *  Domain, the Languages it currently references — each of which may also be
- *  referenced by other Domains. Referencing an existing Language (rather than
- *  creating a new one) is how two Domains end up sharing it. */
-export function DomainLanguageTree() {
+ *  referenced by other Domains (browse all of them in the Languages tab).
+ *  Referencing an existing Language (rather than creating a new one) is how
+ *  two Domains end up sharing it. */
+export function DomainsPanel() {
   const { state, dispatch } = useWorkspace();
   const [newDomainName, setNewDomainName] = useState("");
   const [newLanguageName, setNewLanguageName] = useState("");
   const [referenceLanguageId, setReferenceLanguageId] = useState("");
-  const [newGlobalLanguageName, setNewGlobalLanguageName] = useState("");
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-3 text-sm">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Languages</h2>
-      <p className="text-xs text-neutral-500">
-        A language doesn't need a domain — create one here, then reference it into a domain
-        whenever it's ready (or never).
-      </p>
-
-      <form
-        className="flex gap-1"
-        onSubmit={(evt) => {
-          evt.preventDefault();
-          if (!newGlobalLanguageName.trim()) return;
-          dispatch({ type: "CREATE_LANGUAGE", name: newGlobalLanguageName.trim() });
-          setNewGlobalLanguageName("");
-        }}
-      >
-        <input
-          className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2 py-1"
-          placeholder="New language"
-          value={newGlobalLanguageName}
-          onChange={(evt) => setNewGlobalLanguageName(evt.target.value)}
-        />
-        <button className="rounded bg-neutral-700 px-2 py-1 hover:bg-neutral-600" type="submit">
-          Add
-        </button>
-      </form>
-
-      <ul className="flex flex-col gap-1">
-        {Array.from(state.languages.values()).map((language) => {
-          const referencingDomains = state.domains.filter((d) => d.languageIds.has(language.id));
-          return (
-            <li key={language.id}>
-              <button
-                className={`w-full rounded px-2 py-1 text-left ${
-                  language.id === state.selectedLanguageId ? "bg-blue-600" : "hover:bg-neutral-800"
-                }`}
-                onClick={() => dispatch({ type: "SELECT_LANGUAGE", languageId: language.id })}
-              >
-                {language.name}
-                <span className="ml-1 text-xs text-neutral-400">
-                  ({language.entities.size} entities
-                  {referencingDomains.length > 0
-                    ? ` — in ${referencingDomains.map((d) => d.name).join(", ")}`
-                    : " — unreferenced"}
-                  )
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      <h2 className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">Domains</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Domains</h2>
 
       <form
         className="flex gap-1"
@@ -98,17 +47,34 @@ export function DomainLanguageTree() {
 
           return (
             <li key={domain.id}>
-              <button
-                className={`w-full rounded px-2 py-1 text-left ${
-                  domain.id === state.selectedDomainId ? "bg-blue-600" : "hover:bg-neutral-800"
-                }`}
-                onClick={() => dispatch({ type: "SELECT_DOMAIN", domainId: domain.id })}
-              >
-                {domain.name}
-                <span className="ml-1 text-xs text-neutral-400">
-                  {domain.isPure ? "(pure)" : `(${domain.languageIds.size} languages)`}
-                </span>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  className={`flex-1 rounded px-2 py-1 text-left ${
+                    domain.id === state.selectedDomainId ? "bg-blue-600" : "hover:bg-neutral-800"
+                  }`}
+                  onClick={() => dispatch({ type: "SELECT_DOMAIN", domainId: domain.id })}
+                >
+                  {domain.name}
+                  <span className="ml-1 text-xs text-neutral-400">
+                    {domain.isPure ? "(pure)" : `(${domain.languageIds.size} languages)`}
+                  </span>
+                </button>
+                <button
+                  className="rounded px-1 text-xs text-neutral-500 hover:text-red-400"
+                  title="Delete domain (languages it references are not deleted)"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Delete domain "${domain.name}"? Its transformations and any A/M mediation naming it go too — the languages it references are not deleted.`
+                      )
+                    ) {
+                      dispatch({ type: "REMOVE_DOMAIN", domainId: domain.id });
+                    }
+                  }}
+                >
+                  ×
+                </button>
+              </div>
 
               {domain.id === state.selectedDomainId && (
                 <ul className="ml-3 mt-1 flex flex-col gap-1 border-l border-neutral-700 pl-2">
