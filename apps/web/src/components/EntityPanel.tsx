@@ -13,9 +13,8 @@ export function EntityPanel() {
   const [relMin, setRelMin] = useState(0);
   const [relMax, setRelMax] = useState(1);
 
-  if (!state.selectedDomainId) return null;
   if (!selectedLanguage) {
-    return <div className="p-3 text-sm text-neutral-500">Select a language to manage its entities.</div>;
+    return <div className="p-3 text-sm text-neutral-500">Select or create a language to manage its entities.</div>;
   }
 
   // Relationships/actions can reference an entity in ANY language in the

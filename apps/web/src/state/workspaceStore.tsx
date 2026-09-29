@@ -7,6 +7,7 @@ import {
   addRelationship,
   addTransformation,
   createDomain,
+  createLanguage,
   referenceLanguage,
   removeEntity,
   removeMediation,
@@ -98,6 +99,7 @@ type Action =
   | { type: "NEW_PROJECT"; projectId: string; name: string }
   | { type: "IMPORTED"; projectId: string; name: string; project: Project }
   | { type: "ADD_DOMAIN"; name: string }
+  | { type: "CREATE_LANGUAGE"; name: string }
   | { type: "ADD_LANGUAGE"; domainId: DomainId; name: string }
   | { type: "REFERENCE_LANGUAGE"; domainId: DomainId; languageId: LanguageId }
   | { type: "UNREFERENCE_LANGUAGE"; domainId: DomainId; languageId: LanguageId }
@@ -197,6 +199,21 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
     case "ADD_DOMAIN": {
       const domain = createDomain(action.name);
       return { ...state, domains: [...state.domains, domain], selectedDomainId: domain.id };
+    }
+    case "CREATE_LANGUAGE": {
+      const before = state.languages;
+      const project = createLanguage(
+        { languages: state.languages, domains: state.domains, mediations: state.mediations },
+        action.name
+      );
+      const newId = Array.from(project.languages.keys()).find((id) => !before.has(id));
+      return {
+        ...state,
+        languages: project.languages,
+        selectedLanguageId: newId ?? state.selectedLanguageId,
+        selectedEntityId: null,
+        view: "language",
+      };
     }
     case "ADD_LANGUAGE": {
       const project = addLanguage(
@@ -326,7 +343,12 @@ function reducer(state: WorkspaceState, action: Action): WorkspaceState {
         view: action.domainId ? "language" : state.view,
       };
     case "SELECT_LANGUAGE":
-      return { ...state, selectedLanguageId: action.languageId, selectedEntityId: null };
+      return {
+        ...state,
+        selectedLanguageId: action.languageId,
+        selectedEntityId: null,
+        view: action.languageId ? "language" : state.view,
+      };
     case "SELECT_ENTITY":
       return { ...state, selectedEntityId: action.entityId };
     case "SELECT_MEDIATION":

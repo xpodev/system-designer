@@ -47,18 +47,11 @@ export function Canvas() {
     return { nodes, edges };
   }, [selectedLanguage, state.selectedEntityId, state.positions]);
 
-  if (!state.selectedDomainId) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-        Select or create a domain to begin.
-      </div>
-    );
-  }
-
   if (!selectedLanguage) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-        Select, add, or reference a language in this domain to see its entity graph.
+        Select or create a language to see its entity graph. A language doesn't need a
+        domain to exist — reference it into one later when you're ready.
       </div>
     );
   }
