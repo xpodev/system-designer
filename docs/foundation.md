@@ -12,11 +12,11 @@ realizing the definitions below.
                        |
         +--------------+--------------+
         |              |              |
-    Language (S)    Domain (D)   Mediation (A/M)
-   E_S, I_S        refs ⊆ S, T_D   intent/mediator/impl
+    Language (L)    Domain (D)   Mediation (A/M)
+   E_L, I_L        refs ⊆ L, T_D   intent/mediator/impl
         |              |
    +----+----+     Transformation (τ)
-   |         |      S_A -> S_M
+   |         |      L_A -> L_M
  Entity  Interaction
   (E)       (I)
    |
@@ -31,8 +31,8 @@ exist, the Domains defined over them, and the Mediations between Domains.
 
 ## Language
 
-A **Language** `S = (E_S, I_S)` is a closed vocabulary: a set of Entities `E_S` and a
-set of Interactions `I_S` defined purely in terms of each other. A Language does not
+A **Language** `L = (E_L, I_L)` is a closed vocabulary: a set of Entities `E_L` and a
+set of Interactions `I_L` defined purely in terms of each other. A Language does not
 reference anything outside itself — that closure is what makes "this vocabulary" a
 meaningful, checkable unit at all.
 
@@ -44,7 +44,7 @@ below.
 
 ### Entity
 
-An Entity `e ∈ E_S` belongs to exactly one Language, `S`. It carries:
+An Entity `e ∈ E_L` belongs to exactly one Language, `L`. It carries:
 
 - a set of **Relationships** `R_e`, each relating `e` to some other Entity (possibly in
   a different Language);
@@ -64,17 +64,17 @@ A Relationship `r = (target, [min, max], constraints)`:
 
 ### Action
 
-An Action `act ∈ A_e`, owned by entity `e ∈ E_S`, has input types and an output type,
+An Action `act ∈ A_e`, owned by entity `e ∈ E_L`, has input types and an output type,
 each referencing some Entity. **Purity**: every type an Action references must belong
-to the same Language `S` as the Action itself. An Action that references an Entity from
+to the same Language `L` as the Action itself. An Action that references an Entity from
 a different Language is leaking identity across a vocabulary boundary — the one thing
 a Language's closure is supposed to prevent.
 
 ### Interaction
 
-An Interaction `i = (S_in, S_out, inputs, output)` connects an input Language to an
-output Language: `inputs` are Entities in `S_in`, `output` is an Entity in `S_out`. An
-Interaction is **pure** iff `S_in = S_out` — it stays inside one vocabulary. An impure
+An Interaction `i = (L_in, L_out, inputs, output)` connects an input Language to an
+output Language: `inputs` are Entities in `L_in`, `output` is an Entity in `L_out`. An
+Interaction is **pure** iff `L_in = L_out` — it stays inside one vocabulary. An impure
 Interaction is a deliberate, explicit crossing from one Language into another.
 
 ## Domain
@@ -92,9 +92,9 @@ independently of any Domain at all — a Language needs no Domain to be valid).
 
 ### Transformation (τ)
 
-A Transformation `τ: S_A → S_M`, held by some Domain, is a structured mapping from
-`S_A`'s Entities and Interactions into subgraphs of `S_M`'s. It is **complete** when
-every Entity in `S_A` has a mapping; an unmapped Entity is a named gap, not a silent
+A Transformation `τ: L_A → L_M`, held by some Domain, is a structured mapping from
+`L_A`'s Entities and Interactions into subgraphs of `L_M`'s. It is **complete** when
+every Entity in `L_A` has a mapping; an unmapped Entity is a named gap, not a silent
 one.
 
 ## Mediation (A / M)
@@ -114,14 +114,14 @@ connected through this explicit, swappable middle term.
 
 A Project is valid exactly when these hold:
 
-1. **Purity.** For every Action `act` owned by an Entity in Language `S`: every type
-   `act` references belongs to `S`.
-2. **Alignment.** For every Interaction `i = (S_in, S_out, …)`: both `S_in` and `S_out`
-   exist, and some Domain `D` has `{S_in, S_out} ⊆ refs(D)`. (Under the ownership
+1. **Purity.** For every Action `act` owned by an Entity in Language `L`: every type
+   `act` references belongs to `L`.
+2. **Alignment.** For every Interaction `i = (L_in, L_out, …)`: both `L_in` and `L_out`
+   exist, and some Domain `D` has `{L_in, L_out} ⊆ refs(D)`. (Under the ownership
    version of this model this read "both languages belong to the containing layer";
    under the reference version, "belonging to" becomes "referenced by the same Domain.")
-3. **Translation completeness.** For every Transformation `τ: S_A → S_M` in some Domain:
-   every Entity in `S_A` has a mapping under `τ`. (Treated as advisory, not fatal — an
+3. **Translation completeness.** For every Transformation `τ: L_A → L_M` in some Domain:
+   every Entity in `L_A` has a mapping under `τ`. (Treated as advisory, not fatal — an
    incomplete translation is a gap worth flagging, not necessarily an error.)
 4. **Cardinality well-formedness.** For every Relationship: its bound is well-formed
    (see above), and each of its constraints both resolves and holds.
