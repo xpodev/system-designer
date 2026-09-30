@@ -5,25 +5,25 @@ primitives are, how they relate, and what a well-formed model must satisfy. It i
 independent of any implementation — types, storage, UI and encodings are all just one
 way of realizing it.
 
-The tool is a **cross-domain coherence checker**, not a programming language or a
-verifier. It checks two things:
+The model exists so that a design's **cross-domain coherence** can be checked:
 
 1. **Self-containment.** Each Domain is self-contained in its context, including what
    it references.
 2. **Direction.** Everything that crosses Domains does so explicitly, and in the
    appropriate direction.
 
-It does not prove that anything is internally consistent or correctly implemented, and
-it does not model how things are wired together. The tool is about decoupling;
-mechanisms of coupling, such as dependency injection, are out of its scope.
+It is not a programming language, and it does not prove that anything is internally
+consistent or correctly implemented. It does not model how things are wired together:
+it is about decoupling, and mechanisms of coupling, such as dependency injection, are
+out of its scope.
 
-The tool is three parts, kept separate, each built only on the ones before it:
+Systemathic is three parts, kept separate, each built only on the ones before it:
 
 | Part | Responsibility | Realized as |
 |------|----------------|-------------|
 | **Core** | The kernel — the only axioms — and the Systemathic Language written in it: the vocabulary every System is made of. | `systemathic.core` |
 | **Standard concepts** | Terms defined on top of the core: purity, actions, projections, abstractness, stacks, standard rules, … | `systemathic.std` |
-| **Validation** | Checking a System against a chosen profile of rules: good practice, house style, a particular System's design rules. | validation scripts |
+| **Scripts** | Everything that checks anything: **verifying** a design against a chosen profile of rules, and **validating** an implementation against a verified design. Not a feature of the tool itself. | Python scripts |
 
 Separately from the tool, a **library** (`systemathic.lib`) provides ordinary Languages
 for common vocabularies: numbers, text, optional, … It is content, not part of the
@@ -109,6 +109,7 @@ single Language's vocabulary:
 | `¬`    | `not`   | not                                            |
 | `=`    | `==`    | identity                                       |
 | `≠`    | `!=`    | non-identity                                   |
+| `∈`    | `in`    | membership                                     |
 | `x.e`  | `x.e`   | the instances linked to `x` through end `e`    |
 | `x.^e` | `x.^e`  | reachable through one or more `e` steps        |
 | `x.*e` | `x.*e`  | `x` itself, or reachable through `e` steps     |
@@ -125,6 +126,7 @@ concern.
 
 The Systemathic Language is written in the kernel: every concept below is an Entity,
 related to the others by Relationships. A System — a user's design — is a model of it.
+Its full definition, as data, is [`schema/systemathic.json`](../schema/systemathic.json).
 
 ```
 System ─┬─ languages ──▶ Language ─┬─ entities ──────▶ Entity
@@ -482,10 +484,19 @@ number; a number is one way to represent it.
 
 ---
 
-# Part IV — Validation
+# Part IV — Scripts
 
-The power of the tool comes from rules layered on top of the foundation. A
-**validation script** reads a System and reports violations. It is Python, and always
+The tool builds and exports Systems; it checks nothing itself. Checking is done by
+scripts over a System:
+
+- **Verification** checks a design against rules: good practice, house style, a
+  particular System's design rules.
+- **Validation** checks an implementation against a verified design.
+
+This part describes verification; validation of implementation artifacts is future
+work, built on the same model.
+
+A **verification script** reads a System and reports violations. It is Python, and always
 starts from the core and standard concepts:
 
 ```py
@@ -519,11 +530,11 @@ profile = Profile(core_is_pure, core_is_abstract, opacity, mediation_acyclic)
   mediation, `Systemathic / JSON`.
 
 **Formulas become Python.** The formulas inside Languages stay first-order logic. When a
-System is loaded into a validation script, they are translated into Python predicates.
+System is loaded into a script, they are translated into Python predicates.
 The translation is a mediation `Formula / Python`, and it needs its reverse: a failing
 predicate is reported as the formula it came from, in design terms.
 
-Validation scripts, profiles and formulas are all exported with the model, so a
+Verification scripts, profiles and formulas are all exported with the model, so a
 System's design rules reach an implementer as precisely as the System itself.
 
 ## Standard rules
