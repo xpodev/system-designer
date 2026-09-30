@@ -55,7 +55,6 @@
     { "ends": [ { "name": "constrains", "entity": "Relationship", "range": "0..1" }, { "name": "constraints", "entity": "Formula", "range": "0..N" } ] },
     { "ends": [ { "name": "mentionedEntities", "entity": "Entity", "range": "0..N" }, { "name": "mentionedBy", "entity": "Formula", "range": "0..N" } ] },
     { "ends": [ { "name": "mentionedEnds", "entity": "End", "range": "0..N" }, { "name": "mentionedBy", "entity": "Formula", "range": "0..N" } ] },
-    { "ends": [ { "name": "mentionedInteractions", "entity": "Interaction", "range": "0..N" }, { "name": "mentionedBy", "entity": "Formula", "range": "0..N" } ] },
 
     { "ends": [ { "name": "languages", "entity": "Language", "range": "0..N" }, { "name": "domains", "entity": "Domain", "range": "0..N" } ] },
     { "ends": [ { "name": "references", "entity": "Domain", "range": "0..N" }, { "name": "referencedBy", "entity": "Domain", "range": "0..N" } ] },
@@ -73,7 +72,8 @@
     { "ends": [ { "name": "source", "entity": "Relationship", "range": "1..1" }, { "name": "sourceOf", "entity": "RelationshipMapping", "range": "0..N" } ] },
     { "ends": [ { "name": "targets", "entity": "Relationship", "range": "1..N" }, { "name": "targetOf", "entity": "RelationshipMapping", "range": "0..N" } ] },
     { "ends": [ { "name": "source", "entity": "Interaction", "range": "1..1" }, { "name": "sourceOf", "entity": "InteractionMapping", "range": "0..N" } ] },
-    { "ends": [ { "name": "term", "entity": "Formula", "range": "1..1" }, { "name": "termOf", "entity": "InteractionMapping", "range": "0..1" } ] },
+    { "ends": [ { "name": "targets", "entity": "Interaction", "range": "1..N" }, { "name": "targetOf", "entity": "InteractionMapping", "range": "0..N" } ] },
+    { "ends": [ { "name": "context", "entity": "Entity", "range": "0..N" }, { "name": "contextOf", "entity": "Reverse", "range": "0..N" } ] },
 
     { "ends": [ { "name": "what", "entity": "Domain", "range": "1..1" }, { "name": "asWhat", "entity": "Mediation", "range": "0..N" } ] },
     { "ends": [ { "name": "how", "entity": "Domain", "range": "1..1" }, { "name": "asHow", "entity": "Mediation", "range": "0..N" } ] },
@@ -85,7 +85,6 @@
     { "id": "W1", "about": "The output is in the Interaction's Language", "formula": "all i in Interaction. i.output.language == i.language" },
     { "id": "W1", "about": "A formula mentions only its own Language's Entities", "formula": "all f in Formula, x in f.mentionedEntities. x.language == f.language" },
     { "id": "W1", "about": "A formula mentions only its own Language's ends", "formula": "all f in Formula, x in f.mentionedEnds. x.relationship.language == f.language" },
-    { "id": "W1", "about": "A formula mentions only its own Language's Interactions", "formula": "all f in Formula, x in f.mentionedInteractions. x.language == f.language" },
     { "id": "W1", "about": "A constraint is in its Relationship's Language", "formula": "all f in Formula, r in f.constrains. r.language == f.language" },
 
     { "id": "W2", "about": "min <= max, where max is present", "formula": "all e in End, m in e.max. m in e.min.*successor" },
@@ -108,7 +107,8 @@
     { "id": "mapping", "about": "Relationship mapping targets are in the target Language", "formula": "all m in RelationshipMapping, x in m.targets. x.language == m.transformation.target" },
     { "id": "mapping", "about": "Target Relationships join images of the source Relationship's ends", "formula": "all m in RelationshipMapping, r in m.targets, e in r.ends. some n in m.transformation.entityMappings, s in m.source.ends. n.source == s.entity and e.entity in n.targets" },
     { "id": "mapping", "about": "Interaction mapping sources are in the source Language", "formula": "all m in InteractionMapping. m.source.language == m.transformation.source" },
-    { "id": "mapping", "about": "An Interaction mapping's term is over the target Language", "formula": "all m in InteractionMapping. m.term.language == m.transformation.target" },
+    { "id": "mapping", "about": "Interaction mapping targets are in the target Language", "formula": "all m in InteractionMapping, x in m.targets. x.language == m.transformation.target" },
+    { "id": "mapping", "about": "A reverse's context is drawn from its Transformation's Languages", "formula": "all v in Reverse, e in v.context. e.language == v.transformation.source or e.language == v.transformation.target" },
 
     { "id": "order", "about": "Every Parameter of an Interaction is on its first/next chain", "formula": "all i in Interaction, p in i.parameters. p in i.first.*next" },
     { "id": "order", "about": "The first/next chain holds only the Interaction's Parameters", "formula": "all i in Interaction, p in i.first.*next. p in i.parameters" },

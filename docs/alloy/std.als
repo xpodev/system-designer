@@ -18,7 +18,7 @@ pred standalone[d: Domain, A: set Element] { no d.domRefs & A }
 pred pure[d: Domain, A: set Element] { one langs[d, A] }
 
 fun topDomains[A: set Element]: set Domain {
-  (Domain & A) - (Mediation & A).how
+  (Domain & A) - (Mediation & A).how - (Mediation & A).mediator
 }
 
 -- Abstractness

@@ -47,7 +47,7 @@ def navigation(relationships: list[tuple[End, End]]) -> dict[str, dict[str, list
 # -- formulas ----------------------------------------------------------------------------
 
 TOKEN = re.compile(r"\s*(?:(=>|==|!=)|(\.(?=[A-Za-z^*]))|(\.)|([(),^*])|([A-Za-z_]\w*))")
-KEYWORDS = {"all", "some", "in", "and", "or", "not"}
+KEYWORDS = {"all", "some", "no", "in", "and", "or", "not"}
 
 
 def tokenize(text: str) -> list[str]:
@@ -73,7 +73,10 @@ class FormulaChecker:
         self.nav = nav
 
     def peek(self) -> str | None:
-        return self.tokens[self.i] if self.i < len(self.tokens) else None
+        return self.lookahead(0)
+
+    def lookahead(self, n: int) -> str | None:
+        return self.tokens[self.i + n] if self.i + n < len(self.tokens) else None
 
     def take(self, expected: str | None = None) -> str:
         token = self.peek()
@@ -110,6 +113,9 @@ class FormulaChecker:
         if token == "not":
             self.take()
             self.unary(env)
+        elif token == "no" or (token == "some" and self.lookahead(2) != "in"):
+            self.take()
+            self.path(env)
         elif token in ("all", "some"):
             self.take()
             inner = dict(env)

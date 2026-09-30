@@ -113,6 +113,8 @@ single Language's vocabulary:
 | `x.e`  | `x.e`   | the instances linked to `x` through end `e`    |
 | `x.^e` | `x.^e`  | reachable through one or more `e` steps        |
 | `x.*e` | `x.*e`  | `x` itself, or reachable through `e` steps     |
+| `∃ x.e` | `some x.e` | `x.e` is not empty                          |
+| `∄ x.e` | `no x.e`   | `x.e` is empty                              |
 
 Variables range over the instances of an Entity (`∀m ∈ Monster. …`). `=` is identity,
 always. A formula is **well-formed** in `L` iff every Entity and end it mentions belongs
@@ -133,7 +135,7 @@ System ─┬─ languages ──▶ Language ─┬─ entities ─────
         │                          ├─ relationships ─▶ Relationship ── ends ──▶ End ── entity ──▶ Entity
         │                          ├─ interactions ──▶ Interaction ─┬─ parameters ─▶ Parameter ── type ──▶ Entity
         │                          │                                └─ output ─────▶ Entity
-        │                          └─ axioms ────────▶ Formula
+        │                          └─ formulas ──────▶ Formula
         ├─ domains ────▶ Domain ───┬─ languages ─────▶ Language
         │                          ├─ references ────▶ Domain
         │                          └─ transformations ▶ Transformation ─┬─ source, target ──▶ Language
@@ -160,7 +162,8 @@ Domains together describe.
 
 An **Interaction** is an operation in one Language: an ordered list of **Parameters**,
 each of some Entity, and an **output** Entity, all in that Language. It is a signature
-only; its meaning comes from axioms. Interactions are **always pure**: they happen at one
+only: the model records what an operation takes and gives, never what it does. Saying
+what it does would be a pre/postcondition, which is out of scope. Interactions are **always pure**: they happen at one
 level of abstraction. Anything that crosses levels is a Transformation.
 
 Order is expressed without an "ordered" primitive, by linking the Parameters:
@@ -180,13 +183,16 @@ the Python library exposes `attack.parameters` as a plain list. That is a mediat
 
 ### Axioms
 
-A Language's **axioms** are well-formed formulas over it. They state what is always
-true, and they are the only place an Interaction gets meaning:
+A Language's **axioms** are well-formed formulas over it. They state structural facts
+that ranges alone cannot — facts about how instances are linked:
 
 ```
-∀a, b, c ∈ Money.          a ≥ b ∧ b ≥ c → a ≥ c
-∀m ∈ Monster, h ∈ Health.  health(heal(m, h)) = health(m) + h
+∀o ∈ Order, l ∈ o.lines.  l.product ∈ o.catalog.products     every line's product is in its order's catalog
+∀p ∈ Parameter.           p ∉ p.^next                        a parameter chain has no cycles
 ```
+
+Formulas navigate Relationships and compare identities; they do not apply Interactions.
+What an Interaction computes is not part of the model.
 
 Axioms are **assumed** to hold for every instance. The tool checks only that they are
 well-formed; holding them true is the implementer's obligation. Axioms describe what is
@@ -214,13 +220,14 @@ expected. A Language needs no Domain to be valid.
 A **Transformation** `τ: L_src → L_tgt`, held by Domain `D`, with
 `L_src, L_tgt ∈ langs*(D)`. It shows how the things of one Language appear in another.
 
-A Transformation is a set of **mappings**:
+A Transformation is a set of **mappings**. A mapping does not define how the
+representation is computed; it states **what the representation needs** in order to
+work:
 
-- **Entity** `e ∈ L_src ↦` a set of Entities of `L_tgt` (one to many).
-- **Relationship** `r ∈ L_src ↦` a set of Relationships of `L_tgt`, joining Entities in
-  the images of `r`'s ends.
-- **Interaction** `i ∈ L_src ↦` a term over `L_tgt`'s Interactions, whose inputs and
-  output are in the images of `i`'s Parameters and output.
+- **Entity** `e ∈ L_src ↦` the Entities of `L_tgt` it is represented with (one to many).
+- **Relationship** `r ∈ L_src ↦` the Relationships of `L_tgt` it is represented with,
+  joining Entities in the images of `r`'s ends.
+- **Interaction** `i ∈ L_src ↦` the Interactions of `L_tgt` it is carried out with.
 
 Mapping an Entity without mapping what defines it is meaningless: `Person.name : Name`
 maps to `class Person { name: String }` only together with a mapping of `Name` to
@@ -253,8 +260,7 @@ relation such that `x ≈ y` implies:
 
 - `x` and `y` are instances of the same Entity;
 - for every end reachable from their Entity, each instance `x` reaches through it has
-  an equivalent instance `y` reaches through it, and vice versa;
-- every Interaction applied to pairwise-equivalent arguments gives equivalent results.
+  an equivalent instance `y` reaches through it, and vice versa.
 
 Identity implies equivalence. The law thus says: the representation must preserve
 everything the higher Language can observe. The lower representation need not hold all
@@ -265,6 +271,11 @@ of it on its own; the Domain may hold **context** that completes it:
   trip, but equivalence does.
 - **By reference** (an ID sent to a client, resolved by a server-side lookup): the
   correspondence is stored by `D` as context. Identity survives.
+
+Like a mapping, a reverse states only what it needs. It reads the mappings backwards,
+and declares its **context**: the Entities whose instances the holding Domain must keep
+for reconstruction to work. A by-value reverse needs no context. The by-reference
+reverse above needs `Monster`: the server keeps its Monsters, so an ID can be resolved.
 
 `ρ` is partial: a crafted packet, corrupted bytes or an unknown ID has no preimage, and
 neither does a well-formed encoding of something that violates `L_src`'s axioms. Such a
@@ -360,8 +371,6 @@ consumer that chose both.
   axiom: ∀i ∈ Interaction. i.primary ⊆ i.parameters
   ```
 
-- **Uninterpreted:** an Interaction no axiom constrains — meaningful from the outside,
-  uninterpreted on the inside.
 - **Deferred:** an item a mediation deliberately leaves unmapped. Unlike an ordinary
   gap, it is intentional; like one, it is present in exported specifications.
 - **Comparison:** an Interaction designated as a Language's own notion of sameness for
@@ -424,8 +433,8 @@ that the context is how the core is implemented.
 
 ### Mediation structure
 
-- **Top Domains:** the Domains that are not the "how" of any Mediation. They are the
-  "how" of the System itself. Ideally they alone would describe the System fully; in
+- **Top Domains:** the Domains that are neither the "how" nor the mediator of any
+  Mediation — mediators are implementation too. They are the "how" of the System itself. Ideally they alone would describe the System fully; in
   practice higher-level intents must be carried out by lower-level realities.
 - **Stacks:** every Domain is a "what", including one serving as a "how", so Mediations
   stack: `Game / Unity / Windows`. Where the stack stops is a choice of how tightly the
@@ -476,11 +485,25 @@ of how a level is carried out belong to the mediator.
 
 # Part III — Library
 
-`systemathic.lib` holds ordinary Languages (numbers, text, bytes, …) and generics
-(optional, result, …) for common vocabularies. They have no special status. A System
-brings them in by Domain reference, and a Language reaches them only through
-Transformations, because they are lower-level *representations*: `Money` is not a
-number; a number is one way to represent it.
+`systemathic.lib` holds ordinary Languages for common vocabularies and protocols —
+bytes, JSON, HTTP, TCP, IP, Ethernet, REST, WebSocket, SQL, … — and generics (optional,
+result, …). They have no special status.
+
+The library also holds **mediations** between its Languages, such as HTTP over TCP. A
+Language never depends on another — HTTP does not depend on TCP, and HTTP/3 runs over
+QUIC — so "HTTP over TCP" is not part of HTTP; it is a Mediation of its own. The library
+provides it with everything it needs: a Domain for each side, the mediator and its
+Transformation, and the Mediation itself. A design stacks on top of it: `Api / HTTP`
+above the imported `HTTP / TCP` gives `Api / HTTP / TCP`, and moving to HTTP/3 replaces
+only the lower mediation.
+
+A System is closed, so library content is used by being part of the System: nothing in
+a System references anything outside it. How content is brought from the library, or
+from one System into another, is the tool's concern, not the foundation's.
+
+A Language reaches a library Language only through Transformations, because library
+Languages are lower-level *representations*: `Money` is not a number; a number is one
+way to represent it.
 
 ---
 
