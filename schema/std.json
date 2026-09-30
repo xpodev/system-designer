@@ -1,0 +1,22 @@
+{
+  "language": "Std",
+  "description": "The standard concepts that need vocabulary of their own (docs/foundation.md, Part II). Derived terms such as pure, abstract and top Domain are formulas, not Entities. Extends Kernel, Contexts and Operations.",
+  "includes": {"Kernel": ["Entity", "Relationship", "Language"], "Contexts": ["Transformation", "Language", "Entity", "Relationship"], "Operations": ["Interaction", "Parameter", "Entity", "Language"]},
+  "entities": ["Deferred"],
+  "relationships": [
+    {"ends": [{"name": "primaryOf", "entity": "Interaction", "range": "0..1"}, {"name": "primary", "entity": "Parameter", "range": "0..1"}]},
+    {"ends": [{"name": "comparison", "entity": "Interaction", "range": "0..1"}, {"name": "comparedEntities", "entity": "Entity", "range": "0..N"}]},
+    {"ends": [{"name": "transformation", "entity": "Transformation", "range": "1..1"}, {"name": "deferred", "entity": "Deferred", "range": "0..N"}]},
+    {"ends": [{"name": "entity", "entity": "Entity", "range": "0..1"}, {"name": "deferrals", "entity": "Deferred", "range": "0..N"}]},
+    {"ends": [{"name": "relationship", "entity": "Relationship", "range": "0..1"}, {"name": "deferrals", "entity": "Deferred", "range": "0..N"}]},
+    {"ends": [{"name": "interaction", "entity": "Interaction", "range": "0..1"}, {"name": "deferrals", "entity": "Deferred", "range": "0..N"}]}
+  ],
+  "axioms": [
+    {"id": "action", "about": "An Action's primary Parameter is one of its own", "formula": "all i in Interaction, p in i.primary. p in i.parameters"},
+    {"id": "comparison", "about": "A comparison is an Interaction of its Entity's Language", "formula": "all e in Entity, c in e.comparison. c.language == e.language"},
+    {"id": "deferred", "about": "A deferral names exactly one item", "formula": "all d in Deferred. (some d.entity and no d.relationship and no d.interaction) or (some d.relationship and no d.entity and no d.interaction) or (some d.interaction and no d.entity and no d.relationship)"},
+    {"id": "deferred", "about": "A deferred Entity is in the source Language", "formula": "all d in Deferred, x in d.entity. x.language == d.transformation.source"},
+    {"id": "deferred", "about": "A deferred Relationship is in the source Language", "formula": "all d in Deferred, x in d.relationship. x.language == d.transformation.source"},
+    {"id": "deferred", "about": "A deferred Interaction is in the source Language", "formula": "all d in Deferred, x in d.interaction. x.language == d.transformation.source"}
+  ]
+}

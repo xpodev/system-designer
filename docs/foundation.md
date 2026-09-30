@@ -21,7 +21,7 @@ Systemathic is three parts, kept separate, each built only on the ones before it
 
 | Part | Responsibility | Realized as |
 |------|----------------|-------------|
-| **Core** | The kernel — the only axioms — and the Systemathic Language written in it: the vocabulary every System is made of. | `systemathic.core` |
+| **Core** | The kernel — the only axioms — and the Systemathic Languages written in it: the vocabulary every System is made of. | `systemathic.core` |
 | **Standard concepts** | Terms defined on top of the core: purity, actions, projections, abstractness, stacks, standard rules, … | `systemathic.std` |
 | **Scripts** | Everything that checks anything: **verifying** a design against a chosen profile of rules, and **validating** an implementation against a verified design. Not a feature of the tool itself. | Python scripts |
 
@@ -37,8 +37,8 @@ of the one above it.
 | Level | Contains | Example |
 |-------|----------|---------|
 | **Kernel** | Language, Entity, Relationship, and the logic | the axioms; they describe themselves |
-| **Systemathic Language** | Entities `System`, `Domain`, `Entity`, `Interaction`, … and the Relationships between them | an Interaction has Parameters, each of some Entity |
-| **Model** | Instances of the Systemathic Language: a user's design | `Attack` is an Interaction; its Parameters are of Entities `Attacker` and `Targetable` |
+| **Systemathic Languages** | Entities `System`, `Domain`, `Entity`, `Interaction`, … and the Relationships between them, in layers | an Interaction has Parameters, each of some Entity |
+| **Model** | Instances of the Systemathic Languages: a user's design | `Attack` is an Interaction; its Parameters are of Entities `Attacker` and `Targetable` |
 
 A model never needs "entity types": `Attacker` *is* an instance of the Entity named
 `Entity`, one level up. Keeping the levels apart is what keeps self-description
@@ -60,7 +60,7 @@ the Relationships between them. `Level(x)` denotes the Language `x` belongs to.
 
 **Closure.** Nothing in a Language references anything outside it: both ends of every
 Relationship are Entities of the same Language. The only structure that touches two
-Languages is a Transformation (see *The Systemathic Language*).
+Languages is a Transformation (see *The Systemathic Languages*).
 
 ### Entity
 
@@ -124,11 +124,26 @@ Formulas are evaluated on finite models — which is always possible, and always
 terminates. Whether a formula holds for every possible model is never the tool's
 concern.
 
-## The Systemathic Language
+## The Systemathic Languages
 
-The Systemathic Language is written in the kernel: every concept below is an Entity,
-related to the others by Relationships. A System — a user's design — is a model of it.
-Its full definition, as data, is [`schema/systemathic.json`](../schema/systemathic.json).
+Everything else is written in the kernel: every concept below is an Entity, related to
+the others by Relationships. A System — a user's design — is a model of these
+Languages. They are **layered**: each extends the ones below it without changing them,
+so no Language holds more than one concern.
+
+| Language | Adds | Extends |
+|---|---|---|
+| **Kernel** | Language, Entity, Relationship, End, Name, Bound, Formula | — |
+| **Contexts** | System, Domain, Transformation, Reverse, Entity and Relationship mappings, Mediation | Kernel |
+| **Operations** | Interaction, Parameter, Interaction mappings | Kernel, Contexts |
+
+A layer reaches the Entities below it by **inclusion**: the identity projection of a
+chosen subset of a lower Language's Entities, together with every Relationship among
+them. Contexts includes Kernel's `Language`, `Entity`, `Relationship`, `End` and `Name`,
+so a Domain can reference Languages without Kernel knowing Domains exist. Operations is
+optional: a Language with no operations is complete without it.
+
+Their full definitions, as data, are in [`schema/`](../schema/README.md).
 
 ```
 System ─┬─ languages ──▶ Language ─┬─ entities ──────▶ Entity
@@ -144,12 +159,12 @@ System ─┬─ languages ──▶ Language ─┬─ entities ─────
         └─ mediations ─▶ Mediation ── what, how, mediator ──▶ Domain
 ```
 
-It contains its own `Language`, `Entity`, `Relationship` and `End`: this is the kernel
-describing itself. Names (of end, Entity, Language, Domain, …) are instances of its own
+The Kernel Language contains its own `Language`, `Entity`, `Relationship` and `End`:
+this is the kernel describing itself. Names (of end, Entity, Language, Domain, …) are instances of its own
 `Name` Entity, and range bounds of its own `Bound` Entity; how they are spelled or
 encoded is a mediation, like any other representation.
 
-### System
+### System *(Contexts)*
 
 A **System** is the whole of what is being modelled: its Languages, its Domains and its
 Mediations. It is the only standalone unit — the thing that is opened and saved.
@@ -158,13 +173,14 @@ Nothing references anything outside its System.
 The System is not a Domain. It has no mediators; it is the ultimate goal that its
 Domains together describe.
 
-### Interaction
+### Interaction *(Operations)*
 
 An **Interaction** is an operation in one Language: an ordered list of **Parameters**,
 each of some Entity, and an **output** Entity, all in that Language. It is a signature
 only: the model records what an operation takes and gives, never what it does. Saying
-what it does would be a pre/postcondition, which is out of scope. Interactions are **always pure**: they happen at one
-level of abstraction. Anything that crosses levels is a Transformation.
+what it does would be a pre/postcondition, which is out of scope. Interactions are
+**always pure**: they happen at one level of abstraction. Anything that crosses levels
+is a Transformation.
 
 Order is expressed without an "ordered" primitive, by linking the Parameters:
 
@@ -172,16 +188,16 @@ Order is expressed without an "ordered" primitive, by linking the Parameters:
 Interaction <——> Parameter    ends: interaction 1..1,  parameters 0..N
 Interaction <——> Parameter    ends: firstOf 0..1,      first 0..1
 Parameter   <——> Parameter    ends: prev 0..1,         next 0..1
-Parameter   <——> Entity       ends: parameters 0..N,   type 1..1
+Parameter   <——> Entity       ends: typedParameters 0..N, type 1..1
 Interaction <——> Entity       ends: producers 0..N,    output 1..1
 ```
 
 `Attack(Attacker, Targetable)` is an Interaction whose `first` Parameter has type
 `Attacker` and whose `next` has type `Targetable`. Realizations use their natural form:
 the Python library exposes `attack.parameters` as a plain list. That is a mediation
-`Systemathic / Python`, and its round trip holds.
+`Operations / Python`, and its round trip holds.
 
-### Axioms
+### Axioms *(Kernel)*
 
 A Language's **axioms** are well-formed formulas over it. They state structural facts
 that ranges alone cannot — facts about how instances are linked:
@@ -200,7 +216,7 @@ always true, not sequences of changes. Where a lifecycle matters to the design, 
 modelled as vocabulary: an `OrderLifecycle` Language with `Placed` and `Cancelled`,
 projected from the core.
 
-### Domain
+### Domain *(Contexts)*
 
 A **Domain** is a bounded context — a "what". It references Languages and other
 Domains, and holds Transformations.
@@ -215,7 +231,7 @@ langs*(D) = (D.*references).languages
 References are not ownership: two Domains referencing the same Language or Domain is
 expected. A Language needs no Domain to be valid.
 
-### Transformation
+### Transformation *(Contexts; Interaction mappings in Operations)*
 
 A **Transformation** `τ: L_src → L_tgt`, held by Domain `D`, with
 `L_src, L_tgt ∈ langs*(D)`. It shows how the things of one Language appear in another.
@@ -283,7 +299,7 @@ failure is a property of the Transformation, and so of the Domain that holds it.
 not an Entity of either Language: no `Optional⟨Monster⟩` is introduced into the higher
 Language. Handling it is part of the "how".
 
-### Mediation
+### Mediation *(Contexts)*
 
 A **Mediation** `D₁ /ₘ D₂` reads "D₁ over D₂": the "what" of `D₁` carried out by the
 "how" of `D₂`, as in IP over Avian Carriers. It relates three Domains — `what = D₁`,
@@ -297,17 +313,18 @@ is, `D₁ / D₂` names it.
 
 ## Well-formedness
 
-The axioms of the Systemathic Language. A System is **well-formed** iff it satisfies
-them; the tool evaluates them on the System, which is a finite model.
+The axioms of the Systemathic Languages. A System is **well-formed** iff it satisfies
+them; the tool evaluates them on the System, which is a finite model. Each condition
+belongs to the layer whose vocabulary it is about.
 
-| #  | Condition |
-|----|-----------|
-| W1 | **Closure.** Both ends of every Relationship, the types of every Interaction's Parameters and its output, and every symbol of every formula of `L`, belong to `L`. |
-| W2 | **Ranges.** Every range is well-formed. |
-| W3 | **End names.** From every Entity, the ends reachable across its Relationships have distinct names. |
-| W4 | **Transformation scope.** For `τ: L_src → L_tgt` held by `D`: `L_src, L_tgt ∈ langs*(D)`. |
-| W5 | **Definition before use.** Every mapping references only mapped things. |
-| W6 | **Witness.** Every Mediation is witnessed by its mediator. |
+| #  | Condition | Layer |
+|----|-----------|-------|
+| W1 | **Closure.** Both ends of every Relationship, every symbol of every formula of `L`, and the types of every Interaction's Parameters and its output, belong to `L`. | Kernel; Operations for Interactions |
+| W2 | **Ranges.** Every range is well-formed. | Kernel |
+| W3 | **End names.** From every Entity, the ends reachable across its Relationships have distinct names. | Kernel |
+| W4 | **Transformation scope.** For `τ: L_src → L_tgt` held by `D`: `L_src, L_tgt ∈ langs*(D)`. | Contexts |
+| W5 | **Definition before use.** Every mapping references only mapped things. | Contexts; Operations for Interaction mappings |
+| W6 | **Witness.** Every Mediation is witnessed by its mediator. | Contexts |
 
 ## Obligations
 
@@ -350,9 +367,14 @@ the extended Language into the extension. Consumers choose to use the original, 
 extension, or both. Identity stays in the original; functionality lives in the
 extension.
 
-The standard concepts extend the Systemathic Language the same way: an extension
-Language (an `Action` with its primary Parameter, a comparison designated for an Entity,
-a deferred mapping, …), and a Domain holding the Transformation between them.
+An **inclusion** is the simplest such Transformation: the identity projection of a chosen
+subset of the extended Language's Entities, with every Relationship among them. The
+extension then speaks of those Entities as its own, and adds to them.
+
+The Systemathic Languages are layered this way (see *The Systemathic Languages*), and
+the standard concepts are one more layer on top: **Std**, which includes Kernel,
+Contexts and Operations and adds an `Action`'s primary Parameter, a comparison
+designated for an Entity, and deferred mappings.
 `from systemathic.core import *` and `from systemathic.std import *` together are a
 consumer that chose both.
 

@@ -1,11 +1,13 @@
-"""Check a Language, given as data, against the kernel (docs/foundation.md, Part I).
+"""Check Languages, given as data, against the kernel (docs/foundation.md, Part I).
 
-    python schema/check.py [schema/systemathic.json]
+    python schema/check.py [directory or file]      (default: this directory)
 
-Checks closure (every end's Entity is declared), well-formed ranges, unique end names
-per Entity (W3), and that every axiom is a well-formed, well-typed formula of the
-Language: every variable bound, every navigation step a reachable end, and both sides
-of every comparison of the same Entity.
+A Language may include Entities of other Languages: an inclusion is the identity
+projection of those Entities, with every Relationship among them. Each Language is
+checked against its merged vocabulary: every included Entity exists, every end's Entity
+is known, every range is well-formed, end names are unique per Entity (W3), and every
+axiom is a well-formed, well-typed formula — every variable bound, every navigation
+step a reachable end, and both sides of every comparison of the same Entity.
 """
 
 from __future__ import annotations
@@ -170,28 +172,65 @@ class FormulaChecker:
 
 # -- the check ---------------------------------------------------------------------------
 
-def check(language: dict) -> list[str]:
-    problems: list[str] = []
-    entities = set(language["entities"])
+Relationships = dict[str, tuple[End, End]]
 
-    relationships = []
+
+def vocabulary(name: str, library: dict[str, dict], problems: list[str],
+               seen: tuple[str, ...] = ()) -> tuple[set[str], Relationships]:
+    """A Language's merged vocabulary: its own Entities and Relationships, plus, for each
+    inclusion, the included Entities and every Relationship among them. Relationships
+    keep the identity of the Language that declared them, so one reached by two paths
+    is still one Relationship."""
+    if name in seen:
+        problems.append(f"inclusion cycle: {' -> '.join(seen + (name,))}")
+        return set(), {}
+    language = library[name]
+    entities = set(language["entities"])
+    relationships: Relationships = {}
     for index, relationship in enumerate(language["relationships"]):
         ends = [End(**end) for end in relationship["ends"]]
         if len(ends) != 2:
-            problems.append(f"relationship {index}: has {len(ends)} ends, not 2")
+            problems.append(f"{name} relationship {index}: has {len(ends)} ends, not 2")
             continue
-        for end in ends:
+        relationships[f"{name}#{index}"] = (ends[0], ends[1])
+    for base, subset in language.get("includes", {}).items():
+        if base not in library:
+            problems.append(f"{name} includes unknown Language {base!r}")
+            continue
+        base_entities, base_relationships = vocabulary(base, library, [], seen + (name,))
+        for entity in subset:
+            if entity not in base_entities:
+                problems.append(f"{name} includes {entity!r}, which {base} does not have")
+            if entity in language["entities"]:
+                problems.append(f"{name} both defines and includes {entity!r}")
+        included = set(subset)
+        entities |= included
+        for key, (a, b) in base_relationships.items():
+            if a.entity in included and b.entity in included:
+                relationships[key] = (a, b)
+    return entities, relationships
+
+
+def check(language: dict, library: dict[str, dict] | None = None) -> list[str]:
+    library = dict(library or {})
+    library[language["language"]] = language
+    problems: list[str] = []
+    entities, relationships = vocabulary(language["language"], library, problems)
+
+    for key, (a, b) in relationships.items():
+        if not key.startswith(language["language"] + "#"):
+            continue
+        for end in (a, b):
             if end.entity not in entities:
-                problems.append(f"relationship {index}: end {end.name!r} is of undeclared Entity {end.entity!r}")
+                problems.append(f"{key}: end {end.name!r} is of undeclared Entity {end.entity!r}")
             try:
                 low, high = parse_range(end.range)
                 if high is not None and low > high:
-                    problems.append(f"relationship {index}: end {end.name!r} has min > max")
+                    problems.append(f"{key}: end {end.name!r} has min > max")
             except ValueError as error:
-                problems.append(f"relationship {index}: {error}")
-        relationships.append((ends[0], ends[1]))
+                problems.append(f"{key}: {error}")
 
-    nav = navigation(relationships)
+    nav = navigation(list(relationships.values()))
     for entity, reachable in sorted(nav.items()):
         for name, ends in sorted(reachable.items()):
             if len(ends) > 1:
@@ -207,14 +246,22 @@ def check(language: dict) -> list[str]:
 
 
 def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).with_name("systemathic.json")
-    language = json.loads(path.read_text(encoding="utf-8"))
-    problems = check(language)
-    for problem in problems:
-        print(problem)
-    counts = f"{len(language['entities'])} entities, {len(language['relationships'])} relationships, {len(language.get('axioms', []))} axioms"
-    print(f"{language['language']}: {counts} - {'well-formed' if not problems else f'{len(problems)} problem(s)'}")
-    return 1 if problems else 0
+    target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent
+    files = sorted(target.glob("*.json")) if target.is_dir() else [target]
+    library = {}
+    for path in files:
+        language = json.loads(path.read_text(encoding="utf-8"))
+        library[language["language"]] = language
+    failed = False
+    for name, language in library.items():
+        problems = check(language, library)
+        for problem in problems:
+            print(f"  {problem}")
+        counts = f"{len(language['entities'])} entities, {len(language['relationships'])} relationships, {len(language.get('axioms', []))} axioms"
+        includes = ", ".join(language.get("includes", {})) or "nothing"
+        print(f"{name}: {counts}, includes {includes} - {'well-formed' if not problems else f'{len(problems)} problem(s)'}")
+        failed = failed or bool(problems)
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

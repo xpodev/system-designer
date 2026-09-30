@@ -1,0 +1,30 @@
+{
+  "language": "Kernel",
+  "description": "The kernel as a Language: Languages, Entities, and Relationships as pairs of named ends with ranges, plus the formulas written over them (docs/foundation.md, Part I).",
+  "entities": ["Name", "Bound", "Language", "Entity", "Relationship", "End", "Formula"],
+  "relationships": [
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": "language", "entity": "Language", "range": "0..N"}]},
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": "entity", "entity": "Entity", "range": "0..N"}]},
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": "end", "entity": "End", "range": "0..N"}]},
+    {"ends": [{"name": "min", "entity": "Bound", "range": "1..1"}, {"name": "minOf", "entity": "End", "range": "0..N"}]},
+    {"ends": [{"name": "max", "entity": "Bound", "range": "0..1"}, {"name": "maxOf", "entity": "End", "range": "0..N"}]},
+    {"ends": [{"name": "predecessor", "entity": "Bound", "range": "0..1"}, {"name": "successor", "entity": "Bound", "range": "0..1"}]},
+    {"ends": [{"name": "language", "entity": "Language", "range": "1..1"}, {"name": "entities", "entity": "Entity", "range": "0..N"}]},
+    {"ends": [{"name": "language", "entity": "Language", "range": "1..1"}, {"name": "relationships", "entity": "Relationship", "range": "0..N"}]},
+    {"ends": [{"name": "language", "entity": "Language", "range": "1..1"}, {"name": "formulas", "entity": "Formula", "range": "0..N"}]},
+    {"ends": [{"name": "relationship", "entity": "Relationship", "range": "1..1"}, {"name": "ends", "entity": "End", "range": "2..2"}]},
+    {"ends": [{"name": "entity", "entity": "Entity", "range": "1..1"}, {"name": "ends", "entity": "End", "range": "0..N"}]},
+    {"ends": [{"name": "constrains", "entity": "Relationship", "range": "0..1"}, {"name": "constraints", "entity": "Formula", "range": "0..N"}]},
+    {"ends": [{"name": "mentionedEntities", "entity": "Entity", "range": "0..N"}, {"name": "mentionedBy", "entity": "Formula", "range": "0..N"}]},
+    {"ends": [{"name": "mentionedEnds", "entity": "End", "range": "0..N"}, {"name": "mentionedBy", "entity": "Formula", "range": "0..N"}]}
+  ],
+  "axioms": [
+    {"id": "W1", "about": "Relationship ends are in the Relationship's Language", "formula": "all r in Relationship, e in r.ends. e.entity.language == r.language"},
+    {"id": "W1", "about": "A formula mentions only its own Language's Entities", "formula": "all f in Formula, x in f.mentionedEntities. x.language == f.language"},
+    {"id": "W1", "about": "A formula mentions only its own Language's ends", "formula": "all f in Formula, x in f.mentionedEnds. x.relationship.language == f.language"},
+    {"id": "W1", "about": "A constraint is in its Relationship's Language", "formula": "all f in Formula, r in f.constrains. r.language == f.language"},
+    {"id": "W2", "about": "min <= max, where max is present", "formula": "all e in End, m in e.max. m in e.min.*successor"},
+    {"id": "W2", "about": "Bounds are well-founded: no Bound succeeds itself", "formula": "all b in Bound. not b in b.^successor"},
+    {"id": "W3", "about": "From any Entity, the ends reachable across its Relationships have distinct names", "formula": "all a in End, b in End, na in a.relationship.ends, nb in b.relationship.ends. (a != b and na != a and nb != b and na.entity == nb.entity) => a.name != b.name"}
+  ]
+}

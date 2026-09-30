@@ -19,7 +19,7 @@ MCP server, a command line — is a mediation of the same layers.
   and each order has one or more lines.
 - `name(P₁, …, Pₙ) → O` — an Interaction.
 - `Language::Entity` — an Entity qualified by its Language, where two Languages have
-  Entities of the same name: `Core::System` and `Tool::System`.
+  Entities of the same name: `Contexts::System` and `Tool::System`.
 
 ## Requirements
 
@@ -52,33 +52,34 @@ The tool lets its clients:
                             ▲            ▲              ▲
  ─────────────────────────  │ mediations │              │  ─────────────────────────
                             │            │              │
- Tool contexts (what)   Editor   Perspectives   Verifier   Diagnoser   Exporter   Catalog
+ Tool contexts (what)   Editors   Perspectives   Verifier   Diagnoser   Exporter   Catalog
+                            │
+                         Editing      shared sessions and History
                             ╲          │           │          │          │        ╱
                              ╲──────────── all project from ─────────────────────╱
                                                    │
  System contexts                                 Tool          new / open / save → SystemContext
                                                    │
- Foundation                                  Core ── Std        the Systemathic Language, and its extension
+ Foundation                     Kernel ── Contexts ── Operations ── Std     the Systemathic Languages
 
  Platform (how)      JSON    Python    Markdown    Host
 ```
 
 Read top to bottom: clients drive the tool contexts; the tool contexts work on system
-contexts; system contexts hold Systems written in Core. Each layer sees only the layers
-below it, and only by reference.
+contexts; system contexts hold Systems written in the Systemathic Languages. Each layer
+sees only the layers below it, and only by reference.
 
 ## Languages
 
-### Core
+### Kernel, Contexts, Operations, Std
 
-The Systemathic Language: [`schema/systemathic.json`](../schema/systemathic.json).
+The Systemathic Languages, layered: [`schema/`](../schema/README.md). **Kernel** has
+Languages, Entities, Relationships and formulas; **Contexts** adds Systems, Domains,
+Transformations and Mediations; **Operations** adds Interactions; **Std** adds the
+standard concepts that need vocabulary of their own. Derived terms such as *pure*,
+*abstract* and *top Domain* are formulas, not Entities.
 
-### Std
-
-The standard concepts, as an extension of Core (foundation, Part II): Entities for what
-std adds — an `Action` with its `primary` Parameter, a `Deferred` mapping, a designated
-`Comparison` — projected from Core. Derived terms such as *pure*, *abstract* and *top
-Domain* are formulas over Core, not Entities.
+"The core" below means Kernel, Contexts and Operations together.
 
 ### Tool
 
@@ -103,19 +104,24 @@ axiom: all a in Attachment. (some a.system and no a.context) or (some a.context 
 new() → SystemContext
 open(System) → SystemContext
 save(SystemContext) → System
+attach(SystemContext, Attachment) → SystemContext
+detach(SystemContext, Attachment) → SystemContext
 ```
 
-- A `Tool::System` is what the tool stores: a `Design` — a `Core::System`, seen from the
-  tool — and **attachments**.
+- A `Tool::System` is what the tool stores: a `Design` — a `Contexts::System`, seen from
+  the tool — and **attachments**.
 - An `Attachment` is data the tool carries with a System without interpreting it,
   identified by its `Owner`: a client's layouts, a default verification profile, where
-  imported content came from. The tool never knows what is inside.
+  imported content came from. The tool never knows what is inside. Attachments change
+  through `attach` and `detach`, not through editing: they are not part of the design.
 - A `SystemContext` is a System open in the tool. It is the unit everything else works
   on: editing, verification, diagnosis, points of view, export.
 
 ### Editing
 
-Changing a System, by any number of clients at once.
+The shared base of every editor: sessions, and the History of changes to a System, by
+any number of clients at once. It knows nothing of any concept of the core; the concept
+editors below do.
 
 Entities: `Target`, `EditSession`, `History`, `Edit`, `Addition`, `Change`, `Removal`,
 `Element`, `Selection`.
@@ -161,6 +167,38 @@ undo(EditSession) → Edit
   or a Domain carries its whole cascade, as the foundation defines it.
 - **Undo** is a new Edit that `reverts` one of the session's own earlier Edits. A session
   undoes its own work, never another client's, and history only grows.
+
+### Concept editors
+
+One editor per concept of the core. Each is its own Language: it includes `EditSession`
+and `Edit` from Editing and the subset of the core it edits, and adds only operations.
+Every operation takes the `EditSession` it acts in and returns the `Edit` it made, so all
+editors write to the one shared History.
+
+| Editor | Edits | Operations |
+|---|---|---|
+| **SystemEditor** | Contexts: a System, and which Languages, Domains and Mediations it has | `addLanguage`, `addDomain`, `addMediation`, `rename` |
+| **LanguageEditor** | Kernel: a Language, and which Entities, Relationships and formulas it has | `addEntity`, `addRelationship`, `addFormula`, `rename`, `remove` |
+| **EntityEditor** | Kernel: an Entity | `rename`, `remove` |
+| **RelationshipEditor** | Kernel: a Relationship, its Ends and their Bounds | `setEntity`, `renameEnd`, `setRange`, `remove` |
+| **FormulaEditor** | Kernel: a Formula | `setText`, `constrain`, `remove` |
+| **DomainEditor** | Contexts: a Domain | `reference`, `unreference`, `rename`, `remove` |
+| **TransformationEditor** | Contexts: a Transformation, its mappings and its Reverse | `mapEntity`, `mapRelationship`, `unmap`, `setReverse`, `setContext`, `remove` |
+| **MediationEditor** | Contexts: a Mediation | `setWhat`, `setHow`, `setMediator`, `remove` |
+| **InteractionEditor** | Operations: an Interaction and its Parameters | `addParameter`, `moveParameter`, `setOutput`, `rename`, `remove` |
+| **InteractionMappingEditor** | Operations: a Transformation's Interaction mappings | `mapInteraction`, `unmap` |
+| **StdEditor** | Std: primary Parameters, comparisons, deferrals | `setPrimary`, `setComparison`, `defer` |
+
+For example, `addEntity(EditSession, Language, Name) → Edit`.
+
+- Editors follow the layers: an editor over Operations extends one over Contexts, never
+  the other way round. Interaction mappings are edited by their own editor, not by the
+  Transformation editor, because Contexts knows nothing of Interactions.
+- An editor's operations may touch more than its own concept only through the core's
+  own rules: removing a Language is one Removal, and the cascade the foundation defines
+  comes with it, whichever editors' concepts it reaches.
+- Each editor is replaceable on its own: a new implementation of one editor is a new
+  mediation of that editor, and nothing else changes.
 
 ### Perspectives
 
@@ -307,7 +345,7 @@ axiom: all p in Package, t in p.tags. t.catalog == p.catalog
   everything it references: the smallest set containing the selection that is closed
   under a Domain's Languages and referenced Domains, a Transformation's holder and
   Languages, a Mediation's three Domains, and everything a Language contains.
-- Importing copies a Package's content into a Target through an Addition, so every
+- Importing copies a Package's content into a Target through the SystemEditor, so every
   System stays closed.
 - Packages do not depend on each other. A Language is closed, so HTTP does not depend on
   TCP; "HTTP over TCP" is a Mediation, and a swappable one — HTTP/3 runs over QUIC. It is
@@ -327,15 +365,18 @@ by referencing their Domains.
 
 | Domain | Own Language | References |
 |---|---|---|
-| **Core** | Core | — |
-| **Std** | Std | Core |
-| **Tool** | Tool | Core |
-| **Editor** | Editing | Tool |
+| **Kernel** | Kernel | — |
+| **Contexts** | Contexts | Kernel |
+| **Operations** | Operations | Contexts |
+| **Std** | Std | Operations |
+| **Tool** | Tool | Contexts |
+| **Editing** | Editing | Tool |
+| each **concept editor** | its own | Editing, and the core layer it edits |
 | **Perspectives** | Perspectives | Tool, Diagnoser |
 | **Diagnoser** | Diagnostics | Tool, Verifier |
 | **Verifier** | Verification | Tool, Std |
 | **Exporter** | Specification | Tool, Verifier |
-| **Catalog** | Catalog | Editor |
+| **Catalog** | Catalog | SystemEditor |
 | **UI**, **MCP**, **CLI** | UI, MCP, CLI | — |
 | **Python**, **JSON**, **Markdown**, **Host** | Python, JSON, Markdown, Host | — |
 
@@ -346,24 +387,25 @@ listed.
 
 | Held by | Projection | Entity mappings |
 |---|---|---|
-| Std | Core → Std | `Interaction ↦ Action`, `EntityMapping ↦ Deferred`, … |
-| Tool | Core → Tool | `Core::System ↦ Design` |
-| Editor | Tool → Editing | `SystemContext ↦ Target` |
-| Editor | Core → Editing | every Core Entity `↦ Element` |
+| Contexts, Operations, Std | inclusions of the layers below | identity, on the included Entities |
+| Tool | Contexts → Tool | `Contexts::System ↦ Design` |
+| Editing | Tool → Editing | `SystemContext ↦ Target` |
+| Editing | core → Editing | every Entity of Kernel, Contexts and Operations `↦ Element` |
+| each concept editor | inclusions of Editing and of its core subset | identity |
 | Verifier | Tool → Verification | `SystemContext ↦ Snapshot` |
-| Verifier | Core → Verification | every Core Entity `↦ Subject` |
-| Diagnoser | Core → Diagnostics | every Core Entity `↦ Subject` |
+| Verifier | core → Verification | every Entity of Kernel, Contexts and Operations `↦ Subject` |
+| Diagnoser | core → Diagnostics | every Entity of Kernel, Contexts and Operations `↦ Subject` |
 | Diagnoser | Verification → Diagnostics | `Violation ↦ Diagnostic`, `Rule ↦ Rule`, `Severity ↦ Severity`, `Subject ↦ Subject` |
-| Perspectives | Core → Perspectives | every Core Entity `↦ Subject` |
+| Perspectives | core → Perspectives | every Entity of Kernel, Contexts and Operations `↦ Subject` |
 | Perspectives | Diagnostics → Perspectives | `Diagnostic ↦ Mark` |
-| Exporter | Core → Specification | `Core::System ↦ Specification`; `Transformation ↦ {Subject, Obligation}`; every other Core Entity `↦ Subject` |
+| Exporter | core → Specification | `Contexts::System ↦ Specification`; `Transformation ↦ {Subject, Obligation}`; every other Entity of the core `↦ Subject` |
 | Exporter | Verification → Specification | `Rule ↦ Requirement` |
 | Catalog | Tool → Catalog | `Tool::System ↦ Content` |
-| Catalog | Catalog → Editing | `Import ↦ Addition` |
+| Catalog | Catalog → SystemEditor | `Import ↦` an `addLanguage`, `addDomain` or `addMediation` for each item of the content |
 
 Structural errors come from the Diagnoser evaluating the core's well-formedness on a
 system context; violations come from the Verifier and reach the Diagnoser through its
-projection. Neither Core, Tool nor Verifier knows diagnostics exist.
+projection. Neither the core, Tool nor Verifier knows diagnostics exist.
 
 ## Mediations
 
@@ -374,10 +416,10 @@ Every mediator references exactly the two Languages its Transformation connects.
 | Mediation | Mediator | What becomes what | Reverse |
 |---|---|---|---|
 | `Tool / UI` | **UiSystems** | `new`, `open`, `save` ↦ menu commands and file pickers | a command becomes the Interaction |
-| `Editor / UI` | **UiEditing** | Edits ↦ forms and direct manipulation | by reference, context `Element`: a gesture becomes an Edit of an Element |
+| `X / UI`, for each concept editor `X` | **XPanel** — one UI component per editor | `X`'s operations ↦ its forms and direct manipulation | by reference, context `Element`: a gesture becomes an operation |
 | `Perspectives / UI` | **Rendering** | Views ↦ drawn screens; layouts are kept as UI attachments | by reference, context `Item`: a click resolves to its Item |
 | `Tool / MCP` | **McpSystems** | `new`, `open`, `save` ↦ MCP tools | a tool call becomes the Interaction |
-| `Editor / MCP` | **McpEditing** | Edits ↦ MCP tools | a tool call becomes an Edit |
+| `X / MCP`, for each concept editor `X` | **XTools** | `X`'s operations ↦ MCP tools | a tool call becomes an operation |
 | `Perspectives / MCP` | **McpInspection** | Views ↦ MCP resources, as structured data | by reference, context `Item` |
 | `Verifier / MCP` | **McpVerification** | `verify` ↦ an MCP tool; Violations ↦ its result | a tool call becomes the Interaction |
 | `Tool / CLI` | **CliSystems** | `open`, `save` ↦ file arguments | arguments become the Interaction |
@@ -390,9 +432,9 @@ can edit the same System at once, and see each other's Edits in the shared Histo
 
 | Mediation | Mediator | What becomes what | Reverse |
 |---|---|---|---|
-| `Core / JSON` | **CoreFormat** | Core ↦ JSON: the Systemathic file format | by value |
-| `Tool / JSON` | **ToolFormat** | `Tool::System ↦` a JSON document; its Design in CoreFormat, its attachments opaque | by value: opening a file |
-| `Core / Python` | **CoreBinding** | Core ↦ the `systemathic.core` library, generated from the schema; a Parameter chain becomes a list | by reference, context: the loaded System |
+| `L / JSON`, for each core layer `L` | **LFormat** | `L` ↦ its part of the Systemathic file format | by value |
+| `Tool / JSON` | **ToolFormat** | `Tool::System ↦` a JSON document; its Design in the layers' formats, its attachments opaque | by value: opening a file |
+| `L / Python`, for each core layer `L` | **LBinding** | `L` ↦ its part of `systemathic.core`, generated from the schema; a Parameter chain becomes a list | by reference, context: the loaded System |
 | `Std / Python` | **StdBinding** | Std ↦ the `systemathic.std` library | by reference |
 | `Verifier / Python` | **RuleHost** | `Script ↦` module, `Rule ↦` function, `Violation ↦` a yielded object | by value: yielded objects become Violations |
 | `Exporter / Markdown` | **MarkdownExport** | Sections ↦ headings; Statements and Obligations ↦ items with stable identifiers | by value: the document reads back into a Specification |
@@ -412,11 +454,13 @@ This System is verified against every standard rule, at its default severity, pl
 
 | Rule | Checks | Severity |
 |---|---|---|
-| `core_is_pure` | `Core` references only the Core Language, and no Domain. | Error |
+| `kernel_is_pure` | `Kernel` references only the Kernel Language, and no Domain. | Error |
+| `layers_extend_down` | Kernel, Contexts, Operations and Std each reference only the layer below them. | Error |
 | `no_god_domain` | Every Domain that is not a mediator references exactly one Language of its own. | Error |
-| `core_knows_nothing` | No Transformation has Core as its target. | Error |
+| `core_knows_nothing` | No Transformation that is not an inclusion has a core layer as its target. | Error |
 | `clients_are_hows` | UI, MCP and CLI are never the "what" of a Mediation, and no Domain references them. | Error |
-| `checking_is_not_editing` | Diagnoser and Verifier do not reference Editor. | Error |
+| `checking_is_not_editing` | Diagnoser and Verifier reference neither Editing nor any concept editor. | Error |
+| `editors_follow_layers` | A concept editor references only Editing and one core layer. | Error |
 
 ## Obligations
 
@@ -439,3 +483,5 @@ What the implementation must satisfy that the model does not express:
   client mediators, yet to be written down.
 - What an Edit records to be revertible: the model says which Elements it touches, not
   their values before and after.
+- The text of a Formula. Kernel records which Entities and ends a Formula mentions, not
+  the formula itself; `setText` needs the formula's syntax as data.
