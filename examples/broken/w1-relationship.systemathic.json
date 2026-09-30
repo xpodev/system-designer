@@ -1,0 +1,451 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "game",
+    "name": "Game",
+    "languages": [
+      {
+        "id": "core",
+        "name": "Core",
+        "entities": [
+          {
+            "id": "core.monster",
+            "name": "Monster"
+          },
+          {
+            "id": "core.player",
+            "name": "Player"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "core.hunts",
+            "ends": [
+              {
+                "id": "core.hunts.hunters",
+                "name": "hunters",
+                "entity": "core.player",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "core.hunts.prey",
+                "name": "prey",
+                "entity": "combat.targetable",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "core.pack",
+            "ends": [
+              {
+                "id": "core.pack.leader",
+                "name": "leader",
+                "entity": "core.monster",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "core.pack.followers",
+                "name": "followers",
+                "entity": "core.monster",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [
+          {
+            "id": "core.no-leadership-cycles",
+            "text": "all m in Monster. not m in m.^leader",
+            "constrains": "core.pack"
+          }
+        ],
+        "interactions": []
+      },
+      {
+        "id": "combat",
+        "name": "Combat",
+        "entities": [
+          {
+            "id": "combat.targetable",
+            "name": "Targetable"
+          },
+          {
+            "id": "combat.attacker",
+            "name": "Attacker"
+          },
+          {
+            "id": "combat.damage",
+            "name": "Damage"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "combat.engages",
+            "ends": [
+              {
+                "id": "combat.engages.attackers",
+                "name": "attackers",
+                "entity": "combat.attacker",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "combat.engages.targets",
+                "name": "targets",
+                "entity": "combat.targetable",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "combat.attack",
+            "name": "attack",
+            "parameters": [
+              {
+                "id": "combat.attack.attacker",
+                "name": "attacker",
+                "type": "combat.attacker"
+              },
+              {
+                "id": "combat.attack.target",
+                "name": "target",
+                "type": "combat.targetable"
+              }
+            ],
+            "output": "combat.damage"
+          }
+        ]
+      },
+      {
+        "id": "network",
+        "name": "Network",
+        "entities": [
+          {
+            "id": "network.synced",
+            "name": "SyncedEntity"
+          },
+          {
+            "id": "network.entity-id",
+            "name": "EntityId"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "network.identity",
+            "ends": [
+              {
+                "id": "network.identity.entity",
+                "name": "entity",
+                "entity": "network.synced",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "network.identity.id",
+                "name": "id",
+                "entity": "network.entity-id",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": []
+      },
+      {
+        "id": "unity",
+        "name": "Unity",
+        "entities": [
+          {
+            "id": "unity.game-object",
+            "name": "GameObject"
+          },
+          {
+            "id": "unity.component",
+            "name": "Component"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "unity.components",
+            "ends": [
+              {
+                "id": "unity.components.game-object",
+                "name": "gameObject",
+                "entity": "unity.game-object",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "unity.components.components",
+                "name": "components",
+                "entity": "unity.component",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": []
+      },
+      {
+        "id": "transport",
+        "name": "Transport",
+        "entities": [
+          {
+            "id": "transport.packet",
+            "name": "Packet"
+          },
+          {
+            "id": "transport.bytes",
+            "name": "Bytes"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "transport.payload",
+            "ends": [
+              {
+                "id": "transport.payload.packet",
+                "name": "packet",
+                "entity": "transport.packet",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "transport.payload.payload",
+                "name": "payload",
+                "entity": "transport.bytes",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": []
+      }
+    ],
+    "domains": [
+      {
+        "id": "d.core",
+        "name": "Core",
+        "languages": [
+          "core"
+        ],
+        "references": [],
+        "transformations": []
+      },
+      {
+        "id": "d.combat",
+        "name": "Combat",
+        "languages": [
+          "combat"
+        ],
+        "references": [
+          "d.core"
+        ],
+        "transformations": [
+          {
+            "id": "combat.view",
+            "name": "Monsters in combat",
+            "source": "core",
+            "target": "combat",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "core.monster",
+                "targets": [
+                  "combat.targetable",
+                  "combat.attacker"
+                ]
+              },
+              {
+                "source": "core.player",
+                "targets": [
+                  "combat.attacker"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": []
+          }
+        ]
+      },
+      {
+        "id": "d.network",
+        "name": "Network",
+        "languages": [
+          "network"
+        ],
+        "references": [
+          "d.core"
+        ],
+        "transformations": [
+          {
+            "id": "network.view",
+            "name": "Monsters on the network",
+            "source": "core",
+            "target": "network",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "core.monster",
+                "targets": [
+                  "network.synced"
+                ]
+              },
+              {
+                "source": "core.player",
+                "targets": [
+                  "network.synced"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": []
+          }
+        ]
+      },
+      {
+        "id": "d.unity",
+        "name": "Unity",
+        "languages": [
+          "unity"
+        ],
+        "references": [],
+        "transformations": []
+      },
+      {
+        "id": "d.transport",
+        "name": "Transport",
+        "languages": [
+          "transport"
+        ],
+        "references": [],
+        "transformations": []
+      },
+      {
+        "id": "d.combat-in-unity",
+        "name": "CombatInUnity",
+        "languages": [
+          "combat",
+          "unity"
+        ],
+        "references": [],
+        "transformations": [
+          {
+            "id": "combat-in-unity",
+            "name": "Combat as GameObjects",
+            "source": "combat",
+            "target": "unity",
+            "reverse": {
+              "context": [
+                "unity.game-object"
+              ]
+            },
+            "entityMappings": [
+              {
+                "source": "combat.targetable",
+                "targets": [
+                  "unity.game-object",
+                  "unity.component"
+                ]
+              },
+              {
+                "source": "combat.attacker",
+                "targets": [
+                  "unity.component"
+                ]
+              },
+              {
+                "source": "combat.damage",
+                "targets": [
+                  "unity.component"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": []
+          }
+        ]
+      },
+      {
+        "id": "d.network-over-transport",
+        "name": "NetworkOverTransport",
+        "languages": [
+          "network",
+          "transport"
+        ],
+        "references": [],
+        "transformations": [
+          {
+            "id": "network-over-transport",
+            "name": "Entities as packets",
+            "source": "network",
+            "target": "transport",
+            "reverse": {
+              "context": []
+            },
+            "entityMappings": [
+              {
+                "source": "network.synced",
+                "targets": [
+                  "transport.packet"
+                ]
+              },
+              {
+                "source": "network.entity-id",
+                "targets": [
+                  "transport.bytes"
+                ]
+              }
+            ],
+            "relationshipMappings": [
+              {
+                "source": "network.identity",
+                "targets": [
+                  "transport.payload"
+                ]
+              }
+            ],
+            "interactionMappings": []
+          }
+        ]
+      }
+    ],
+    "mediations": [
+      {
+        "id": "combat-over-unity",
+        "what": "d.combat",
+        "how": "d.unity",
+        "mediator": "d.combat-in-unity"
+      },
+      {
+        "id": "network-over-transport-mediation",
+        "what": "d.network",
+        "how": "d.transport",
+        "mediator": "d.network-over-transport"
+      }
+    ]
+  },
+  "attachments": [
+    {
+      "owner": "example",
+      "data": {
+        "note": "The game example, broken on purpose: w1-relationship."
+      }
+    }
+  ]
+}

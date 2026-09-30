@@ -1,0 +1,193 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`diagnoser > diagnoses broken/dangling.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "range",
+      "message": "Mediation combat-over-unity has 0 'how', expected 1..1",
+      "subjects": [
+        "combat-over-unity",
+      ],
+    },
+    {
+      "check": "system",
+      "message": "A Mediation relates only Domains of its own System",
+      "subjects": [
+        "combat-over-unity",
+      ],
+    },
+    {
+      "check": "W6",
+      "message": "Every Mediation is witnessed by a reversible Transformation of its mediator",
+      "subjects": [
+        "combat-over-unity",
+      ],
+    },
+  ],
+  "problems": [
+    {
+      "at": "$.design.mediations[0].how",
+      "message": "refers to 'd.nowhere', which does not exist",
+    },
+  ],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/formula.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "formula",
+      "message": "the formula does not fit its Language: Monster has no end 'owner'",
+      "subjects": [
+        "core.no-leadership-cycles",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/range.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "formula",
+      "message": "the formula does not fit its Language: Monster has no end 'leader'",
+      "subjects": [
+        "core.no-leadership-cycles",
+      ],
+    },
+    {
+      "check": "range",
+      "message": "Relationship Monster <——> Monster <——> Monster has 3 'ends', expected 2..2",
+      "subjects": [
+        "core.pack",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w1-interaction.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W1",
+      "message": "Parameter types are in the Interaction's Language",
+      "subjects": [
+        "combat.attack",
+        "combat.attack.target",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w1-relationship.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W1",
+      "message": "Relationship ends are in the Relationship's Language",
+      "subjects": [
+        "core.hunts",
+        "core.hunts.prey",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w2.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W2",
+      "message": "min <= max, where max is present",
+      "subjects": [
+        "core.pack.leader",
+        "bound:1",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w3.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W3",
+      "message": "From any Entity, the ends reachable across its Relationships have distinct names",
+      "subjects": [
+        "core.hunts.hunters",
+        "core.pack.followers",
+        "core.hunts.prey",
+        "core.pack.leader",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w4.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W4",
+      "message": "A Transformation's source is in scope of its holder",
+      "subjects": [
+        "combat.view",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w5.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "mapping",
+      "message": "Target Relationships join images of the source Relationship's ends",
+      "subjects": [
+        "network-over-transport#rm0",
+        "transport.payload",
+        "transport.payload.payload",
+      ],
+    },
+    {
+      "check": "W5",
+      "message": "A Relationship mapping requires both end Entities mapped",
+      "subjects": [
+        "network-over-transport#rm0",
+        "network.identity.id",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w6.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W6",
+      "message": "Every Mediation is witnessed by a reversible Transformation of its mediator",
+      "subjects": [
+        "combat-over-unity",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
