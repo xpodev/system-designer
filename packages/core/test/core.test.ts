@@ -161,6 +161,26 @@ group("formulas", () => {
     expect(graph.navigate("f", "mentionedEnds").sort()).toEqual(["end-lines", "end-order"]);
   });
 
+  it("derives mentions whatever characters the ids contain", () => {
+    const graph = coreGraph();
+    graph.add("Language", "lang:A");
+    graph.add("Entity", "ent:A.Node");
+    setName(graph, "ent:A.Node", "Node");
+    graph.connect("lang:A", "entities", "ent:A.Node");
+    graph.add("Relationship", "rel:A#0");
+    graph.connect("lang:A", "relationships", "rel:A#0");
+    for (const name of ["prev", "next"]) {
+      graph.add("End", `rel:A#0.${name}`);
+      setName(graph, `rel:A#0.${name}`, name);
+      graph.connect(`rel:A#0.${name}`, "entity", "ent:A.Node");
+      graph.connect("rel:A#0", "ends", `rel:A#0.${name}`);
+    }
+    graph.add("Formula", "f:A#0", "all n in Node. not n in n.^next");
+    graph.connect("lang:A", "formulas", "f:A#0");
+    expect(linkMentions(graph, "f:A#0")).toMatchObject({ ok: true });
+    expect(graph.navigate("f:A#0", "mentionedEnds")).toEqual(["rel:A#0.next"]);
+  });
+
   it("reports a formula that leaves its Language", () => {
     const graph = orders();
     graph.add("Formula", "f", "all o in Order. o.customer == o");

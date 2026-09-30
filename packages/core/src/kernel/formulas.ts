@@ -45,8 +45,9 @@ export function analyzeFormula(graph: Graph, formula: string): FormulaAnalysis {
   try {
     const mentions = typecheck(parse(String(graph.get(formula).value ?? "")), vocabulary);
     const ends = [...mentions.ends].map((key) => {
-      const [relationship, index] = key.split(":") as [string, string];
-      return graph.navigate(relationship, "ends")[Number(index)]!;
+      const separator = key.lastIndexOf(":");
+      const relationship = key.slice(0, separator);
+      return graph.navigate(relationship, "ends")[Number(key.slice(separator + 1))]!;
     });
     return { ok: true, entities: [...mentions.entities].map((name) => entityIds.get(name)!), ends };
   } catch (error) {
