@@ -54,9 +54,12 @@ export class Graph {
 
   /** Links `a` (at the Relationship's end 0) with `b` (at end 1). Linking twice is a no-op. */
   link(relationshipId: string, a: string, b: string): void {
-    if (!this.vocabulary.relationship(relationshipId)) throw new Error(`unknown Relationship ${relationshipId}`);
-    this.get(a);
-    this.get(b);
+    const relationship = this.vocabulary.relationship(relationshipId);
+    if (!relationship) throw new Error(`unknown Relationship ${relationshipId}`);
+    for (const [id, end] of [[a, relationship.ends[0]], [b, relationship.ends[1]]] as const) {
+      const entity = this.get(id).entity;
+      if (entity !== end?.entity) throw new Error(`${id} is ${entity}, but end '${end?.name}' is ${end?.entity}`);
+    }
     insert(this.forward, relationshipId, a, b);
     insert(this.backward, relationshipId, b, a);
   }
