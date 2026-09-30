@@ -9,3 +9,4 @@ __pycache__/
 # Alloy Analyzer output, written next to the model by `exec`
 docs/alloy/core/
 docs/alloy/std/
+*.tsbuildinfo

@@ -1,0 +1,24 @@
+{
+  "name": "@systemathic/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The command-line client: the CliSystems mediation.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/core": "workspace:*",
+    "@systemathic/tool": "workspace:*",
+    "@systemathic/tool-json": "workspace:*",
+    "@systemathic/diagnoser": "workspace:*"
+  },
+  "bin": {
+    "systemathic": "dist/index.js"
+  }
+}

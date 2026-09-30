@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/tool" },
+    { "path": "packages/tool-json" },
+    { "path": "packages/diagnoser" },
+    { "path": "packages/cli" }
+  ]
+}

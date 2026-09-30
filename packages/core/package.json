@@ -1,0 +1,15 @@
+{
+  "name": "@systemathic/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Systemathic core: the layered Languages (Kernel, Contexts, Operations) as a schema-driven instance graph, and the logic.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  }
+}
