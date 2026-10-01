@@ -14,6 +14,7 @@ const below: Record<string, string[]> = {
   core: [],
   tool: ["core"],
   "tool-json": ["core", "tool"],
+  editing: ["core", "tool"],
   diagnoser: ["core", "tool"],
   cli: ["core", "tool", "tool-json", "diagnoser"],
 };

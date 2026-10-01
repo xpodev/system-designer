@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/tool" },
     { "path": "packages/tool-json" },
+    { "path": "packages/editing" },
     { "path": "packages/diagnoser" },
     { "path": "packages/cli" }
   ]

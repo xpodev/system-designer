@@ -47,6 +47,15 @@ importers:
         specifier: workspace:*
         version: link:../tool
 
+  packages/editing:
+    dependencies:
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+
   packages/tool:
     dependencies:
       '@systemathic/core':

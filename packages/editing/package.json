@@ -1,0 +1,19 @@
+{
+  "name": "@systemathic/editing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Editing: shared edit sessions on a system context, and its one History of Edits.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/core": "workspace:*",
+    "@systemathic/tool": "workspace:*"
+  }
+}
