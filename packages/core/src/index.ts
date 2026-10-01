@@ -1,6 +1,7 @@
 export { coreEntities, coreSpec, stdEntities, stdSpec, type CoreEntity } from "./generated/schema.js";
-export { coreGraph, coreVocabulary, remove, systemComposition, systemGraph, systemVocabulary } from "./core.js";
+export { copy, coreGraph, coreVocabulary, remove, systemComposition, systemGraph, systemVocabulary } from "./core.js";
 export { Graph, invert, type Change, type Delta, type Instance } from "./kernel/graph.js";
+export { copyInto } from "./kernel/copy.js";
 export { cascade, compose, composition, type Composition } from "./kernel/removal.js";
 export { Vocabulary, type AxiomSpec, type EndSpec, type RelationshipSpec, type Step, type VocabularySpec } from "./kernel/vocabulary.js";
 export { boundInstance, boundOf, nameInstance, nameOf, setName } from "./kernel/values.js";

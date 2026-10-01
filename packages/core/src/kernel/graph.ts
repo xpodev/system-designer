@@ -17,6 +17,7 @@ type Index = Map<string, Map<string, Set<string>>>;
 /** One change to a graph. A list of them, in order, is a Delta: what an edit did. */
 export type Change =
   | { readonly op: "add" | "remove"; readonly entity: string; readonly id: string; readonly value?: string | number }
+  | { readonly op: "set"; readonly id: string; readonly value: string | number; readonly previous: string | number | undefined }
   | {
       readonly op: "link" | "unlink";
       readonly relationship: string;
@@ -36,6 +37,8 @@ export function invert(delta: Delta): Change[] {
         return { ...change, op: "remove" };
       case "remove":
         return { ...change, op: "add" };
+      case "set":
+        return { op: "set", id: change.id, value: change.previous ?? "", previous: change.value };
       case "link":
         return { ...change, op: "unlink" };
       case "unlink":
@@ -79,6 +82,14 @@ export class Graph {
     this.journal?.push({ op: "remove", ...instance });
   }
 
+  /** Changes the primitive a value-backed instance stands for (a Formula's text). */
+  setValue(id: string, value: string | number): void {
+    const instance = this.get(id);
+    if (instance.value === value) return;
+    this.instances.set(id, { id, entity: instance.entity, value });
+    this.journal?.push({ op: "set", id, value, previous: instance.value });
+  }
+
   /** Runs `change` and returns everything it did to the graph, in order. */
   record(change: (graph: this) => void): Change[] {
     const outer = this.journal;
@@ -106,6 +117,9 @@ export class Graph {
             break;
           case "remove":
             this.remove(change.id);
+            break;
+          case "set":
+            if (this.has(change.id)) this.setValue(change.id, change.value);
             break;
           case "link":
             if (this.has(change.a) && this.has(change.b)) this.link(change.relationship, change.a, change.b, change.at);

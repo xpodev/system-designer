@@ -10,6 +10,7 @@ export default defineConfig({
       "@systemathic/tool": source("tool"),
       "@systemathic/tool-json": source("tool-json"),
       "@systemathic/editing": source("editing"),
+      "@systemathic/editors": source("editors"),
       "@systemathic/diagnoser": source("diagnoser"),
     },
   },

@@ -2,6 +2,7 @@
 import { contextsComposition } from "./contexts/composition.js";
 import { removeWithScope } from "./contexts/deletion.js";
 import { coreSpec, stdSpec } from "./generated/schema.js";
+import { copyInto } from "./kernel/copy.js";
 import { Graph } from "./kernel/graph.js";
 import { compose, kernelComposition } from "./kernel/removal.js";
 import { Vocabulary } from "./kernel/vocabulary.js";
@@ -29,4 +30,9 @@ export const systemComposition = compose(kernelComposition, contextsComposition,
 /** Removes `ids` and everything the foundation says goes with them; returns every removed id. */
 export function remove(graph: Graph, ...ids: string[]): string[] {
   return removeWithScope(graph, ids, systemComposition);
+}
+
+/** Copies `roots`, with everything they own, from `source` into `target` (see `copyInto`). */
+export function copy(source: Graph, target: Graph, roots: readonly string[], copied = new Map<string, string>()): string[] {
+  return copyInto(source, target, roots, systemComposition, copied);
 }

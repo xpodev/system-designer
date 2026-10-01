@@ -1,0 +1,19 @@
+{
+  "name": "@systemathic/editors",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The concept editors: one per concept of the core, each writing to the one shared History.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/core": "workspace:*",
+    "@systemathic/editing": "workspace:*"
+  }
+}
