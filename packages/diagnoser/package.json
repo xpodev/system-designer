@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Structural diagnostics of a system context: ranges and the core's axioms.",
+  "description": "What is wrong with a system context — structural errors, and rule Violations through its projection of Verification — with suggestions and metrics.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@systemathic/core": "workspace:*",
-    "@systemathic/tool": "workspace:*"
+    "@systemathic/tool": "workspace:*",
+    "@systemathic/verifier": "workspace:*"
   }
 }

@@ -16,7 +16,7 @@ const below: Record<string, string[]> = {
   "tool-json": ["core", "tool"],
   editing: ["core", "tool"],
   editors: ["core", "editing"],
-  diagnoser: ["core", "tool"],
+  diagnoser: ["core", "tool", "verifier"],
   verifier: ["core", "tool"],
   "python-host": ["core", "tool", "tool-json", "verifier"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host"],

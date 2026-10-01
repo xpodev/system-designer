@@ -17,10 +17,10 @@
       "path": "packages/editors"
     },
     {
-      "path": "packages/diagnoser"
+      "path": "packages/verifier"
     },
     {
-      "path": "packages/verifier"
+      "path": "packages/diagnoser"
     },
     {
       "path": "packages/python-host"

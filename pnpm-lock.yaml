@@ -52,6 +52,9 @@ importers:
       '@systemathic/tool':
         specifier: workspace:*
         version: link:../tool
+      '@systemathic/verifier':
+        specifier: workspace:*
+        version: link:../verifier
 
   packages/editing:
     dependencies:
