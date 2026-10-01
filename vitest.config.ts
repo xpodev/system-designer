@@ -17,6 +17,7 @@ export default defineConfig({
       "@systemathic/perspectives": source("perspectives"),
       "@systemathic/exporter": source("exporter"),
       "@systemathic/catalog": source("catalog"),
+      "@systemathic/host": source("host"),
     },
   },
   test: {

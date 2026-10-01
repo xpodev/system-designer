@@ -50,6 +50,9 @@ importers:
       '@systemathic/exporter':
         specifier: workspace:*
         version: link:../exporter
+      '@systemathic/host':
+        specifier: workspace:*
+        version: link:../host
       '@systemathic/python-host':
         specifier: workspace:*
         version: link:../python-host
@@ -103,6 +106,42 @@ importers:
       '@systemathic/tool':
         specifier: workspace:*
         version: link:../tool
+      '@systemathic/verifier':
+        specifier: workspace:*
+        version: link:../verifier
+
+  packages/host:
+    dependencies:
+      '@systemathic/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/diagnoser':
+        specifier: workspace:*
+        version: link:../diagnoser
+      '@systemathic/editing':
+        specifier: workspace:*
+        version: link:../editing
+      '@systemathic/editors':
+        specifier: workspace:*
+        version: link:../editors
+      '@systemathic/exporter':
+        specifier: workspace:*
+        version: link:../exporter
+      '@systemathic/perspectives':
+        specifier: workspace:*
+        version: link:../perspectives
+      '@systemathic/python-host':
+        specifier: workspace:*
+        version: link:../python-host
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+      '@systemathic/tool-json':
+        specifier: workspace:*
+        version: link:../tool-json
       '@systemathic/verifier':
         specifier: workspace:*
         version: link:../verifier

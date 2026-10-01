@@ -1,9 +1,9 @@
 {
-  "name": "@systemathic/cli",
+  "name": "@systemathic/host",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The command-line client: the CliSystems mediation.",
+  "description": "Hosting: where system contexts live — one authority per system context, served in-process or over HTTP to every client.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -16,13 +16,13 @@
     "@systemathic/core": "workspace:*",
     "@systemathic/tool": "workspace:*",
     "@systemathic/tool-json": "workspace:*",
+    "@systemathic/editing": "workspace:*",
+    "@systemathic/editors": "workspace:*",
     "@systemathic/diagnoser": "workspace:*",
     "@systemathic/verifier": "workspace:*",
     "@systemathic/python-host": "workspace:*",
+    "@systemathic/perspectives": "workspace:*",
     "@systemathic/exporter": "workspace:*",
-    "@systemathic/host": "workspace:*"
-  },
-  "bin": {
-    "systemathic": "dist/index.js"
+    "@systemathic/catalog": "workspace:*"
   }
 }

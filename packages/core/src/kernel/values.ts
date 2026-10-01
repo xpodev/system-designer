@@ -12,8 +12,9 @@ export function nameInstance(graph: Graph, text: string): string {
   return id;
 }
 
-/** The text of the Name linked to `id` through its `name` end, if any. */
+/** The text of the Name linked to `id` through its `name` end, if any; undefined for what has no name end, such as a Relationship. */
 export function nameOf(graph: Graph, id: string): string | undefined {
+  if (!graph.vocabulary.step(graph.get(id).entity, "name")) return undefined;
   const [name] = graph.navigate(id, "name");
   return name === undefined ? undefined : String(graph.get(name).value);
 }

@@ -6,7 +6,7 @@
  * O1–O3), for specific Subjects. Every part has an id that stays the same as long as the
  * Elements it is about do, so a validator can refer to it.
  */
-import { effectiveLanguages, nameOf, parameters, type Graph } from "@systemathic/core";
+import { describe as describeElement, effectiveLanguages, nameOf, parameters, type Graph } from "@systemathic/core";
 import type { SystemContext } from "@systemathic/tool";
 import type { Profile } from "@systemathic/verifier";
 
@@ -48,7 +48,7 @@ export interface Specification {
   readonly obligations: readonly Obligation[];
 }
 
-const name = (graph: Graph, id: string | undefined) => (id === undefined ? "?" : (nameOf(graph, id) ?? id));
+const name = (graph: Graph, id: string | undefined) => (id === undefined ? "?" : (nameOf(graph, id) ?? describeElement(graph, id)));
 const names = (graph: Graph, ids: readonly string[]) => ids.map((id) => name(graph, id)).join(", ") || "none";
 const statement = (id: string, text: string, ...subjects: string[]): Statement => ({ id, text, subjects });
 
@@ -103,8 +103,7 @@ function transformationStatements(graph: Graph, t: string): Statement[] {
     for (const mapping of graph.navigate(t, end)) {
       const [from] = graph.navigate(mapping, "source");
       const targets = graph.navigate(mapping, "targets");
-      const describe = (id: string | undefined) => (id !== undefined && graph.get(id).entity === "Relationship" ? `Relationship ${id}` : name(graph, id));
-      statements.push(statement(`mapping:${mapping}`, `${describe(from)} is represented with ${targets.map(describe).join(", ") || "nothing"}.`, mapping, ...(from ? [from] : []), ...targets));
+      statements.push(statement(`mapping:${mapping}`, `${name(graph, from)} is represented with ${targets.map((t) => name(graph, t)).join(", ") || "nothing"}.`, mapping, ...(from ? [from] : []), ...targets));
     }
   }
   for (const deferral of graph.navigate(t, "deferred")) {

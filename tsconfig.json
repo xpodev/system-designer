@@ -35,6 +35,9 @@
       "path": "packages/catalog"
     },
     {
+      "path": "packages/host"
+    },
+    {
       "path": "packages/cli"
     }
   ]

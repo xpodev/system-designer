@@ -5,6 +5,7 @@
  *   systemathic verify <file> [script] [profile]            verify a System against a profile of rules
  *   systemathic export <file> [md|json] [script] [profile]  print its specification
  *   systemathic new <file> [name]                           write an empty System
+ *   systemathic serve [--port N] [file ...]                 host Systems for the UI and MCP, on this machine
  *
  * `verify` uses the System's own profile setting, if it has one, or the standard rules; so
  * does `export`, for the specification's Requirements, if a script or setting names one. A
@@ -12,9 +13,11 @@
  *
  * Exit codes: 0 nothing wrong, 1 structural errors, load problems or rule errors, 2 unusable input.
  */
+import { fileURLToPath } from "node:url";
 import { describe } from "@systemathic/core";
 import { diagnose, structuralErrors } from "@systemathic/diagnoser";
 import { specify, toJson, toMarkdown } from "@systemathic/exporter";
+import { Host, serve } from "@systemathic/host";
 import { PythonHost } from "@systemathic/python-host";
 import { newSystem, open, save } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type ReadResult } from "@systemathic/tool-json";
@@ -31,7 +34,10 @@ export interface Io {
 }
 
 const USAGE =
-  "usage: systemathic check <file> | systemathic verify <file> [script] [profile] | systemathic export <file> [md|json] [script] [profile] | systemathic new <file> [name]";
+  "usage: systemathic check <file> | systemathic verify <file> [script] [profile] | systemathic export <file> [md|json] [script] [profile] | systemathic new <file> [name] | systemathic serve [--port N] [file ...]";
+
+/** The UI's built files, served by `serve`. */
+const UI = new URL("../../ui/dist/", import.meta.url);
 
 export async function run(args: readonly string[], io: Io): Promise<number> {
   const [command, file, ...rest] = args;
@@ -41,6 +47,7 @@ export async function run(args: readonly string[], io: Io): Promise<number> {
     return exportSpecification(file, (rest[0] ?? "md") as "md" | "json", rest[1], rest[2], io);
   }
   if (command === "new" && file !== undefined && rest.length <= 1) return create(file, rest[0], io);
+  if (command === "serve") return host(args.slice(1), io);
   io.err(USAGE);
   return 2;
 }
@@ -134,6 +141,33 @@ async function exportSpecification(file: string, as: "md" | "json", script: stri
   const specification = specify(context, profile);
   io.out(as === "json" ? JSON.stringify(toJson(specification), null, 2) : toMarkdown(specification));
   return 0;
+}
+
+/** Runs until the server closes. */
+async function host(args: readonly string[], io: Io): Promise<number> {
+  let port = 4747;
+  const files: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--port") port = Number(args[++i]);
+    else files.push(args[i]!);
+  }
+  if (!Number.isInteger(port) || port < 0) {
+    io.err(USAGE);
+    return 2;
+  }
+  const hosted = new Host();
+  for (const file of files) {
+    try {
+      const context = await hosted.open(file);
+      io.out(`opened ${file} as ${context.id}${context.structuralErrors > 0 ? `, with ${count(context.structuralErrors, "structural error")}` : ""}`);
+    } catch (error) {
+      io.err((error as Error).message);
+      return 2;
+    }
+  }
+  const { server, url } = await serve(hosted, { port, ui: fileURLToPath(UI) });
+  io.out(`Systemathic is hosting on ${url}`);
+  return new Promise((done) => server.on("close", () => done(0)));
 }
 
 function create(file: string, name: string | undefined, io: Io): number {

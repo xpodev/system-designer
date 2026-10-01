@@ -100,6 +100,8 @@ export class EditSession {
 export class Target {
   readonly history = new History();
   private readonly sessions = new Map<string, EditSession>();
+  /** Every session's client, ended or not, so the History can always say who made an Edit. */
+  private readonly clients = new Map<string, string>();
   private readonly listeners = new Set<EditListener>();
   private nextSession = 1;
 
@@ -113,11 +115,21 @@ export class Target {
   startSession(client: string): EditSession {
     const session = new EditSession(this, `s${this.nextSession++}`, client);
     this.sessions.set(session.id, session);
+    this.clients.set(session.id, client);
     return session;
   }
 
   session(id: string): EditSession | undefined {
     return this.sessions.get(id);
+  }
+
+  get sessionCount(): number {
+    return this.sessions.size;
+  }
+
+  /** The client of a session, even one that has ended. */
+  client(session: string): string | undefined {
+    return this.clients.get(session);
   }
 
   endSession(session: EditSession): void {
