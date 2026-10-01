@@ -24,7 +24,7 @@ it. It is identified by `"format": "systemathic/1"`.
         "interactions": [
           { "id": "combat.attack", "name": "attack",
             "parameters": [{ "id": "combat.attack.attacker", "name": "attacker", "type": "combat.attacker" }],
-            "output": "combat.damage" }
+            "output": "combat.damage", "primary": "combat.attack.attacker", "compares": [] }
         ]
       }
     ],
@@ -35,7 +35,8 @@ it. It is identified by `"format": "systemathic/1"`.
             "reverse": null,
             "entityMappings": [{ "source": "core.monster", "targets": ["combat.targetable", "combat.attacker"] }],
             "relationshipMappings": [],
-            "interactionMappings": [] }
+            "interactionMappings": [],
+            "deferred": [{ "entity": "core.player" }] }
         ] }
     ],
     "mediations": [{ "id": "combat-over-unity", "what": "d.combat", "how": "d.unity", "mediator": "d.combat-in-unity" }]
@@ -58,6 +59,9 @@ it. It is identified by `"format": "systemathic/1"`.
 - **Parameters** are in order; the array order is the Interaction's parameter order.
 - **A Formula** is its `text`, in the ASCII syntax of [foundation.md](foundation.md). Which
   Entities and ends it mentions is derived from the text; it is not stored.
+- **Std**: an Interaction's `primary` is one of its Parameters, or `null`; `compares` lists the
+  Entities it is the comparison of. A Transformation's `deferred` lists what it deliberately
+  leaves unmapped, each naming exactly one `entity`, `relationship` or `interaction`.
 - **A reverse** is `null` for a Transformation without one (a projection), or
   `{ "context": [...] }` listing the Entities its holder keeps.
 - **Attachments** are opaque: the tool keeps them, with their `owner`, and never reads `data`.
@@ -73,4 +77,5 @@ this shape at all is rejected.
 
 The layers are read and written by their own modules in `packages/tool-json`: Kernel
 (Languages), Contexts (the System, Domains, Mediations), Operations (Interactions and their
-mappings), and the Tool wrapper that puts them together.
+mappings), Std (primary Parameters, comparisons, deferrals), and the Tool wrapper that puts
+them together.

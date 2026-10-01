@@ -9,6 +9,7 @@ import {
   coreSpec,
   coreVocabulary,
   counterexamples,
+  invert,
   holds,
   linkMentions,
   nameInstance,
@@ -102,6 +103,40 @@ group("graph", () => {
     expect(parameters(graph, "i")).toEqual(["y", "x", "z"]);
     setParameters(graph, "i", ["z", "y"]);
     expect(parameters(graph, "i")).toEqual(["z", "y"]);
+  });
+});
+
+group("changes", () => {
+  it("records what a change did, and undoes it in place", () => {
+    const graph = coreGraph();
+    graph.add("Language", "l");
+    for (const id of ["a", "b", "c"]) {
+      graph.add("Entity", id);
+      graph.connect("l", "entities", id);
+    }
+    const delta = graph.record((g) => g.remove("b"));
+    expect(delta.map((change) => change.op)).toEqual(["unlink", "remove"]);
+    expect(graph.navigate("l", "entities")).toEqual(["a", "c"]);
+    graph.apply(invert(delta));
+    expect(graph.navigate("l", "entities")).toEqual(["a", "b", "c"]);
+  });
+
+  it("applies as much of a delta as still applies", () => {
+    const graph = coreGraph();
+    graph.add("Language", "l");
+    graph.add("Entity", "e");
+    const delta = graph.record((g) => g.connect("l", "entities", "e"));
+    graph.remove("e");
+    expect(graph.apply(invert(delta))).toEqual([]);
+    expect(graph.apply(delta)).toEqual([]);
+  });
+
+  it("does not record links that change nothing", () => {
+    const graph = coreGraph();
+    graph.add("Language", "l");
+    graph.add("Entity", "e");
+    graph.connect("l", "entities", "e");
+    expect(graph.record((g) => g.connect("l", "entities", "e"))).toEqual([]);
   });
 });
 

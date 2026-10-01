@@ -1943,7 +1943,9 @@
             "id": "i:Tool.new",
             "name": "new",
             "parameters": [],
-            "output": "ent:Tool.SystemContext"
+            "output": "ent:Tool.SystemContext",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:Tool.open",
@@ -1955,7 +1957,9 @@
                 "type": "ent:Tool.System"
               }
             ],
-            "output": "ent:Tool.SystemContext"
+            "output": "ent:Tool.SystemContext",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:Tool.save",
@@ -1967,7 +1971,9 @@
                 "type": "ent:Tool.SystemContext"
               }
             ],
-            "output": "ent:Tool.System"
+            "output": "ent:Tool.System",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:Tool.attach",
@@ -1984,7 +1990,9 @@
                 "type": "ent:Tool.Attachment"
               }
             ],
-            "output": "ent:Tool.SystemContext"
+            "output": "ent:Tool.SystemContext",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:Tool.detach",
@@ -2001,7 +2009,9 @@
                 "type": "ent:Tool.Attachment"
               }
             ],
-            "output": "ent:Tool.SystemContext"
+            "output": "ent:Tool.SystemContext",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -2332,7 +2342,9 @@
                 "type": "ent:Editing.Target"
               }
             ],
-            "output": "ent:Editing.EditSession"
+            "output": "ent:Editing.EditSession",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:Editing.undo",
@@ -2344,7 +2356,9 @@
                 "type": "ent:Editing.EditSession"
               }
             ],
-            "output": "ent:Editing.Edit"
+            "output": "ent:Editing.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -3024,7 +3038,9 @@
                 "type": "ent:Verification.Profile"
               }
             ],
-            "output": "ent:Verification.Run"
+            "output": "ent:Verification.Run",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -3671,7 +3687,9 @@
                 "type": "ent:SystemEditor.System"
               }
             ],
-            "output": "ent:SystemEditor.Edit"
+            "output": "ent:SystemEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:SystemEditor.addDomain",
@@ -3688,7 +3706,9 @@
                 "type": "ent:SystemEditor.System"
               }
             ],
-            "output": "ent:SystemEditor.Edit"
+            "output": "ent:SystemEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:SystemEditor.addMediation",
@@ -3705,7 +3725,9 @@
                 "type": "ent:SystemEditor.System"
               }
             ],
-            "output": "ent:SystemEditor.Edit"
+            "output": "ent:SystemEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:SystemEditor.rename",
@@ -3722,7 +3744,9 @@
                 "type": "ent:SystemEditor.System"
               }
             ],
-            "output": "ent:SystemEditor.Edit"
+            "output": "ent:SystemEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -3968,7 +3992,9 @@
                 "type": "ent:LanguageEditor.Language"
               }
             ],
-            "output": "ent:LanguageEditor.Edit"
+            "output": "ent:LanguageEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:LanguageEditor.addRelationship",
@@ -3985,7 +4011,9 @@
                 "type": "ent:LanguageEditor.Language"
               }
             ],
-            "output": "ent:LanguageEditor.Edit"
+            "output": "ent:LanguageEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:LanguageEditor.addFormula",
@@ -4002,7 +4030,9 @@
                 "type": "ent:LanguageEditor.Language"
               }
             ],
-            "output": "ent:LanguageEditor.Edit"
+            "output": "ent:LanguageEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:LanguageEditor.rename",
@@ -4019,7 +4049,9 @@
                 "type": "ent:LanguageEditor.Language"
               }
             ],
-            "output": "ent:LanguageEditor.Edit"
+            "output": "ent:LanguageEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:LanguageEditor.remove",
@@ -4036,7 +4068,9 @@
                 "type": "ent:LanguageEditor.Language"
               }
             ],
-            "output": "ent:LanguageEditor.Edit"
+            "output": "ent:LanguageEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -4156,7 +4190,9 @@
                 "type": "ent:EntityEditor.Entity"
               }
             ],
-            "output": "ent:EntityEditor.Edit"
+            "output": "ent:EntityEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:EntityEditor.remove",
@@ -4173,7 +4209,9 @@
                 "type": "ent:EntityEditor.Entity"
               }
             ],
-            "output": "ent:EntityEditor.Edit"
+            "output": "ent:EntityEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -4419,7 +4457,9 @@
                 "type": "ent:RelationshipEditor.Relationship"
               }
             ],
-            "output": "ent:RelationshipEditor.Edit"
+            "output": "ent:RelationshipEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:RelationshipEditor.renameEnd",
@@ -4436,7 +4476,9 @@
                 "type": "ent:RelationshipEditor.Relationship"
               }
             ],
-            "output": "ent:RelationshipEditor.Edit"
+            "output": "ent:RelationshipEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:RelationshipEditor.setRange",
@@ -4453,7 +4495,9 @@
                 "type": "ent:RelationshipEditor.Relationship"
               }
             ],
-            "output": "ent:RelationshipEditor.Edit"
+            "output": "ent:RelationshipEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:RelationshipEditor.remove",
@@ -4470,7 +4514,9 @@
                 "type": "ent:RelationshipEditor.Relationship"
               }
             ],
-            "output": "ent:RelationshipEditor.Edit"
+            "output": "ent:RelationshipEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -4590,7 +4636,9 @@
                 "type": "ent:FormulaEditor.Formula"
               }
             ],
-            "output": "ent:FormulaEditor.Edit"
+            "output": "ent:FormulaEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:FormulaEditor.constrain",
@@ -4607,7 +4655,9 @@
                 "type": "ent:FormulaEditor.Formula"
               }
             ],
-            "output": "ent:FormulaEditor.Edit"
+            "output": "ent:FormulaEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:FormulaEditor.remove",
@@ -4624,7 +4674,9 @@
                 "type": "ent:FormulaEditor.Formula"
               }
             ],
-            "output": "ent:FormulaEditor.Edit"
+            "output": "ent:FormulaEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -4805,7 +4857,9 @@
                 "type": "ent:DomainEditor.Domain"
               }
             ],
-            "output": "ent:DomainEditor.Edit"
+            "output": "ent:DomainEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:DomainEditor.unreference",
@@ -4822,7 +4876,9 @@
                 "type": "ent:DomainEditor.Domain"
               }
             ],
-            "output": "ent:DomainEditor.Edit"
+            "output": "ent:DomainEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:DomainEditor.rename",
@@ -4839,7 +4895,9 @@
                 "type": "ent:DomainEditor.Domain"
               }
             ],
-            "output": "ent:DomainEditor.Edit"
+            "output": "ent:DomainEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:DomainEditor.remove",
@@ -4856,7 +4914,9 @@
                 "type": "ent:DomainEditor.Domain"
               }
             ],
-            "output": "ent:DomainEditor.Edit"
+            "output": "ent:DomainEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -5125,7 +5185,9 @@
                 "type": "ent:TransformationEditor.Transformation"
               }
             ],
-            "output": "ent:TransformationEditor.Edit"
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:TransformationEditor.mapRelationship",
@@ -5142,7 +5204,9 @@
                 "type": "ent:TransformationEditor.Transformation"
               }
             ],
-            "output": "ent:TransformationEditor.Edit"
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:TransformationEditor.unmap",
@@ -5159,7 +5223,9 @@
                 "type": "ent:TransformationEditor.Transformation"
               }
             ],
-            "output": "ent:TransformationEditor.Edit"
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:TransformationEditor.setReverse",
@@ -5176,7 +5242,9 @@
                 "type": "ent:TransformationEditor.Transformation"
               }
             ],
-            "output": "ent:TransformationEditor.Edit"
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:TransformationEditor.setContext",
@@ -5193,7 +5261,9 @@
                 "type": "ent:TransformationEditor.Transformation"
               }
             ],
-            "output": "ent:TransformationEditor.Edit"
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:TransformationEditor.remove",
@@ -5210,7 +5280,9 @@
                 "type": "ent:TransformationEditor.Transformation"
               }
             ],
-            "output": "ent:TransformationEditor.Edit"
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -5387,7 +5459,9 @@
                 "type": "ent:MediationEditor.Mediation"
               }
             ],
-            "output": "ent:MediationEditor.Edit"
+            "output": "ent:MediationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:MediationEditor.setHow",
@@ -5404,7 +5478,9 @@
                 "type": "ent:MediationEditor.Mediation"
               }
             ],
-            "output": "ent:MediationEditor.Edit"
+            "output": "ent:MediationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:MediationEditor.setMediator",
@@ -5421,7 +5497,9 @@
                 "type": "ent:MediationEditor.Mediation"
               }
             ],
-            "output": "ent:MediationEditor.Edit"
+            "output": "ent:MediationEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:MediationEditor.remove",
@@ -5438,7 +5516,9 @@
                 "type": "ent:MediationEditor.Mediation"
               }
             ],
-            "output": "ent:MediationEditor.Edit"
+            "output": "ent:MediationEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -5699,7 +5779,9 @@
                 "type": "ent:InteractionEditor.Interaction"
               }
             ],
-            "output": "ent:InteractionEditor.Edit"
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:InteractionEditor.moveParameter",
@@ -5716,7 +5798,9 @@
                 "type": "ent:InteractionEditor.Interaction"
               }
             ],
-            "output": "ent:InteractionEditor.Edit"
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:InteractionEditor.setOutput",
@@ -5733,7 +5817,9 @@
                 "type": "ent:InteractionEditor.Interaction"
               }
             ],
-            "output": "ent:InteractionEditor.Edit"
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:InteractionEditor.rename",
@@ -5750,7 +5836,9 @@
                 "type": "ent:InteractionEditor.Interaction"
               }
             ],
-            "output": "ent:InteractionEditor.Edit"
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:InteractionEditor.remove",
@@ -5767,7 +5855,9 @@
                 "type": "ent:InteractionEditor.Interaction"
               }
             ],
-            "output": "ent:InteractionEditor.Edit"
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -5929,7 +6019,9 @@
                 "type": "ent:InteractionMappingEditor.InteractionMapping"
               }
             ],
-            "output": "ent:InteractionMappingEditor.Edit"
+            "output": "ent:InteractionMappingEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:InteractionMappingEditor.unmap",
@@ -5946,7 +6038,9 @@
                 "type": "ent:InteractionMappingEditor.InteractionMapping"
               }
             ],
-            "output": "ent:InteractionMappingEditor.Edit"
+            "output": "ent:InteractionMappingEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -6249,7 +6343,9 @@
                 "type": "ent:StdEditor.Interaction"
               }
             ],
-            "output": "ent:StdEditor.Edit"
+            "output": "ent:StdEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:StdEditor.setComparison",
@@ -6266,7 +6362,9 @@
                 "type": "ent:StdEditor.Interaction"
               }
             ],
-            "output": "ent:StdEditor.Edit"
+            "output": "ent:StdEditor.Edit",
+            "primary": null,
+            "compares": []
           },
           {
             "id": "i:StdEditor.defer",
@@ -6283,7 +6381,9 @@
                 "type": "ent:StdEditor.Interaction"
               }
             ],
-            "output": "ent:StdEditor.Edit"
+            "output": "ent:StdEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -6446,7 +6546,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -6506,7 +6607,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Operations:Contexts->Operations",
@@ -6578,7 +6680,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -6632,7 +6735,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Std:Contexts->Std",
@@ -6692,7 +6796,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Std:Operations->Std",
@@ -6770,7 +6875,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -6799,7 +6905,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -6828,7 +6935,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Editing:Kernel->Editing",
@@ -6881,7 +6989,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Editing:Contexts->Editing",
@@ -6934,7 +7043,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Editing:Operations->Editing",
@@ -6963,7 +7073,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7018,7 +7129,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:SystemEditor:Contexts->SystemEditor",
@@ -7126,7 +7238,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7181,7 +7294,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:LanguageEditor:Kernel->LanguageEditor",
@@ -7265,7 +7379,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7320,7 +7435,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:EntityEditor:Kernel->EntityEditor",
@@ -7350,7 +7466,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7405,7 +7522,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:RelationshipEditor:Kernel->RelationshipEditor",
@@ -7489,7 +7607,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7544,7 +7663,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:FormulaEditor:Kernel->FormulaEditor",
@@ -7574,7 +7694,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7629,7 +7750,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:DomainEditor:Contexts->DomainEditor",
@@ -7683,7 +7805,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7738,7 +7861,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:TransformationEditor:Contexts->TransformationEditor",
@@ -7834,7 +7958,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7889,7 +8014,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:MediationEditor:Contexts->MediationEditor",
@@ -7937,7 +8063,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -7992,7 +8119,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:InteractionEditor:Operations->InteractionEditor",
@@ -8076,7 +8204,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -8131,7 +8260,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:InteractionMappingEditor:Operations->InteractionMappingEditor",
@@ -8179,7 +8309,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -8234,7 +8365,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:StdEditor:Std->StdEditor",
@@ -8336,7 +8468,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -8402,7 +8535,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Perspectives:Contexts->Perspectives",
@@ -8455,7 +8589,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Perspectives:Operations->Perspectives",
@@ -8484,7 +8619,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Perspectives:Diagnostics->Perspectives",
@@ -8501,7 +8637,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -8567,7 +8704,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Diagnoser:Contexts->Diagnostics",
@@ -8620,7 +8758,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Diagnoser:Operations->Diagnostics",
@@ -8649,7 +8788,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Diagnoser:Verification->Diagnostics",
@@ -8684,7 +8824,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -8714,7 +8855,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Verifier:Kernel->Verification",
@@ -8767,7 +8909,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Verifier:Contexts->Verification",
@@ -8820,7 +8963,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Verifier:Operations->Verification",
@@ -8849,7 +8993,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -8915,7 +9060,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Exporter:Contexts->Specification",
@@ -8969,7 +9115,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Exporter:Operations->Specification",
@@ -8998,7 +9145,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Exporter:Verification->Specification",
@@ -9015,7 +9163,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9044,7 +9193,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           },
           {
             "id": "t:Catalog:Catalog->SystemEditor",
@@ -9061,7 +9211,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9147,7 +9298,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9172,7 +9324,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9195,7 +9348,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9220,7 +9374,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9243,7 +9398,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9266,7 +9422,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9289,7 +9446,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9312,7 +9470,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9335,7 +9494,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9358,7 +9518,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9381,7 +9542,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9404,7 +9566,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9427,7 +9590,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9450,7 +9614,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9473,7 +9638,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9496,7 +9662,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9519,7 +9686,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9542,7 +9710,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9565,7 +9734,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9588,7 +9758,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9611,7 +9782,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9634,7 +9806,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9657,7 +9830,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9680,7 +9854,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9703,7 +9878,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9726,7 +9902,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9749,7 +9926,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9772,7 +9950,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9795,7 +9974,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9818,7 +9998,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9841,7 +10022,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9864,7 +10046,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9887,7 +10070,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9910,7 +10094,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9933,7 +10118,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9956,7 +10142,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -9979,7 +10166,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -10002,7 +10190,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -10025,7 +10214,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -10048,7 +10238,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -10071,7 +10262,8 @@
             },
             "entityMappings": [],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       }

@@ -121,7 +121,9 @@
                 "type": "combat.targetable"
               }
             ],
-            "output": "combat.damage"
+            "output": "combat.damage",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -279,7 +281,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -314,7 +317,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -373,7 +377,8 @@
               }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -416,7 +421,8 @@
                 ]
               }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       }

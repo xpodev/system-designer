@@ -18,7 +18,7 @@ const below: Record<string, string[]> = {
   cli: ["core", "tool", "tool-json", "diagnoser"],
 };
 
-const coreLayers = ["kernel", "contexts", "operations"];
+const coreLayers = ["kernel", "contexts", "operations", "std"];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

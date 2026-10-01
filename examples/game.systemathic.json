@@ -58,7 +58,9 @@
               { "id": "combat.attack.attacker", "name": "attacker", "type": "combat.attacker" },
               { "id": "combat.attack.target", "name": "target", "type": "combat.targetable" }
             ],
-            "output": "combat.damage"
+            "output": "combat.damage",
+            "primary": "combat.attack.attacker",
+            "compares": []
           }
         ]
       },
@@ -139,7 +141,8 @@
               { "source": "core.player", "targets": ["combat.attacker"] }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -160,7 +163,8 @@
               { "source": "core.player", "targets": ["network.synced"] }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -184,7 +188,8 @@
               { "source": "combat.damage", "targets": ["unity.component"] }
             ],
             "relationshipMappings": [],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       },
@@ -207,7 +212,8 @@
             "relationshipMappings": [
               { "source": "network.identity", "targets": ["transport.payload"] }
             ],
-            "interactionMappings": []
+            "interactionMappings": [],
+            "deferred": []
           }
         ]
       }

@@ -1,6 +1,7 @@
-export { coreEntities, coreSpec, type CoreEntity } from "./generated/schema.js";
-export { coreGraph, coreVocabulary } from "./core.js";
-export { Graph, type Instance } from "./kernel/graph.js";
+export { coreEntities, coreSpec, stdEntities, stdSpec, type CoreEntity } from "./generated/schema.js";
+export { coreGraph, coreVocabulary, remove, systemComposition, systemGraph, systemVocabulary } from "./core.js";
+export { Graph, invert, type Change, type Delta, type Instance } from "./kernel/graph.js";
+export { cascade, compose, composition, type Composition } from "./kernel/removal.js";
 export { Vocabulary, type AxiomSpec, type EndSpec, type RelationshipSpec, type Step, type VocabularySpec } from "./kernel/vocabulary.js";
 export { boundInstance, boundOf, nameInstance, nameOf, setName } from "./kernel/values.js";
 export { analyzeFormula, languageVocabulary, linkMentions, type FormulaAnalysis } from "./kernel/formulas.js";
@@ -8,4 +9,5 @@ export { describe } from "./kernel/describe.js";
 export { FormulaError, parse, type Binding, type Formula, type Path } from "./kernel/logic/parse.js";
 export { typecheck, type Mentions } from "./kernel/logic/typecheck.js";
 export { counterexamples, evaluate, holds, type Environment } from "./kernel/logic/evaluate.js";
+export { effectiveLanguages, inScope, witnessed } from "./contexts/scope.js";
 export { parameters, setParameters } from "./operations/parameters.js";

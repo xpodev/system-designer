@@ -14,12 +14,43 @@ export interface Instance {
 
 type Index = Map<string, Map<string, Set<string>>>;
 
+/** One change to a graph. A list of them, in order, is a Delta: what an edit did. */
+export type Change =
+  | { readonly op: "add" | "remove"; readonly entity: string; readonly id: string; readonly value?: string | number }
+  | {
+      readonly op: "link" | "unlink";
+      readonly relationship: string;
+      readonly a: string;
+      readonly b: string;
+      /** Where the link stood among `a`'s and among `b`'s links, so undoing an unlink puts it back in place. */
+      readonly at?: readonly [number, number];
+    };
+
+export type Delta = readonly Change[];
+
+/** The Delta that undoes `delta`: each change flipped, in reverse order. */
+export function invert(delta: Delta): Change[] {
+  return [...delta].reverse().map((change): Change => {
+    switch (change.op) {
+      case "add":
+        return { ...change, op: "remove" };
+      case "remove":
+        return { ...change, op: "add" };
+      case "link":
+        return { ...change, op: "unlink" };
+      case "unlink":
+        return { ...change, op: "link" };
+    }
+  });
+}
+
 export class Graph {
   private readonly instances = new Map<string, Instance>();
   private readonly byEntity = new Map<string, Set<string>>();
   /** relationship id → instance at end 0 → instances at end 1, and the reverse. */
   private readonly forward: Index = new Map();
   private readonly backward: Index = new Map();
+  private journal: Change[] | undefined;
 
   constructor(readonly vocabulary: Vocabulary) {}
 
@@ -31,7 +62,60 @@ export class Graph {
     let ids = this.byEntity.get(entity);
     if (!ids) this.byEntity.set(entity, (ids = new Set()));
     ids.add(id);
+    this.journal?.push({ op: "add", ...instance });
     return instance;
+  }
+
+  /** Removes an instance and every link it is part of. Removing nothing is a no-op. */
+  remove(id: string): void {
+    const instance = this.instances.get(id);
+    if (!instance) return;
+    for (const relationship of this.vocabulary.spec.relationships) {
+      for (const b of [...(this.forward.get(relationship.id)?.get(id) ?? [])]) this.unlink(relationship.id, id, b);
+      for (const a of [...(this.backward.get(relationship.id)?.get(id) ?? [])]) this.unlink(relationship.id, a, id);
+    }
+    this.instances.delete(id);
+    this.byEntity.get(instance.entity)?.delete(id);
+    this.journal?.push({ op: "remove", ...instance });
+  }
+
+  /** Runs `change` and returns everything it did to the graph, in order. */
+  record(change: (graph: this) => void): Change[] {
+    const outer = this.journal;
+    const journal: Change[] = [];
+    this.journal = journal;
+    try {
+      change(this);
+    } finally {
+      this.journal = outer;
+      outer?.push(...journal);
+    }
+    return journal;
+  }
+
+  /**
+   * Applies a Delta as far as it still applies: adding what exists, removing or unlinking what
+   * is gone, or linking what is missing is skipped. Returns what was actually done.
+   */
+  apply(delta: Delta): Change[] {
+    return this.record(() => {
+      for (const change of delta) {
+        switch (change.op) {
+          case "add":
+            if (!this.has(change.id)) this.add(change.entity, change.id, change.value);
+            break;
+          case "remove":
+            this.remove(change.id);
+            break;
+          case "link":
+            if (this.has(change.a) && this.has(change.b)) this.link(change.relationship, change.a, change.b, change.at);
+            break;
+          case "unlink":
+            this.unlink(change.relationship, change.a, change.b);
+            break;
+        }
+      }
+    });
   }
 
   has(id: string): boolean {
@@ -52,21 +136,27 @@ export class Graph {
     return [...(this.byEntity.get(entity) ?? [])];
   }
 
-  /** Links `a` (at the Relationship's end 0) with `b` (at end 1). Linking twice is a no-op. */
-  link(relationshipId: string, a: string, b: string): void {
+  /**
+   * Links `a` (at the Relationship's end 0) with `b` (at end 1), last among their links unless
+   * `at` says where. Linking twice is a no-op.
+   */
+  link(relationshipId: string, a: string, b: string, at?: readonly [number, number]): void {
     const relationship = this.vocabulary.relationship(relationshipId);
     if (!relationship) throw new Error(`unknown Relationship ${relationshipId}`);
     for (const [id, end] of [[a, relationship.ends[0]], [b, relationship.ends[1]]] as const) {
       const entity = this.get(id).entity;
       if (entity !== end?.entity) throw new Error(`${id} is ${entity}, but end '${end?.name}' is ${end?.entity}`);
     }
-    insert(this.forward, relationshipId, a, b);
-    insert(this.backward, relationshipId, b, a);
+    if (!insert(this.forward, relationshipId, a, b, at?.[0])) return;
+    insert(this.backward, relationshipId, b, a, at?.[1]);
+    this.journal?.push({ op: "link", relationship: relationshipId, a, b });
   }
 
   unlink(relationshipId: string, a: string, b: string): void {
-    erase(this.forward, relationshipId, a, b);
-    erase(this.backward, relationshipId, b, a);
+    const forward = erase(this.forward, relationshipId, a, b);
+    if (forward < 0) return;
+    const backward = erase(this.backward, relationshipId, b, a);
+    this.journal?.push({ op: "unlink", relationship: relationshipId, a, b, at: [forward, backward] });
   }
 
   /** Links `from` to `to` through the end named `endName`, as seen from `from`. */
@@ -116,17 +206,29 @@ export class Graph {
   }
 }
 
-function insert(index: Index, relationship: string, key: string, value: string): void {
+/** Adds a link to an index, at `position` or last; false if it was already there. */
+function insert(index: Index, relationship: string, key: string, value: string, position?: number): boolean {
   let table = index.get(relationship);
   if (!table) index.set(relationship, (table = new Map()));
   let values = table.get(key);
   if (!values) table.set(key, (values = new Set()));
-  values.add(value);
+  if (values.has(value)) return false;
+  if (position === undefined || position >= values.size) {
+    values.add(value);
+  } else {
+    const ordered = [...values];
+    ordered.splice(position, 0, value);
+    table.set(key, new Set(ordered));
+  }
+  return true;
 }
 
-function erase(index: Index, relationship: string, key: string, value: string): void {
+/** Removes a link from an index; where it stood, or -1 if it was not there. */
+function erase(index: Index, relationship: string, key: string, value: string): number {
   const values = index.get(relationship)?.get(key);
-  if (!values) return;
+  if (!values?.has(value)) return -1;
+  const position = [...values].indexOf(value);
   values.delete(value);
   if (values.size === 0) index.get(relationship)!.delete(key);
+  return position;
 }

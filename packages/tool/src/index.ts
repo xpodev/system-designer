@@ -4,7 +4,7 @@
  * tool carries without interpreting. A SystemContext is a System open in the tool, the unit
  * everything else works on.
  */
-import { coreGraph, setName, type Graph } from "@systemathic/core";
+import { setName, systemGraph, type Graph } from "@systemathic/core";
 
 export interface Attachment {
   /** Who the attachment belongs to: a client, a feature. The tool never interprets `data`. */
@@ -48,7 +48,7 @@ export class SystemContext {
 
 /** `new() → SystemContext`: an empty, well-formed System. */
 export function newSystem(name = "Untitled", id = "system"): SystemContext {
-  const design = coreGraph();
+  const design = systemGraph();
   design.add("System", id);
   setName(design, id, name);
   return new SystemContext(design);

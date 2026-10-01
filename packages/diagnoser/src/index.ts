@@ -5,7 +5,7 @@
  */
 import {
   analyzeFormula,
-  coreSpec,
+  stdSpec,
   counterexamples,
   describe,
   parse,
@@ -25,7 +25,7 @@ export interface Diagnostic {
   readonly subjects: readonly string[];
 }
 
-const axioms: { readonly id: string; readonly about: string; readonly formula: Formula }[] = coreSpec.axioms.map((axiom) => ({
+const axioms: { readonly id: string; readonly about: string; readonly formula: Formula }[] = stdSpec.axioms.map((axiom) => ({
   id: axiom.id,
   about: axiom.about,
   formula: parse(axiom.formula),

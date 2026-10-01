@@ -1,6 +1,7 @@
 /**
  * OperationsFormat: a Language's Interactions and a Transformation's Interaction mappings as
- * JSON. Parameters are an array; its order is the first/next chain.
+ * JSON. Parameters are an array; its order is the first/next chain. Layers above Operations add
+ * their parts of an Interaction through the extension hooks.
  */
 import { nameOf, parameters, setName, setParameters, type Graph } from "@systemathic/core";
 import { array, object, string, type Reader } from "./reader.js";
@@ -9,7 +10,13 @@ export interface ParameterJson { id: string; name: string; type: string }
 export interface InteractionJson { id: string; name: string; parameters: ParameterJson[]; output: string }
 export interface InteractionMappingJson { source: string; targets: string[] }
 
-export function readInteractions(reader: Reader, language: string, value: unknown, at: string): void {
+/** What a layer above Operations reads into, and writes from, an Interaction. */
+export interface InteractionExtension {
+  readInteraction(reader: Reader, interaction: string, json: Record<string, unknown>, at: string): void;
+  writeInteraction(graph: Graph, interaction: string): Record<string, unknown>;
+}
+
+export function readInteractions(reader: Reader, language: string, value: unknown, at: string, extensions: readonly InteractionExtension[] = []): void {
   const graph = reader.graph;
   array(value, at).forEach((value, index) => {
     const where = `${at}[${index}]`;
@@ -30,11 +37,12 @@ export function readInteractions(reader: Reader, language: string, value: unknow
     });
     setParameters(graph, interaction, ids);
     reader.refer(interaction, "output", json.output, `${where}.output`);
+    for (const extension of extensions) extension.readInteraction(reader, interaction, json, where);
   });
 }
 
-export function writeInteractions(graph: Graph, language: string): InteractionJson[] {
-  return graph.navigate(language, "interactions").map((id) => ({
+export function writeInteractions(graph: Graph, language: string, extensions: readonly InteractionExtension[] = []): InteractionJson[] {
+  return graph.navigate(language, "interactions").map((id) => Object.assign({
     id,
     name: nameOf(graph, id) ?? "",
     parameters: parameters(graph, id).map((parameter) => ({
@@ -43,7 +51,7 @@ export function writeInteractions(graph: Graph, language: string): InteractionJs
       type: graph.navigate(parameter, "type")[0] ?? "",
     })),
     output: graph.navigate(id, "output")[0] ?? "",
-  }));
+  }, ...extensions.map((extension) => extension.writeInteraction(graph, id))));
 }
 
 export function readInteractionMappings(reader: Reader, transformation: string, value: unknown, at: string): void {
