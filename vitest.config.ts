@@ -14,6 +14,7 @@ export default defineConfig({
       "@systemathic/diagnoser": source("diagnoser"),
       "@systemathic/verifier": source("verifier"),
       "@systemathic/python-host": source("python-host"),
+      "@systemathic/perspectives": source("perspectives"),
     },
   },
   test: {

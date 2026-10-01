@@ -26,6 +26,9 @@
       "path": "packages/python-host"
     },
     {
+      "path": "packages/perspectives"
+    },
+    {
       "path": "packages/cli"
     }
   ]

@@ -74,6 +74,18 @@ importers:
         specifier: workspace:*
         version: link:../editing
 
+  packages/perspectives:
+    dependencies:
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/diagnoser':
+        specifier: workspace:*
+        version: link:../diagnoser
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+
   packages/python-host:
     dependencies:
       '@systemathic/core':

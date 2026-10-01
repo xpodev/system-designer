@@ -19,6 +19,7 @@ const below: Record<string, string[]> = {
   diagnoser: ["core", "tool", "verifier"],
   verifier: ["core", "tool"],
   "python-host": ["core", "tool", "tool-json", "verifier"],
+  perspectives: ["core", "tool", "diagnoser"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host"],
 };
 
