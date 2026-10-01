@@ -6917,7 +6917,8 @@
           "lang:Editing"
         ],
         "references": [
-          "dom:Tool"
+          "dom:Tool",
+          "dom:Operations"
         ],
         "transformations": [
           {

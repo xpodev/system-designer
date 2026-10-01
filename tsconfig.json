@@ -1,12 +1,32 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/core" },
-    { "path": "packages/tool" },
-    { "path": "packages/tool-json" },
-    { "path": "packages/editing" },
-    { "path": "packages/editors" },
-    { "path": "packages/diagnoser" },
-    { "path": "packages/cli" }
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/tool"
+    },
+    {
+      "path": "packages/tool-json"
+    },
+    {
+      "path": "packages/editing"
+    },
+    {
+      "path": "packages/editors"
+    },
+    {
+      "path": "packages/diagnoser"
+    },
+    {
+      "path": "packages/verifier"
+    },
+    {
+      "path": "packages/python-host"
+    },
+    {
+      "path": "packages/cli"
+    }
   ]
 }

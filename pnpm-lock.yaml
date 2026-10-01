@@ -29,12 +29,18 @@ importers:
       '@systemathic/diagnoser':
         specifier: workspace:*
         version: link:../diagnoser
+      '@systemathic/python-host':
+        specifier: workspace:*
+        version: link:../python-host
       '@systemathic/tool':
         specifier: workspace:*
         version: link:../tool
       '@systemathic/tool-json':
         specifier: workspace:*
         version: link:../tool-json
+      '@systemathic/verifier':
+        specifier: workspace:*
+        version: link:../verifier
 
   packages/core: {}
 
@@ -65,6 +71,21 @@ importers:
         specifier: workspace:*
         version: link:../editing
 
+  packages/python-host:
+    dependencies:
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+      '@systemathic/tool-json':
+        specifier: workspace:*
+        version: link:../tool-json
+      '@systemathic/verifier':
+        specifier: workspace:*
+        version: link:../verifier
+
   packages/tool:
     dependencies:
       '@systemathic/core':
@@ -72,6 +93,15 @@ importers:
         version: link:../core
 
   packages/tool-json:
+    dependencies:
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+
+  packages/verifier:
     dependencies:
       '@systemathic/core':
         specifier: workspace:*

@@ -1,9 +1,9 @@
 {
-  "name": "@systemathic/cli",
+  "name": "@systemathic/python-host",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The command-line client: the CliSystems mediation.",
+  "description": "RuleHost: the Verifier / Python mediation, running rules with python -m systemathic.host.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -16,11 +16,6 @@
     "@systemathic/core": "workspace:*",
     "@systemathic/tool": "workspace:*",
     "@systemathic/tool-json": "workspace:*",
-    "@systemathic/diagnoser": "workspace:*",
-    "@systemathic/verifier": "workspace:*",
-    "@systemathic/python-host": "workspace:*"
-  },
-  "bin": {
-    "systemathic": "dist/index.js"
+    "@systemathic/verifier": "workspace:*"
   }
 }

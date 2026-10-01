@@ -17,7 +17,9 @@ const below: Record<string, string[]> = {
   editing: ["core", "tool"],
   editors: ["core", "editing"],
   diagnoser: ["core", "tool"],
-  cli: ["core", "tool", "tool-json", "diagnoser"],
+  verifier: ["core", "tool"],
+  "python-host": ["core", "tool", "tool-json", "verifier"],
+  cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host"],
 };
 
 const coreLayers = ["kernel", "contexts", "operations", "std"];
@@ -30,7 +32,7 @@ function sources(dir: string): string[] {
 }
 
 function imports(file: string): string[] {
-  return [...readFileSync(file, "utf8").matchAll(/from\s+"([^"]+)"/g)].map((match) => match[1]!);
+  return [...readFileSync(file, "utf8").matchAll(/(?:from|import)\s+"([^"]+)"/g)].map((match) => match[1]!);
 }
 
 describe("layering", () => {

@@ -370,7 +370,7 @@ by referencing their Domains.
 | **Operations** | Operations | Contexts |
 | **Std** | Std | Operations |
 | **Tool** | Tool | Contexts |
-| **Editing** | Editing | Tool |
+| **Editing** | Editing | Tool, Operations |
 | each **concept editor** | its own | Editing, and the core layer it edits |
 | **Perspectives** | Perspectives | Tool, Diagnoser |
 | **Diagnoser** | Diagnostics | Tool, Verifier |

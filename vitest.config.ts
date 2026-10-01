@@ -12,6 +12,8 @@ export default defineConfig({
       "@systemathic/editing": source("editing"),
       "@systemathic/editors": source("editors"),
       "@systemathic/diagnoser": source("diagnoser"),
+      "@systemathic/verifier": source("verifier"),
+      "@systemathic/python-host": source("python-host"),
     },
   },
   test: {
