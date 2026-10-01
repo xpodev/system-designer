@@ -72,6 +72,11 @@ describe("concept editors", () => {
     expect(target.history.edits.every((edit) => edit.elements.length > 0)).toBe(true);
   });
 
+  it("record only what an operation touched, not Formulas whose mentions did not change", () => {
+    const { s, core } = game();
+    expect(LanguageEditor.addEntity(s, core, "Loot").elements).toEqual([`${core}.loot`, core]);
+  });
+
   it("keep Formulas' mentions in step with renames", () => {
     const { target, s, pack, acyclic } = game();
     const leader = target.graph.navigate(pack, "ends")[0]!;

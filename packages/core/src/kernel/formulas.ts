@@ -56,14 +56,14 @@ export function analyzeFormula(graph: Graph, formula: string): FormulaAnalysis {
   }
 }
 
-/** Replaces a Formula's mention links with those its text implies. */
+/** Makes a Formula's mention links those its text implies, changing only the links that differ. */
 export function linkMentions(graph: Graph, formula: string): FormulaAnalysis {
-  graph.disconnect(formula, "mentionedEntities");
-  graph.disconnect(formula, "mentionedEnds");
   const analysis = analyzeFormula(graph, formula);
-  if (analysis.ok) {
-    for (const entity of analysis.entities) graph.connect(formula, "mentionedEntities", entity);
-    for (const end of analysis.ends) graph.connect(formula, "mentionedEnds", end);
+  const wanted = { mentionedEntities: analysis.ok ? analysis.entities : [], mentionedEnds: analysis.ok ? analysis.ends : [] };
+  for (const [end, ids] of Object.entries(wanted)) {
+    const keep = new Set(ids);
+    for (const id of graph.navigate(formula, end)) if (!keep.has(id)) graph.disconnect(formula, end, id);
+    for (const id of ids) graph.connect(formula, end, id);
   }
   return analysis;
 }

@@ -24,6 +24,7 @@ const below: Record<string, string[]> = {
   catalog: ["core", "tool", "tool-json", "editing", "editors"],
   host: ["core", "tool", "tool-json", "editing", "editors", "diagnoser", "verifier", "python-host", "perspectives", "exporter", "catalog"],
   mcp: ["host"],
+  ui: ["host"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host"],
 };
 
@@ -32,7 +33,7 @@ const coreLayers = ["kernel", "contexts", "operations", "std"];
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    return statSync(path).isDirectory() ? sources(path) : path.endsWith(".ts") ? [path] : [];
+    return statSync(path).isDirectory() ? sources(path) : /\.tsx?$/.test(path) ? [path] : [];
   });
 }
 
@@ -53,6 +54,14 @@ describe("layering", () => {
       }
     });
   }
+
+  it("the UI only types against the host: it runs in a browser, as a client over HTTP", () => {
+    for (const file of sources(join(root, "packages", "ui", "src"))) {
+      for (const line of readFileSync(file, "utf8").split("\n").filter((l) => l.includes('"@systemathic/'))) {
+        expect(line, relative(root, file)).toMatch(/^import type /);
+      }
+    }
+  });
 
   for (const name of ["core", "editors"]) {
     it(`inside ${name}, each core layer imports only the layers below it`, () => {
