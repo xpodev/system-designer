@@ -19,6 +19,11 @@ describe("Tool::System / JSON", () => {
     expect(writeSystem(save(open(system)))).toEqual(game);
   });
 
+  it("round-trips the tool's own design, keeping the order of every link both ways", () => {
+    const design = JSON.parse(readFileSync(new URL("../../../examples/tool-design.systemathic.json", import.meta.url), "utf8"));
+    expect(writeSystem(save(open(readSystem(design).system)))).toEqual(design);
+  });
+
   it("derives a formula's mentions from its text", () => {
     const { system } = readSystem(game);
     expect(system.design.navigate("core.no-leadership-cycles", "mentionedEnds")).toEqual(["core.pack.leader"]);

@@ -200,8 +200,10 @@ export class Graph {
   clone(): Graph {
     const copy = new Graph(this.vocabulary);
     for (const instance of this.instances.values()) copy.add(instance.entity, instance.id, instance.value);
-    for (const relationship of this.forward.keys())
-      for (const [a, b] of this.links(relationship)) copy.link(relationship, a, b);
+    // Both indexes are copied as they are: re-linking would keep the order of one direction only.
+    for (const [from, to] of [[this.forward, copy.forward], [this.backward, copy.backward]] as const) {
+      for (const [relationship, table] of from) to.set(relationship, new Map([...table].map(([key, values]) => [key, new Set(values)])));
+    }
     return copy;
   }
 

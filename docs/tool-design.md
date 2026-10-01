@@ -182,12 +182,12 @@ editors write to the one shared History.
 | **EntityEditor** | Kernel: an Entity | `rename`, `remove` |
 | **RelationshipEditor** | Kernel: a Relationship, its Ends and their Bounds | `setEntity`, `renameEnd`, `setRange`, `remove` |
 | **FormulaEditor** | Kernel: a Formula | `setText`, `constrain`, `remove` |
-| **DomainEditor** | Contexts: a Domain | `reference`, `unreference`, `rename`, `remove` |
-| **TransformationEditor** | Contexts: a Transformation, its mappings and its Reverse | `mapEntity`, `mapRelationship`, `unmap`, `setReverse`, `setContext`, `remove` |
+| **DomainEditor** | Contexts: a Domain, and the Transformations it holds | `reference`, `unreference`, `rename`, `addTransformation`, `remove` |
+| **TransformationEditor** | Contexts: a Transformation, its mappings and its Reverse | `mapEntity`, `mapRelationship`, `unmap`, `setReverse`, `setContext`, `rename`, `remove` |
 | **MediationEditor** | Contexts: a Mediation | `setWhat`, `setHow`, `setMediator`, `remove` |
-| **InteractionEditor** | Operations: an Interaction and its Parameters | `addParameter`, `moveParameter`, `setOutput`, `rename`, `remove` |
+| **InteractionEditor** | Operations: an Interaction and its Parameters | `addInteraction`, `addParameter`, `moveParameter`, `setType`, `removeParameter`, `setOutput`, `rename`, `remove` |
 | **InteractionMappingEditor** | Operations: a Transformation's Interaction mappings | `mapInteraction`, `unmap` |
-| **StdEditor** | Std: primary Parameters, comparisons, deferrals | `setPrimary`, `setComparison`, `defer` |
+| **StdEditor** | Std: primary Parameters, comparisons, deferrals | `setPrimary`, `setComparison`, `defer`, `undefer` |
 
 For example, `addEntity(EditSession, Language, Name) → Edit`.
 
@@ -479,9 +479,22 @@ What the implementation must satisfy that the model does not express:
 ## Open questions
 
 - The client and platform Languages need defining in `systemathic.lib`.
-- How a `Name`, a `Bound` and a `Measure` are encoded: mappings of CoreFormat and the
-  client mediators, yet to be written down.
-- What an Edit records to be revertible: the model says which Elements it touches, not
-  their values before and after.
-- The text of a Formula. Kernel records which Entities and ends a Formula mentions, not
-  the formula itself; `setText` needs the formula's syntax as data.
+- How a `Measure` is encoded for clients. (`Name` and `Bound` are written down in
+  [format.md](format.md): text, and natural numbers with `N` for unbounded.)
+
+## Decided in the implementation
+
+- **What an Edit records.** The change it made to the System, as a delta: instances added
+  and removed, with their values, and links added and removed, with where each link stood.
+  Undo applies the inverse delta as far as it still applies, so a revert never refuses and
+  puts links back in their place.
+- **The text of a Formula** is the Formula's value; which Entities and ends it mentions is
+  derived from the text against its Language, after every change to that Language.
+- **Who creates a Transformation and an Interaction.** The DomainEditor, which holds
+  Transformations, and the InteractionEditor, since Kernel knows nothing of Interactions.
+- **Ownership and dependents.** Each core layer says which ends own (a Language its
+  Entities) and which Entities depend on what they name (a mapping, a Mediation); with
+  Contexts' scope and witness rules, that is the foundation's deletion cascade.
+- **Clients reach system contexts through a Host**: one process, the one authority over
+  each system context it holds, which the UI and the MCP server share over HTTP on this
+  machine. The MCP server hosts the Systems itself when no host is running.

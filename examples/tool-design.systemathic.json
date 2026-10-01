@@ -4917,6 +4917,25 @@
             "output": "ent:DomainEditor.Edit",
             "primary": null,
             "compares": []
+          },
+          {
+            "id": "lang:DomainEditor.addtransformation",
+            "name": "addTransformation",
+            "parameters": [
+              {
+                "id": "lang:DomainEditor.addtransformation.session",
+                "name": "session",
+                "type": "ent:DomainEditor.EditSession"
+              },
+              {
+                "id": "lang:DomainEditor.addtransformation.domain",
+                "name": "domain",
+                "type": "ent:DomainEditor.Domain"
+              }
+            ],
+            "output": "ent:DomainEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -5283,6 +5302,25 @@
             "output": "ent:TransformationEditor.Edit",
             "primary": null,
             "compares": []
+          },
+          {
+            "id": "lang:TransformationEditor.rename",
+            "name": "rename",
+            "parameters": [
+              {
+                "id": "lang:TransformationEditor.rename.session",
+                "name": "session",
+                "type": "ent:TransformationEditor.EditSession"
+              },
+              {
+                "id": "lang:TransformationEditor.rename.transformation",
+                "name": "transformation",
+                "type": "ent:TransformationEditor.Transformation"
+              }
+            ],
+            "output": "ent:TransformationEditor.Edit",
+            "primary": null,
+            "compares": []
           }
         ]
       },
@@ -5549,6 +5587,10 @@
           {
             "id": "ent:InteractionEditor.Name",
             "name": "Name"
+          },
+          {
+            "id": "lang:InteractionEditor.language",
+            "name": "Language"
           }
         ],
         "relationships": [
@@ -5853,6 +5895,63 @@
                 "id": "p:InteractionEditor.remove.1",
                 "name": "interaction",
                 "type": "ent:InteractionEditor.Interaction"
+              }
+            ],
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lang:InteractionEditor.addinteraction",
+            "name": "addInteraction",
+            "parameters": [
+              {
+                "id": "lang:InteractionEditor.addinteraction.session",
+                "name": "session",
+                "type": "ent:InteractionEditor.EditSession"
+              },
+              {
+                "id": "lang:InteractionEditor.addinteraction.language",
+                "name": "language",
+                "type": "lang:InteractionEditor.language"
+              }
+            ],
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lang:InteractionEditor.settype",
+            "name": "setType",
+            "parameters": [
+              {
+                "id": "lang:InteractionEditor.settype.session",
+                "name": "session",
+                "type": "ent:InteractionEditor.EditSession"
+              },
+              {
+                "id": "lang:InteractionEditor.settype.parameter",
+                "name": "parameter",
+                "type": "ent:InteractionEditor.Parameter"
+              }
+            ],
+            "output": "ent:InteractionEditor.Edit",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lang:InteractionEditor.removeparameter",
+            "name": "removeParameter",
+            "parameters": [
+              {
+                "id": "lang:InteractionEditor.removeparameter.session",
+                "name": "session",
+                "type": "ent:InteractionEditor.EditSession"
+              },
+              {
+                "id": "lang:InteractionEditor.removeparameter.parameter",
+                "name": "parameter",
+                "type": "ent:InteractionEditor.Parameter"
               }
             ],
             "output": "ent:InteractionEditor.Edit",
@@ -6379,6 +6478,25 @@
                 "id": "p:StdEditor.defer.1",
                 "name": "interaction",
                 "type": "ent:StdEditor.Interaction"
+              }
+            ],
+            "output": "ent:StdEditor.Edit",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lang:StdEditor.undefer",
+            "name": "undefer",
+            "parameters": [
+              {
+                "id": "lang:StdEditor.undefer.session",
+                "name": "session",
+                "type": "ent:StdEditor.EditSession"
+              },
+              {
+                "id": "lang:StdEditor.undefer.transformation",
+                "name": "transformation",
+                "type": "ent:StdEditor.Transformation"
               }
             ],
             "output": "ent:StdEditor.Edit",
@@ -8152,6 +8270,12 @@
                 "source": "ent:Operations.Name",
                 "targets": [
                   "ent:InteractionEditor.Name"
+                ]
+              },
+              {
+                "source": "ent:Operations.Language",
+                "targets": [
+                  "lang:InteractionEditor.language"
                 ]
               }
             ],
