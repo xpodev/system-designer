@@ -32,6 +32,9 @@
       "path": "packages/exporter"
     },
     {
+      "path": "packages/catalog"
+    },
+    {
       "path": "packages/cli"
     }
   ]

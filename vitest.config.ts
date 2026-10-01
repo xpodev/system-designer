@@ -16,6 +16,7 @@ export default defineConfig({
       "@systemathic/python-host": source("python-host"),
       "@systemathic/perspectives": source("perspectives"),
       "@systemathic/exporter": source("exporter"),
+      "@systemathic/catalog": source("catalog"),
     },
   },
   test: {

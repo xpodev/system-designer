@@ -1,0 +1,110 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.bytes.system",
+    "name": "Bytes",
+    "languages": [
+      {
+        "id": "lib.bytes",
+        "name": "Bytes",
+        "entities": [
+          {
+            "id": "lib.bytes.byte",
+            "name": "Byte"
+          },
+          {
+            "id": "lib.bytes.bytestring",
+            "name": "ByteString"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.bytes.string-bytes",
+            "ends": [
+              {
+                "id": "lib.bytes.string-bytes.string",
+                "name": "string",
+                "entity": "lib.bytes.bytestring",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.bytes.string-bytes.bytes",
+                "name": "bytes",
+                "entity": "lib.bytes.byte",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.bytes.previous-next",
+            "ends": [
+              {
+                "id": "lib.bytes.previous-next.previous",
+                "name": "previous",
+                "entity": "lib.bytes.byte",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.bytes.previous-next.next",
+                "name": "next",
+                "entity": "lib.bytes.byte",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "lib.bytes.concat",
+            "name": "concat",
+            "parameters": [
+              {
+                "id": "lib.bytes.concat.first",
+                "name": "first",
+                "type": "lib.bytes.bytestring"
+              },
+              {
+                "id": "lib.bytes.concat.second",
+                "name": "second",
+                "type": "lib.bytes.bytestring"
+              }
+            ],
+            "output": "lib.bytes.bytestring",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.bytes.domain",
+        "name": "Bytes",
+        "languages": [
+          "lib.bytes"
+        ],
+        "references": [],
+        "transformations": []
+      }
+    ],
+    "mediations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "bytes",
+        "about": "Bytes and byte strings: the lowest representation of data.",
+        "tags": [
+          "encoding",
+          "data"
+        ]
+      }
+    }
+  ]
+}

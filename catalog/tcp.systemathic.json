@@ -1,0 +1,226 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.tcp.system",
+    "name": "TCP",
+    "languages": [
+      {
+        "id": "lib.tcp",
+        "name": "TCP",
+        "entities": [
+          {
+            "id": "lib.tcp.connection",
+            "name": "Connection"
+          },
+          {
+            "id": "lib.tcp.endpoint",
+            "name": "Endpoint"
+          },
+          {
+            "id": "lib.tcp.port",
+            "name": "Port"
+          },
+          {
+            "id": "lib.tcp.stream",
+            "name": "Stream"
+          },
+          {
+            "id": "lib.tcp.segment",
+            "name": "Segment"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.tcp.outgoing-local",
+            "ends": [
+              {
+                "id": "lib.tcp.outgoing-local.outgoing",
+                "name": "outgoing",
+                "entity": "lib.tcp.connection",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.tcp.outgoing-local.local",
+                "name": "local",
+                "entity": "lib.tcp.endpoint",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.incoming-remote",
+            "ends": [
+              {
+                "id": "lib.tcp.incoming-remote.incoming",
+                "name": "incoming",
+                "entity": "lib.tcp.connection",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.tcp.incoming-remote.remote",
+                "name": "remote",
+                "entity": "lib.tcp.endpoint",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.endpoints-port",
+            "ends": [
+              {
+                "id": "lib.tcp.endpoints-port.endpoints",
+                "name": "endpoints",
+                "entity": "lib.tcp.endpoint",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.tcp.endpoints-port.port",
+                "name": "port",
+                "entity": "lib.tcp.port",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.connection-stream",
+            "ends": [
+              {
+                "id": "lib.tcp.connection-stream.connection",
+                "name": "connection",
+                "entity": "lib.tcp.connection",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.tcp.connection-stream.stream",
+                "name": "stream",
+                "entity": "lib.tcp.stream",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.stream-segments",
+            "ends": [
+              {
+                "id": "lib.tcp.stream-segments.stream",
+                "name": "stream",
+                "entity": "lib.tcp.stream",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.tcp.stream-segments.segments",
+                "name": "segments",
+                "entity": "lib.tcp.segment",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "lib.tcp.connect",
+            "name": "connect",
+            "parameters": [
+              {
+                "id": "lib.tcp.connect.local",
+                "name": "local",
+                "type": "lib.tcp.endpoint"
+              },
+              {
+                "id": "lib.tcp.connect.remote",
+                "name": "remote",
+                "type": "lib.tcp.endpoint"
+              }
+            ],
+            "output": "lib.tcp.connection",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.tcp.send",
+            "name": "send",
+            "parameters": [
+              {
+                "id": "lib.tcp.send.connection",
+                "name": "connection",
+                "type": "lib.tcp.connection"
+              },
+              {
+                "id": "lib.tcp.send.data",
+                "name": "data",
+                "type": "lib.tcp.stream"
+              }
+            ],
+            "output": "lib.tcp.connection",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.tcp.receive",
+            "name": "receive",
+            "parameters": [
+              {
+                "id": "lib.tcp.receive.connection",
+                "name": "connection",
+                "type": "lib.tcp.connection"
+              }
+            ],
+            "output": "lib.tcp.stream",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.tcp.close",
+            "name": "close",
+            "parameters": [
+              {
+                "id": "lib.tcp.close.connection",
+                "name": "connection",
+                "type": "lib.tcp.connection"
+              }
+            ],
+            "output": "lib.tcp.connection",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.tcp.domain",
+        "name": "TCP",
+        "languages": [
+          "lib.tcp"
+        ],
+        "references": [],
+        "transformations": []
+      }
+    ],
+    "mediations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "tcp",
+        "about": "TCP connections between endpoints, carrying ordered streams.",
+        "tags": [
+          "network",
+          "transport"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.sql.system",
+    "name": "SQL",
+    "languages": [
+      {
+        "id": "lib.sql",
+        "name": "SQL",
+        "entities": [
+          {
+            "id": "lib.sql.table",
+            "name": "Table"
+          },
+          {
+            "id": "lib.sql.column",
+            "name": "Column"
+          },
+          {
+            "id": "lib.sql.row",
+            "name": "Row"
+          },
+          {
+            "id": "lib.sql.value",
+            "name": "Value"
+          },
+          {
+            "id": "lib.sql.query",
+            "name": "Query"
+          },
+          {
+            "id": "lib.sql.result",
+            "name": "Result"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.sql.table-columns",
+            "ends": [
+              {
+                "id": "lib.sql.table-columns.table",
+                "name": "table",
+                "entity": "lib.sql.table",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.sql.table-columns.columns",
+                "name": "columns",
+                "entity": "lib.sql.column",
+                "min": 1,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.sql.table-rows",
+            "ends": [
+              {
+                "id": "lib.sql.table-rows.table",
+                "name": "table",
+                "entity": "lib.sql.table",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.sql.table-rows.rows",
+                "name": "rows",
+                "entity": "lib.sql.row",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.sql.row-values",
+            "ends": [
+              {
+                "id": "lib.sql.row-values.row",
+                "name": "row",
+                "entity": "lib.sql.row",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.sql.row-values.values",
+                "name": "values",
+                "entity": "lib.sql.value",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.sql.column-values",
+            "ends": [
+              {
+                "id": "lib.sql.column-values.column",
+                "name": "column",
+                "entity": "lib.sql.column",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.sql.column-values.values",
+                "name": "values",
+                "entity": "lib.sql.value",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.sql.result-rows",
+            "ends": [
+              {
+                "id": "lib.sql.result-rows.result",
+                "name": "result",
+                "entity": "lib.sql.result",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.sql.result-rows.rows",
+                "name": "rows",
+                "entity": "lib.sql.row",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [
+          {
+            "id": "lib.sql.axiom0",
+            "text": "all v in Value. v.row.table == v.column.table"
+          }
+        ],
+        "interactions": [
+          {
+            "id": "lib.sql.execute",
+            "name": "execute",
+            "parameters": [
+              {
+                "id": "lib.sql.execute.query",
+                "name": "query",
+                "type": "lib.sql.query"
+              }
+            ],
+            "output": "lib.sql.result",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.sql.domain",
+        "name": "SQL",
+        "languages": [
+          "lib.sql"
+        ],
+        "references": [],
+        "transformations": []
+      }
+    ],
+    "mediations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "sql",
+        "about": "SQL tables, rows and queries.",
+        "tags": [
+          "data",
+          "storage"
+        ]
+      }
+    }
+  ]
+}

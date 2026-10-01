@@ -1,0 +1,151 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.ethernet.system",
+    "name": "Ethernet",
+    "languages": [
+      {
+        "id": "lib.ethernet",
+        "name": "Ethernet",
+        "entities": [
+          {
+            "id": "lib.ethernet.frame",
+            "name": "Frame"
+          },
+          {
+            "id": "lib.ethernet.macaddress",
+            "name": "MacAddress"
+          },
+          {
+            "id": "lib.ethernet.ethertype",
+            "name": "EtherType"
+          },
+          {
+            "id": "lib.ethernet.payload",
+            "name": "Payload"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.ethernet.sent-source",
+            "ends": [
+              {
+                "id": "lib.ethernet.sent-source.sent",
+                "name": "sent",
+                "entity": "lib.ethernet.frame",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.ethernet.sent-source.source",
+                "name": "source",
+                "entity": "lib.ethernet.macaddress",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.ethernet.received-destination",
+            "ends": [
+              {
+                "id": "lib.ethernet.received-destination.received",
+                "name": "received",
+                "entity": "lib.ethernet.frame",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.ethernet.received-destination.destination",
+                "name": "destination",
+                "entity": "lib.ethernet.macaddress",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.ethernet.frames-type",
+            "ends": [
+              {
+                "id": "lib.ethernet.frames-type.frames",
+                "name": "frames",
+                "entity": "lib.ethernet.frame",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.ethernet.frames-type.type",
+                "name": "type",
+                "entity": "lib.ethernet.ethertype",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.ethernet.frame-payload",
+            "ends": [
+              {
+                "id": "lib.ethernet.frame-payload.frame",
+                "name": "frame",
+                "entity": "lib.ethernet.frame",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.ethernet.frame-payload.payload",
+                "name": "payload",
+                "entity": "lib.ethernet.payload",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "lib.ethernet.transmit",
+            "name": "transmit",
+            "parameters": [
+              {
+                "id": "lib.ethernet.transmit.frame",
+                "name": "frame",
+                "type": "lib.ethernet.frame"
+              }
+            ],
+            "output": "lib.ethernet.frame",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.ethernet.domain",
+        "name": "Ethernet",
+        "languages": [
+          "lib.ethernet"
+        ],
+        "references": [],
+        "transformations": []
+      }
+    ],
+    "mediations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "ethernet",
+        "about": "Ethernet frames between MAC addresses.",
+        "tags": [
+          "network",
+          "link"
+        ]
+      }
+    }
+  ]
+}

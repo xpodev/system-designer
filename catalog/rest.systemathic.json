@@ -1,0 +1,184 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.rest.system",
+    "name": "REST",
+    "languages": [
+      {
+        "id": "lib.rest",
+        "name": "REST",
+        "entities": [
+          {
+            "id": "lib.rest.resource",
+            "name": "Resource"
+          },
+          {
+            "id": "lib.rest.collection",
+            "name": "Collection"
+          },
+          {
+            "id": "lib.rest.identifier",
+            "name": "Identifier"
+          },
+          {
+            "id": "lib.rest.representation",
+            "name": "Representation"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.rest.collection-members",
+            "ends": [
+              {
+                "id": "lib.rest.collection-members.collection",
+                "name": "collection",
+                "entity": "lib.rest.collection",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.rest.collection-members.members",
+                "name": "members",
+                "entity": "lib.rest.resource",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.rest.resource-identifier",
+            "ends": [
+              {
+                "id": "lib.rest.resource-identifier.resource",
+                "name": "resource",
+                "entity": "lib.rest.resource",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.rest.resource-identifier.identifier",
+                "name": "identifier",
+                "entity": "lib.rest.identifier",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.rest.resource-representations",
+            "ends": [
+              {
+                "id": "lib.rest.resource-representations.resource",
+                "name": "resource",
+                "entity": "lib.rest.resource",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.rest.resource-representations.representations",
+                "name": "representations",
+                "entity": "lib.rest.representation",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "lib.rest.get",
+            "name": "get",
+            "parameters": [
+              {
+                "id": "lib.rest.get.resource",
+                "name": "resource",
+                "type": "lib.rest.identifier"
+              }
+            ],
+            "output": "lib.rest.representation",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.rest.put",
+            "name": "put",
+            "parameters": [
+              {
+                "id": "lib.rest.put.resource",
+                "name": "resource",
+                "type": "lib.rest.identifier"
+              },
+              {
+                "id": "lib.rest.put.state",
+                "name": "state",
+                "type": "lib.rest.representation"
+              }
+            ],
+            "output": "lib.rest.representation",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.rest.create",
+            "name": "create",
+            "parameters": [
+              {
+                "id": "lib.rest.create.collection",
+                "name": "collection",
+                "type": "lib.rest.collection"
+              },
+              {
+                "id": "lib.rest.create.state",
+                "name": "state",
+                "type": "lib.rest.representation"
+              }
+            ],
+            "output": "lib.rest.identifier",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.rest.delete",
+            "name": "delete",
+            "parameters": [
+              {
+                "id": "lib.rest.delete.resource",
+                "name": "resource",
+                "type": "lib.rest.identifier"
+              }
+            ],
+            "output": "lib.rest.identifier",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.rest.domain",
+        "name": "REST",
+        "languages": [
+          "lib.rest"
+        ],
+        "references": [],
+        "transformations": []
+      }
+    ],
+    "mediations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "rest",
+        "about": "REST resources, identified and transferred as representations.",
+        "tags": [
+          "web",
+          "api"
+        ]
+      }
+    }
+  ]
+}

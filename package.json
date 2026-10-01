@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "tsx scripts/generate-schema.ts && python python/generate.py",
+    "generate": "tsx scripts/generate-schema.ts && python python/generate.py && tsx scripts/build-catalog.ts",
     "build": "tsc -b",
     "test": "vitest run",
     "check-self": "node packages/cli/dist/index.js check examples/tool-design.systemathic.json && node packages/cli/dist/index.js verify examples/tool-design.systemathic.json examples/tool-design.rules.py",

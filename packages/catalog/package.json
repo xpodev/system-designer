@@ -1,0 +1,22 @@
+{
+  "name": "@systemathic/catalog",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Catalog: standard and file Packages of Languages, Domains and Mediations to import, and exporting a selection.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/core": "workspace:*",
+    "@systemathic/tool": "workspace:*",
+    "@systemathic/tool-json": "workspace:*",
+    "@systemathic/editing": "workspace:*",
+    "@systemathic/editors": "workspace:*"
+  }
+}

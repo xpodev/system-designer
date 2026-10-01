@@ -21,6 +21,7 @@ const below: Record<string, string[]> = {
   "python-host": ["core", "tool", "tool-json", "verifier"],
   perspectives: ["core", "tool", "diagnoser"],
   exporter: ["core", "tool", "verifier"],
+  catalog: ["core", "tool", "tool-json", "editing", "editors"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter"],
 };
 

@@ -1,0 +1,526 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.http-over-tcp.system",
+    "name": "HTTP over TCP",
+    "languages": [
+      {
+        "id": "lib.http",
+        "name": "HTTP",
+        "entities": [
+          {
+            "id": "lib.http.request",
+            "name": "Request"
+          },
+          {
+            "id": "lib.http.response",
+            "name": "Response"
+          },
+          {
+            "id": "lib.http.method",
+            "name": "Method"
+          },
+          {
+            "id": "lib.http.target",
+            "name": "Target"
+          },
+          {
+            "id": "lib.http.header",
+            "name": "Header"
+          },
+          {
+            "id": "lib.http.body",
+            "name": "Body"
+          },
+          {
+            "id": "lib.http.status",
+            "name": "Status"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.http.requests-method",
+            "ends": [
+              {
+                "id": "lib.http.requests-method.requests",
+                "name": "requests",
+                "entity": "lib.http.request",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.http.requests-method.method",
+                "name": "method",
+                "entity": "lib.http.method",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.http.requests-target",
+            "ends": [
+              {
+                "id": "lib.http.requests-target.requests",
+                "name": "requests",
+                "entity": "lib.http.request",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.http.requests-target.target",
+                "name": "target",
+                "entity": "lib.http.target",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.http.request-headers",
+            "ends": [
+              {
+                "id": "lib.http.request-headers.request",
+                "name": "request",
+                "entity": "lib.http.request",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.http.request-headers.headers",
+                "name": "headers",
+                "entity": "lib.http.header",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.http.request-body",
+            "ends": [
+              {
+                "id": "lib.http.request-body.request",
+                "name": "request",
+                "entity": "lib.http.request",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.http.request-body.body",
+                "name": "body",
+                "entity": "lib.http.body",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.http.responses-status",
+            "ends": [
+              {
+                "id": "lib.http.responses-status.responses",
+                "name": "responses",
+                "entity": "lib.http.response",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.http.responses-status.status",
+                "name": "status",
+                "entity": "lib.http.status",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.http.response-headers",
+            "ends": [
+              {
+                "id": "lib.http.response-headers.response",
+                "name": "response",
+                "entity": "lib.http.response",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.http.response-headers.headers",
+                "name": "headers",
+                "entity": "lib.http.header",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.http.response-body",
+            "ends": [
+              {
+                "id": "lib.http.response-body.response",
+                "name": "response",
+                "entity": "lib.http.response",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.http.response-body.body",
+                "name": "body",
+                "entity": "lib.http.body",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "lib.http.exchange",
+            "name": "exchange",
+            "parameters": [
+              {
+                "id": "lib.http.exchange.request",
+                "name": "request",
+                "type": "lib.http.request"
+              }
+            ],
+            "output": "lib.http.response",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      },
+      {
+        "id": "lib.tcp",
+        "name": "TCP",
+        "entities": [
+          {
+            "id": "lib.tcp.connection",
+            "name": "Connection"
+          },
+          {
+            "id": "lib.tcp.endpoint",
+            "name": "Endpoint"
+          },
+          {
+            "id": "lib.tcp.port",
+            "name": "Port"
+          },
+          {
+            "id": "lib.tcp.stream",
+            "name": "Stream"
+          },
+          {
+            "id": "lib.tcp.segment",
+            "name": "Segment"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.tcp.outgoing-local",
+            "ends": [
+              {
+                "id": "lib.tcp.outgoing-local.outgoing",
+                "name": "outgoing",
+                "entity": "lib.tcp.connection",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.tcp.outgoing-local.local",
+                "name": "local",
+                "entity": "lib.tcp.endpoint",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.incoming-remote",
+            "ends": [
+              {
+                "id": "lib.tcp.incoming-remote.incoming",
+                "name": "incoming",
+                "entity": "lib.tcp.connection",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.tcp.incoming-remote.remote",
+                "name": "remote",
+                "entity": "lib.tcp.endpoint",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.endpoints-port",
+            "ends": [
+              {
+                "id": "lib.tcp.endpoints-port.endpoints",
+                "name": "endpoints",
+                "entity": "lib.tcp.endpoint",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.tcp.endpoints-port.port",
+                "name": "port",
+                "entity": "lib.tcp.port",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.connection-stream",
+            "ends": [
+              {
+                "id": "lib.tcp.connection-stream.connection",
+                "name": "connection",
+                "entity": "lib.tcp.connection",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.tcp.connection-stream.stream",
+                "name": "stream",
+                "entity": "lib.tcp.stream",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.tcp.stream-segments",
+            "ends": [
+              {
+                "id": "lib.tcp.stream-segments.stream",
+                "name": "stream",
+                "entity": "lib.tcp.stream",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.tcp.stream-segments.segments",
+                "name": "segments",
+                "entity": "lib.tcp.segment",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "lib.tcp.connect",
+            "name": "connect",
+            "parameters": [
+              {
+                "id": "lib.tcp.connect.local",
+                "name": "local",
+                "type": "lib.tcp.endpoint"
+              },
+              {
+                "id": "lib.tcp.connect.remote",
+                "name": "remote",
+                "type": "lib.tcp.endpoint"
+              }
+            ],
+            "output": "lib.tcp.connection",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.tcp.send",
+            "name": "send",
+            "parameters": [
+              {
+                "id": "lib.tcp.send.connection",
+                "name": "connection",
+                "type": "lib.tcp.connection"
+              },
+              {
+                "id": "lib.tcp.send.data",
+                "name": "data",
+                "type": "lib.tcp.stream"
+              }
+            ],
+            "output": "lib.tcp.connection",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.tcp.receive",
+            "name": "receive",
+            "parameters": [
+              {
+                "id": "lib.tcp.receive.connection",
+                "name": "connection",
+                "type": "lib.tcp.connection"
+              }
+            ],
+            "output": "lib.tcp.stream",
+            "primary": null,
+            "compares": []
+          },
+          {
+            "id": "lib.tcp.close",
+            "name": "close",
+            "parameters": [
+              {
+                "id": "lib.tcp.close.connection",
+                "name": "connection",
+                "type": "lib.tcp.connection"
+              }
+            ],
+            "output": "lib.tcp.connection",
+            "primary": null,
+            "compares": []
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.http.domain",
+        "name": "HTTP",
+        "languages": [
+          "lib.http"
+        ],
+        "references": [],
+        "transformations": []
+      },
+      {
+        "id": "lib.tcp.domain",
+        "name": "TCP",
+        "languages": [
+          "lib.tcp"
+        ],
+        "references": [],
+        "transformations": []
+      },
+      {
+        "id": "lib.http-over-tcp",
+        "name": "HttpOverTcp",
+        "languages": [
+          "lib.http",
+          "lib.tcp"
+        ],
+        "references": [],
+        "transformations": [
+          {
+            "id": "lib.http-over-tcp.messages",
+            "name": "HTTP messages as TCP streams",
+            "source": "lib.http",
+            "target": "lib.tcp",
+            "reverse": {
+              "context": []
+            },
+            "entityMappings": [
+              {
+                "source": "lib.http.request",
+                "targets": [
+                  "lib.tcp.stream"
+                ]
+              },
+              {
+                "source": "lib.http.response",
+                "targets": [
+                  "lib.tcp.stream"
+                ]
+              },
+              {
+                "source": "lib.http.method",
+                "targets": [
+                  "lib.tcp.segment"
+                ]
+              },
+              {
+                "source": "lib.http.target",
+                "targets": [
+                  "lib.tcp.segment"
+                ]
+              },
+              {
+                "source": "lib.http.header",
+                "targets": [
+                  "lib.tcp.segment"
+                ]
+              },
+              {
+                "source": "lib.http.body",
+                "targets": [
+                  "lib.tcp.segment"
+                ]
+              },
+              {
+                "source": "lib.http.status",
+                "targets": [
+                  "lib.tcp.segment"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": [
+              {
+                "source": "lib.http.exchange",
+                "targets": [
+                  "lib.tcp.send",
+                  "lib.tcp.receive"
+                ]
+              }
+            ],
+            "deferred": [
+              {
+                "relationship": "lib.http.requests-method"
+              },
+              {
+                "relationship": "lib.http.requests-target"
+              },
+              {
+                "relationship": "lib.http.request-headers"
+              },
+              {
+                "relationship": "lib.http.request-body"
+              },
+              {
+                "relationship": "lib.http.responses-status"
+              },
+              {
+                "relationship": "lib.http.response-headers"
+              },
+              {
+                "relationship": "lib.http.response-body"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "mediations": [
+      {
+        "id": "lib.http-over-tcp.mediation",
+        "what": "lib.http.domain",
+        "how": "lib.tcp.domain",
+        "mediator": "lib.http-over-tcp"
+      }
+    ]
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "http-over-tcp",
+        "about": "HTTP carried out over TCP: a Domain for each, the mediator and its Transformation, and the Mediation. Stack it under a design that uses HTTP.",
+        "tags": [
+          "web",
+          "network",
+          "mediation"
+        ]
+      }
+    }
+  ]
+}

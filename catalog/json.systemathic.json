@@ -1,0 +1,271 @@
+{
+  "format": "systemathic/1",
+  "design": {
+    "id": "lib.json.system",
+    "name": "JSON",
+    "languages": [
+      {
+        "id": "lib.json",
+        "name": "JSON",
+        "entities": [
+          {
+            "id": "lib.json.value",
+            "name": "Value"
+          },
+          {
+            "id": "lib.json.object",
+            "name": "Object"
+          },
+          {
+            "id": "lib.json.member",
+            "name": "Member"
+          },
+          {
+            "id": "lib.json.array",
+            "name": "Array"
+          },
+          {
+            "id": "lib.json.string",
+            "name": "String"
+          },
+          {
+            "id": "lib.json.number",
+            "name": "Number"
+          },
+          {
+            "id": "lib.json.boolean",
+            "name": "Boolean"
+          },
+          {
+            "id": "lib.json.null",
+            "name": "Null"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "lib.json.value-object",
+            "ends": [
+              {
+                "id": "lib.json.value-object.value",
+                "name": "value",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.value-object.object",
+                "name": "object",
+                "entity": "lib.json.object",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.value-array",
+            "ends": [
+              {
+                "id": "lib.json.value-array.value",
+                "name": "value",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.value-array.array",
+                "name": "array",
+                "entity": "lib.json.array",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.value-string",
+            "ends": [
+              {
+                "id": "lib.json.value-string.value",
+                "name": "value",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.value-string.string",
+                "name": "string",
+                "entity": "lib.json.string",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.value-number",
+            "ends": [
+              {
+                "id": "lib.json.value-number.value",
+                "name": "value",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.value-number.number",
+                "name": "number",
+                "entity": "lib.json.number",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.value-boolean",
+            "ends": [
+              {
+                "id": "lib.json.value-boolean.value",
+                "name": "value",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.value-boolean.boolean",
+                "name": "boolean",
+                "entity": "lib.json.boolean",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.value-null",
+            "ends": [
+              {
+                "id": "lib.json.value-null.value",
+                "name": "value",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.value-null.null",
+                "name": "null",
+                "entity": "lib.json.null",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.object-members",
+            "ends": [
+              {
+                "id": "lib.json.object-members.object",
+                "name": "object",
+                "entity": "lib.json.object",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "lib.json.object-members.members",
+                "name": "members",
+                "entity": "lib.json.member",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "lib.json.member-key",
+            "ends": [
+              {
+                "id": "lib.json.member-key.member",
+                "name": "member",
+                "entity": "lib.json.member",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.json.member-key.key",
+                "name": "key",
+                "entity": "lib.json.string",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.holder-content",
+            "ends": [
+              {
+                "id": "lib.json.holder-content.holder",
+                "name": "holder",
+                "entity": "lib.json.member",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "lib.json.holder-content.content",
+                "name": "content",
+                "entity": "lib.json.value",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "lib.json.container-items",
+            "ends": [
+              {
+                "id": "lib.json.container-items.container",
+                "name": "container",
+                "entity": "lib.json.array",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "lib.json.container-items.items",
+                "name": "items",
+                "entity": "lib.json.value",
+                "min": 0,
+                "max": "N"
+              }
+            ]
+          }
+        ],
+        "formulas": [
+          {
+            "id": "lib.json.axiom0",
+            "text": "all v in Value. (some v.object and no v.array and no v.string and no v.number and no v.boolean and no v.null) or (some v.array and no v.object and no v.string and no v.number and no v.boolean and no v.null) or (some v.string and no v.object and no v.array and no v.number and no v.boolean and no v.null) or (some v.number and no v.object and no v.array and no v.string and no v.boolean and no v.null) or (some v.boolean and no v.object and no v.array and no v.string and no v.number and no v.null) or (some v.null and no v.object and no v.array and no v.string and no v.number and no v.boolean)"
+          }
+        ],
+        "interactions": []
+      }
+    ],
+    "domains": [
+      {
+        "id": "lib.json.domain",
+        "name": "JSON",
+        "languages": [
+          "lib.json"
+        ],
+        "references": [],
+        "transformations": []
+      }
+    ],
+    "mediations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "json",
+        "about": "JSON values: objects, arrays, strings, numbers, booleans and null.",
+        "tags": [
+          "encoding",
+          "data"
+        ]
+      }
+    }
+  ]
+}
