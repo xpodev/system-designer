@@ -23,6 +23,7 @@ const below: Record<string, string[]> = {
   exporter: ["core", "tool", "verifier"],
   catalog: ["core", "tool", "tool-json", "editing", "editors"],
   host: ["core", "tool", "tool-json", "editing", "editors", "diagnoser", "verifier", "python-host", "perspectives", "exporter", "catalog"],
+  mcp: ["host"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host"],
 };
 
@@ -43,7 +44,8 @@ describe("layering", () => {
   for (const [name, allowed] of Object.entries(below)) {
     it(`${name} depends only on ${allowed.join(", ") || "nothing"}`, () => {
       const manifest = JSON.parse(readFileSync(join(root, "packages", name, "package.json"), "utf8"));
-      expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual(allowed.map((dep) => `@systemathic/${dep}`).sort());
+      const own = Object.keys(manifest.dependencies ?? {}).filter((dep) => dep.startsWith("@systemathic/"));
+      expect(own.sort()).toEqual(allowed.map((dep) => `@systemathic/${dep}`).sort());
       for (const file of sources(join(root, "packages", name, "src"))) {
         for (const target of imports(file).filter((spec) => spec.startsWith("@systemathic/"))) {
           expect(allowed, `${relative(root, file)} imports ${target}`).toContain(target.slice("@systemathic/".length));

@@ -61,7 +61,7 @@ export interface ServeOptions {
   readonly ui?: string;
 }
 
-/** Serves `host` on 127.0.0.1; resolves once it listens. */
+/** Serves `host` on 127.0.0.1; resolves once it listens, and rejects if it cannot, as when the port is taken. */
 export function serve(host: HostApi, options: ServeOptions = {}): Promise<{ server: Server; url: string }> {
   const table = routes(host);
   const server = createServer(async (request, response) => {
@@ -83,7 +83,8 @@ export function serve(host: HostApi, options: ServeOptions = {}): Promise<{ serv
       return send(response, status, { error: (error as Error).message });
     }
   });
-  return new Promise((done) => {
+  return new Promise((done, fail) => {
+    server.once("error", fail);
     server.listen(options.port ?? 4747, "127.0.0.1", () => {
       const address = server.address();
       const port = typeof address === "object" && address ? address.port : options.port;

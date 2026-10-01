@@ -1,0 +1,23 @@
+{
+  "name": "@systemathic/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The MCP server: the tool for LLMs — systems, every editor operation, verification and views as MCP tools and resources.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@systemathic/host": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "bin": {
+    "systemathic-mcp": "dist/main.js"
+  }
+}

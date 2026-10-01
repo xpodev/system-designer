@@ -18,6 +18,7 @@ export default defineConfig({
       "@systemathic/exporter": source("exporter"),
       "@systemathic/catalog": source("catalog"),
       "@systemathic/host": source("host"),
+      "@systemathic/mcp": source("mcp"),
     },
   },
   test: {
