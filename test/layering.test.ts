@@ -20,7 +20,8 @@ const below: Record<string, string[]> = {
   verifier: ["core", "tool"],
   "python-host": ["core", "tool", "tool-json", "verifier"],
   perspectives: ["core", "tool", "diagnoser"],
-  cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host"],
+  exporter: ["core", "tool", "verifier"],
+  cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter"],
 };
 
 const coreLayers = ["kernel", "contexts", "operations", "std"];

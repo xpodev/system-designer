@@ -29,6 +29,9 @@ importers:
       '@systemathic/diagnoser':
         specifier: workspace:*
         version: link:../diagnoser
+      '@systemathic/exporter':
+        specifier: workspace:*
+        version: link:../exporter
       '@systemathic/python-host':
         specifier: workspace:*
         version: link:../python-host
@@ -73,6 +76,18 @@ importers:
       '@systemathic/editing':
         specifier: workspace:*
         version: link:../editing
+
+  packages/exporter:
+    dependencies:
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+      '@systemathic/verifier':
+        specifier: workspace:*
+        version: link:../verifier
 
   packages/perspectives:
     dependencies:

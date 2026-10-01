@@ -1,0 +1,20 @@
+{
+  "name": "@systemathic/exporter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Exporter: a design as a Specification, in Markdown and JSON.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/core": "workspace:*",
+    "@systemathic/tool": "workspace:*",
+    "@systemathic/verifier": "workspace:*"
+  }
+}

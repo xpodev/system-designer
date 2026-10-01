@@ -15,19 +15,7 @@
       "path": "../tool"
     },
     {
-      "path": "../tool-json"
-    },
-    {
-      "path": "../diagnoser"
-    },
-    {
       "path": "../verifier"
-    },
-    {
-      "path": "../python-host"
-    },
-    {
-      "path": "../exporter"
     }
   ]
 }

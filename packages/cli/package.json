@@ -18,7 +18,8 @@
     "@systemathic/tool-json": "workspace:*",
     "@systemathic/diagnoser": "workspace:*",
     "@systemathic/verifier": "workspace:*",
-    "@systemathic/python-host": "workspace:*"
+    "@systemathic/python-host": "workspace:*",
+    "@systemathic/exporter": "workspace:*"
   },
   "bin": {
     "systemathic": "dist/index.js"

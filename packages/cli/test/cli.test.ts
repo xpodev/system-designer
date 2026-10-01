@@ -77,6 +77,21 @@ describe("systemathic", () => {
     expect(out.at(-1)).toContain("1 failed rule");
   }, 30_000);
 
+  it("export: prints the specification, in Markdown or JSON", async () => {
+    const md = io();
+    expect(await run(["export", "examples/game.systemathic.json"], md.fake)).toBe(0);
+    expect(md.out[0]).toMatch(/^# Game\n/);
+    const json = io();
+    expect(await run(["export", "examples/game.systemathic.json", "json", "std"], json.fake)).toBe(0);
+    expect(JSON.parse(json.out[0]!).requirements).toHaveLength(9);
+  }, 30_000);
+
+  it("export: refuses a System with structural errors", async () => {
+    const { fake, err } = io();
+    expect(await run(["export", "examples/broken/w6.systemathic.json"], fake)).toBe(1);
+    expect(err[0]).toContain("before exporting");
+  });
+
   it("prints usage on anything else", async () => {
     const { fake, err } = io();
     expect(await run([], fake)).toBe(2);
