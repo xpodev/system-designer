@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeSystem } from "@systemathic/tool-json";
-import type { Failure, HostRun, Profile, Rule, Script, ScriptHost, Snapshot } from "@systemathic/verifier";
+import type { Failure, HostRun, Profile, Rule, Script, ScriptAssistant, ScriptCheck, ScriptHost, ScriptSymbol, Snapshot } from "@systemathic/verifier";
 
 /** The folder holding the `systemathic` Python package. */
 export const PYTHON_PACKAGE = fileURLToPath(new URL("../../../python/", import.meta.url));
@@ -25,7 +25,9 @@ interface Ran {
   failures: Failure[];
 }
 
-export class PythonHost implements ScriptHost {
+export class PythonHost implements ScriptHost, ScriptAssistant {
+  private symbolsOnce?: Promise<ScriptSymbol[]>;
+
   constructor(
     private readonly python = process.env.SYSTEMATHIC_PYTHON ?? "python",
     /** Where relative script paths are resolved from. */
@@ -52,6 +54,16 @@ export class PythonHost implements ScriptHost {
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }
+  }
+
+  check(script: Script): Promise<ScriptCheck> {
+    return this.call<ScriptCheck>(["check", this.path(script)]);
+  }
+
+  /** Read once: what a script can use does not change while the host runs. */
+  symbols(): Promise<ScriptSymbol[]> {
+    this.symbolsOnce ??= this.call<{ symbols: ScriptSymbol[] }>(["symbols"]).then((r) => r.symbols);
+    return this.symbolsOnce;
   }
 
   private path(script: Script): string {

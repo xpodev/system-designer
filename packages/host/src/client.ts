@@ -3,6 +3,7 @@ import type { Diagnostic } from "@systemathic/diagnoser";
 import type { Specification } from "@systemathic/exporter";
 import type { PerspectiveInfo, View } from "@systemathic/perspectives";
 import type { SystemFile } from "@systemathic/tool-json";
+import type { ScriptCheck, ScriptSymbol } from "@systemathic/verifier";
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
 
 const enc = encodeURIComponent;
@@ -75,6 +76,10 @@ export class HostClient implements HostApi {
   exportSelection = (context: string, ids: readonly string[], name: string, path?: string) =>
     this.call<{ path?: string; file: SystemFile }>("POST", `${this.c(context)}/export`, { ids, name, path });
   setAttachment = (context: string, owner: string, data: unknown) => this.call<void>("PUT", `${this.c(context)}/attachments/${enc(owner)}`, { data });
+  script = (context: string) => this.call<{ path: string; profile: string; source: string; exists: boolean }>("GET", `${this.c(context)}/script`);
+  saveScript = (context: string, path: string, source: string) => this.call<{ path: string }>("PUT", `${this.c(context)}/script`, { path, source });
+  checkScript = (source: string) => this.call<ScriptCheck>("POST", "/api/scripts/check", { source });
+  symbols = () => this.call<ScriptSymbol[]>("GET", "/api/scripts/symbols");
   attachment = (context: string, owner: string) => this.call<unknown>("GET", `${this.c(context)}/attachments/${enc(owner)}`);
 
   subscribe(listener: (event: HostEvent) => void): () => void {

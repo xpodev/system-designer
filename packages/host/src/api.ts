@@ -9,6 +9,7 @@ import type { Specification } from "@systemathic/exporter";
 import type { ParameterSpec } from "@systemathic/editors";
 import type { PerspectiveInfo, View } from "@systemathic/perspectives";
 import type { SystemFile } from "@systemathic/tool-json";
+import type { ScriptCheck, ScriptSymbol } from "@systemathic/verifier";
 
 export interface ContextInfo {
   readonly id: string;
@@ -59,7 +60,7 @@ export interface RunInfo {
   readonly errors: number;
   readonly warnings: number;
   readonly violations: readonly { rule: string; severity: "error" | "warning"; message: string; subjects: readonly string[] }[];
-  readonly failures: readonly { rule: string; error: string }[];
+  readonly failures: readonly { rule: string; error: string; line?: number }[];
 }
 
 export type HostEvent =
@@ -98,6 +99,15 @@ export interface HostApi {
   view(context: string, perspective: string, language?: string): Promise<View>;
   verify(context: string, script?: string, profile?: string): Promise<RunInfo>;
   specification(context: string): Promise<{ specification: Specification; markdown: string }>;
+
+  /** The System's verification script: its own, or a new one to start from, with where it is (or would be) saved. */
+  script(context: string): Promise<{ path: string; profile: string; source: string; exists: boolean }>;
+  /** Saves a script, relative to the host's folder, and makes it the one the System is verified against. */
+  saveScript(context: string, path: string, source: string): Promise<{ path: string }>;
+  /** What is wrong with a script's source, as it is being written. */
+  checkScript(source: string): Promise<ScriptCheck>;
+  /** What a script can use. */
+  symbols(): Promise<ScriptSymbol[]>;
   exportSelection(context: string, ids: readonly string[], name: string, path?: string): Promise<{ path?: string; file: SystemFile }>;
   /** Replaces the attachment of an owner — a client's layouts — or removes it, with `null`. */
   setAttachment(context: string, owner: string, data: unknown): Promise<void>;

@@ -9,6 +9,7 @@ import copy
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -28,7 +29,7 @@ from systemathic.std import (  # noqa: E402
     standard,
     top_domains,
 )
-from systemathic import host  # noqa: E402
+from systemathic import assist, host  # noqa: E402
 
 EXAMPLES = PYTHON.parent / "examples"
 GAME = json.loads((EXAMPLES / "game.systemathic.json").read_text(encoding="utf-8"))
@@ -137,6 +138,42 @@ class Standard(unittest.TestCase):
         self.assertEqual(Violation(read(GAME), "x").elements[0].name, "Game")
 
 
+class Assist(unittest.TestCase):
+    def script(self, text: str) -> str:
+        folder = Path(tempfile.mkdtemp())
+        path = folder / "rules.py"
+        path.write_text(text, encoding="utf-8")
+        return str(path)
+
+    def test_reports_a_syntax_error_where_it_is(self):
+        result = assist.check(self.script("from systemathic.std import *\n\ndef broken(:\n    pass\n"))
+        self.assertEqual([(p["line"], p["severity"]) for p in result["problems"]], [(3, "error")])
+        self.assertTrue(result["problems"][0]["message"].startswith("SyntaxError"))
+
+    def test_reports_an_error_raised_while_loading_at_its_line(self):
+        result = assist.check(self.script("from systemathic.std import *\nprofile = Profile(missing)\n"))
+        self.assertEqual(result["problems"][0]["line"], 2)
+        self.assertIn("NameError", result["problems"][0]["message"])
+
+    def test_lints_rules_in_no_profile_and_without_a_docstring(self):
+        result = assist.check(self.script(
+            "from systemathic.std import *\n\n@rule(severity=ERROR)\ndef lonely(system):\n    return []\n\nstrict = Profile(*standard_rules)\n"
+        ))
+        found = sorted((p["line"], p["severity"]) for p in result["problems"])
+        self.assertEqual(found, [(1, "warning"), (4, "info"), (4, "warning")])
+        self.assertEqual(next(r for r in result["rules"] if r["name"] == "lonely")["line"], 4)
+
+    def test_finds_nothing_wrong_with_the_tool_designs_profile(self):
+        self.assertEqual(assist.check(str(EXAMPLES / "tool-design.rules.py"))["problems"], [])
+
+    def test_offers_symbols_with_their_documentation(self):
+        symbols = {(s["name"], s["kind"]): s for s in assist.symbols()}
+        self.assertIn("langs*(D)", symbols[("langs", "function")]["doc"])
+        self.assertEqual(symbols[("domain", "method")]["detail"], "System.domain(self, name: 'str') -> 'Element'")
+        self.assertIn(("references", "property"), symbols)
+        self.assertEqual(symbols[("opacity", "rule")]["detail"], "standard rule, error")
+
+
 class RuleHost(unittest.TestCase):
     def run_host(self, *args: str) -> dict:
         done = subprocess.run([sys.executable, "-m", "systemathic.host", *args], cwd=PYTHON, capture_output=True, text=True)
@@ -152,7 +189,7 @@ class RuleHost(unittest.TestCase):
     def test_reports_a_broken_rule_and_runs_the_others(self):
         broken = PYTHON / "tests" / "broken_rules.py"
         result = self.run_host("run", str(broken), str(EXAMPLES / "game.systemathic.json"))
-        self.assertEqual([f["rule"] for f in result["failures"]], ["explodes"])
+        self.assertEqual([(f["rule"], f["line"]) for f in result["failures"]], [("explodes", 10)])
         self.assertEqual([v["rule"] for v in result["violations"]], ["finds_core"])
         self.assertEqual(result["violations"][0]["subjects"], ["d.core"])
 

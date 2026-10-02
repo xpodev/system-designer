@@ -2,14 +2,17 @@
 
     python -m systemathic.host describe <script.py>
     python -m systemathic.host run <script.py> <system file> [profile]
+    python -m systemathic.host check <script.py>
+    python -m systemathic.host symbols
 
 A script is a module: `Script ↦` module, `Rule ↦` function, `Violation ↦` a yielded object.
 Its profiles are its module-level `Profile`s, by variable name; `profile` is the default. The
 script may be `std`, which is systemathic.std itself, with the profile `standard`.
 
-Both commands print one JSON object. `describe` gives the script's rules and profiles; `run`
+Every command prints one JSON object. `describe` gives the script's rules and profiles; `run`
 gives every Violation, with the ids of its subjects, and every rule that raised instead of
-yielding, so one broken rule does not hide the others.
+yielding, with the script's line it raised at, so one broken rule does not hide the others.
+`check` and `symbols` help write scripts (see systemathic.assist).
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ import traceback
 from pathlib import Path
 from types import ModuleType
 
-from . import std
+from . import assist, std
 from .core import load
 from .std import Profile, Rule
 
@@ -55,7 +58,10 @@ def rules(script: ModuleType) -> list[Rule]:
 
 
 def describe(path: str) -> dict:
-    script = module(path)
+    return describe_module(module(path))
+
+
+def describe_module(script: ModuleType) -> dict:
     return {
         "rules": [{"name": r.name, "severity": r.severity, "about": r.about, "script": _origin(r)} for r in rules(script)],
         "profiles": [{"name": name, "rules": [r.name for r in p.rules]} for name, p in profiles(script).items()],
@@ -79,8 +85,12 @@ def run(path: str, system_file: str, profile_name: str | None = None) -> dict:
                     "message": violation.message,
                     "subjects": [element.id for element in violation.elements],
                 })
-        except Exception:  # a broken rule is reported, and the others still run
-            failures.append({"rule": each.name, "error": traceback.format_exc(limit=4)})
+        except Exception as error:  # a broken rule is reported, and the others still run
+            failure = {"rule": each.name, "error": traceback.format_exc(limit=4)}
+            line = assist.line_in(error, path) if path != "std" else None
+            if line is not None:
+                failure["line"] = line
+            failures.append(failure)
     return {
         "profile": name,
         "rules": [{"name": r.name, "severity": r.severity, "about": r.about, "script": _origin(r)} for r in available[name].rules],
@@ -99,6 +109,10 @@ def main(argv: list[str]) -> int:
             result = describe(argv[1])
         elif len(argv) in (3, 4) and argv[0] == "run":
             result = run(argv[1], argv[2], argv[3] if len(argv) == 4 else None)
+        elif len(argv) == 2 and argv[0] == "check":
+            result = assist.check(argv[1])
+        elif len(argv) == 1 and argv[0] == "symbols":
+            result = {"symbols": assist.symbols()}
         else:
             print(__doc__, file=sys.stderr)
             return 2

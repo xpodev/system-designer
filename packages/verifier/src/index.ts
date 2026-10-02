@@ -47,6 +47,8 @@ export interface Violation {
 export interface Failure {
   readonly rule: string;
   readonly error: string;
+  /** The script's line it failed at, when the host can tell. */
+  readonly line?: number;
 }
 
 export interface Run {
@@ -68,6 +70,38 @@ export interface ScriptHost {
   profiles(script: Script): Promise<Profile[]>;
   /** Runs one of the script's profiles on a Snapshot. */
   run(profile: Profile, snapshot: Snapshot): Promise<HostRun>;
+}
+
+/** Something wrong, or worth a look, at a place in a script; lines and columns count from 1. */
+export interface ScriptProblem {
+  readonly line: number;
+  readonly column: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  readonly message: string;
+  readonly severity: "error" | "warning" | "info";
+}
+
+export interface ScriptCheck {
+  readonly problems: readonly ScriptProblem[];
+  /** The script's rules, with the line each is defined at when it is its own. */
+  readonly rules: readonly (Rule & { line?: number })[];
+  readonly profiles: readonly { name: string; rules: readonly string[] }[];
+}
+
+/** What a script can use: a function, a class, a rule, a property to navigate, … */
+export interface ScriptSymbol {
+  readonly name: string;
+  readonly kind: "function" | "class" | "rule" | "constant" | "method" | "property";
+  readonly detail: string;
+  readonly doc: string;
+  readonly module: string;
+}
+
+/** Helps write scripts: what is wrong with one, and what one can use. A minimal language server. */
+export interface ScriptAssistant {
+  check(script: Script): Promise<ScriptCheck>;
+  symbols(): Promise<ScriptSymbol[]>;
 }
 
 /** The standard rules, as a script. */

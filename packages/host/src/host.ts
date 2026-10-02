@@ -5,9 +5,9 @@
  * opened twice is one system context, so a UI and an LLM editing "the same file" edit the
  * same History.
  */
-import { readFileSync, writeFileSync } from "node:fs";
-import { readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative, resolve, sep } from "node:path";
 import { describe as describeElement, nameOf } from "@systemathic/core";
 import { Catalog, exportSelection, importPackage, readPackage } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
@@ -18,7 +18,18 @@ import { perspectives, view, type Perspective, type View } from "@systemathic/pe
 import { PythonHost } from "@systemathic/python-host";
 import { newSystem, open, save, type SystemContext } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type SystemFile } from "@systemathic/tool-json";
-import { profileSetting, snapshot, STANDARD, Verifier, type Run, type ScriptHost } from "@systemathic/verifier";
+import {
+  ATTACHMENT_OWNER as VERIFIER,
+  profileSetting,
+  snapshot,
+  STANDARD,
+  Verifier,
+  type Run,
+  type ScriptAssistant,
+  type ScriptCheck,
+  type ScriptHost,
+  type ScriptSymbol,
+} from "@systemathic/verifier";
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
 
 interface Hosted {
@@ -34,7 +45,7 @@ export interface HostOptions {
   /** Where relative paths are resolved from. */
   readonly cwd?: string;
   readonly catalog?: Catalog;
-  readonly scripts?: ScriptHost;
+  readonly scripts?: ScriptHost & ScriptAssistant;
 }
 
 export class Host implements HostApi {
@@ -43,12 +54,14 @@ export class Host implements HostApi {
   private readonly cwd: string;
   private readonly library: Catalog;
   private readonly verifier: Verifier;
+  private readonly scripts: ScriptHost & ScriptAssistant;
   private next = 1;
 
   constructor(options: HostOptions = {}) {
     this.cwd = options.cwd ?? process.cwd();
     this.library = options.catalog ?? Catalog.standard();
-    this.verifier = new Verifier(options.scripts ?? new PythonHost(undefined, this.cwd));
+    this.scripts = options.scripts ?? new PythonHost(undefined, this.cwd);
+    this.verifier = new Verifier(this.scripts);
   }
 
   async editors(): Promise<OperationInfo[]> {
@@ -219,6 +232,43 @@ export class Host implements HostApi {
     return info;
   }
 
+  async script(context: string) {
+    const hosted = this.get(context);
+    const setting = profileSetting(hosted.target.context.attachments);
+    if (setting && setting.script !== STANDARD.path) {
+      const file = resolve(this.cwd, setting.script);
+      const source = existsSync(file) ? readFileSync(file, "utf8") : undefined;
+      return { path: setting.script, profile: setting.profile, source: source ?? TEMPLATE, exists: source !== undefined };
+    }
+    const beside = hosted.path ? posix(relative(this.cwd, hosted.path)).replace(/\.systemathic\.json$|\.json$/, ".rules.py") : "rules.py";
+    return { path: beside, profile: "profile", source: TEMPLATE, exists: false };
+  }
+
+  async saveScript(context: string, path: string, source: string) {
+    const hosted = this.get(context);
+    const file = resolve(this.cwd, path);
+    writeFileSync(file, source);
+    const script = posix(relative(this.cwd, file));
+    const current = profileSetting(hosted.target.context.attachments);
+    await this.setAttachment(context, VERIFIER, { script, profile: current?.script === script ? current.profile : "profile" });
+    return { path: script };
+  }
+
+  async checkScript(source: string): Promise<ScriptCheck> {
+    const folder = mkdtempSync(join(tmpdir(), "systemathic-script-"));
+    try {
+      const file = join(folder, "script.py");
+      writeFileSync(file, source);
+      return await this.scripts.check({ path: file });
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  }
+
+  async symbols(): Promise<ScriptSymbol[]> {
+    return this.scripts.symbols();
+  }
+
   async specification(context: string) {
     const hosted = this.get(context);
     const errors = structuralErrors(diagnose(hosted.target.context));
@@ -304,3 +354,24 @@ export class Host implements HostApi {
     for (const listener of this.listeners) listener(event);
   }
 }
+
+/** A path with forward slashes, as files name each other in a System's attachments. */
+const posix = (path: string) => path.split(sep).join("/");
+
+/** A new System's verification script: the standard rules, and one of its own to start from. */
+const TEMPLATE = `"""The rules this System is verified against."""
+
+from systemathic.core import *
+from systemathic.std import *
+
+
+@rule(severity=ERROR)
+def every_domain_uses_a_language(system: System):
+    """Every Domain uses at least one Language of its own."""
+    for domain in system.domains:
+        if not domain.languages:
+            yield Violation(domain, f"{domain.name} uses no Language of its own")
+
+
+profile = Profile(*standard_rules, every_domain_uses_a_language)
+`;

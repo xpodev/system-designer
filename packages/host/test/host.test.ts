@@ -58,6 +58,22 @@ describe("Host", () => {
     expect((await host.contexts())[0]!.clients).toEqual(["mcp"]);
   });
 
+  it("edits the verification script: a template to start, saved as the System's profile, checked as it is written", async () => {
+    const dir = workspace();
+    const host = new Host({ cwd: dir });
+    const { id } = await host.open("game.json");
+    const fresh = await host.script(id);
+    expect(fresh).toMatchObject({ path: "game.rules.py", profile: "profile", exists: false });
+    expect((await host.checkScript(fresh.source)).problems).toEqual([]);
+    await host.saveScript(id, fresh.path, fresh.source);
+    expect(await host.attachment(id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" });
+    expect(await host.script(id)).toMatchObject({ path: "game.rules.py", exists: true, source: fresh.source });
+    expect((await host.verify(id)).rules).toBe(10);
+    const broken = await host.checkScript("from systemathic.std import *\nprofile = Profile(nothing)\n");
+    expect(broken.problems[0]).toMatchObject({ line: 2, severity: "error" });
+    expect((await host.symbols()).some((s) => s.name === "witnesses")).toBe(true);
+  }, 30_000);
+
   it("refuses malformed requests, never ill-formed results", async () => {
     const host = new Host({ cwd: workspace() });
     const { id } = await host.open("game.json");
