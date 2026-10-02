@@ -1,459 +1,507 @@
 /**
- * The UI: a client of the host, with its own EditSession on each system context it shows.
- * What it draws comes from Views; what it changes goes through the editors' operations; what
- * other clients change arrives as events. Its layout — the perspective, what is collapsed,
- * where boxes were dragged — is kept with the System as the `ui` attachment.
+ * The UI: a client of the host. A System opens into a workspace — the Explorer, editors in
+ * tabs, the Problems panel — with its own EditSession; what other clients do arrives live.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, type ContextInfo, type Diagnostic, type EditInfo, type OperationInfo, type PackageSummary, type PerspectiveInfo, type RunInfo, type View } from "./api";
-import { Editors, type Elements } from "./Editors";
-import { Graph, type Positions } from "./Graph";
-import { Tree } from "./Tree";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, type ContextInfo, type HostEvent, type OperationInfo, type PackageSummary } from "./api";
+import { DomainEditor } from "./editors/DomainEditor";
+import { LanguageEditor } from "./editors/LanguageEditor";
+import { MediationEditor } from "./editors/MediationEditor";
+import { SystemEditor } from "./editors/SystemEditor";
+import { TransformationEditor } from "./editors/TransformationEditor";
+import { Explorer } from "./Explorer";
+import { tabKey, type Tab } from "./model";
+import { Palette, type Command } from "./Palette";
+import { Panel, type PanelTab } from "./Panel";
+import { SpecificationTab, ViewTab } from "./ViewTab";
+import { Icon, IconButton } from "./widgets";
+import { useModel, useWorkspace, WorkspaceProvider } from "./workspace";
 
-const GRAPHS = new Set(["domain-map", "language", "mediation-stack"]);
+type Dialog = "open" | "new" | "save" | "catalog" | undefined;
 
-interface Layout {
-  perspective?: string;
-  language?: string;
-  collapsed?: string[];
-  positions?: Record<string, Positions>;
+/** The script editor brings a code editor with it: loaded when first opened. */
+const ScriptTab = lazy(() => import("./ScriptTab").then((m) => ({ default: m.ScriptTab })));
+
+/** One stream of host events, shared by everything that listens. */
+function useEvents() {
+  const listeners = useRef(new Set<(event: HostEvent) => void>());
+  const [connected, setConnected] = useState(true);
+  useEffect(() => api.events((event) => listeners.current.forEach((l) => l(event)), setConnected), []);
+  const subscribe = useCallback((listener: (event: HostEvent) => void) => {
+    listeners.current.add(listener);
+    return () => void listeners.current.delete(listener);
+  }, []);
+  return { subscribe, connected };
 }
 
-type Dialog = { kind: "open" } | { kind: "new" } | { kind: "save" } | { kind: "catalog" } | { kind: "specification"; markdown: string };
-
 export function App() {
-  const [contexts, setContexts] = useState<ContextInfo[]>([]);
-  const [context, setContext] = useState<string | undefined>();
-  const [session, setSession] = useState<string | undefined>();
   const [operations, setOperations] = useState<OperationInfo[]>([]);
-  const [perspectives, setPerspectives] = useState<PerspectiveInfo[]>([]);
-  const [layout, setLayout] = useState<Layout>({});
-  const [view, setView] = useState<View | undefined>();
-  const [outline, setOutline] = useState<View | undefined>();
-  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
-  const [history, setHistory] = useState<EditInfo[]>([]);
-  const [run, setRun] = useState<RunInfo | undefined>();
-  const [selected, setSelected] = useState<string | undefined>();
-  const [tab, setTab] = useState<"diagnostics" | "history" | "verification">("diagnostics");
-  const [dialog, setDialog] = useState<Dialog | undefined>();
-  const [message, setMessage] = useState<{ text: string; error?: boolean } | undefined>();
-  /** Our session on each context, started once even when React runs an effect twice. */
-  const sessions = useRef(new Map<string, Promise<string>>());
+  const [contexts, setContexts] = useState<ContextInfo[]>([]);
+  const [context, setContextState] = useState<string | undefined>(() => location.hash.slice(1) || undefined);
+  const [dialog, setDialog] = useState<Dialog>();
+  const [error, setError] = useState<string>();
+  const events = useEvents();
 
-  const perspective = layout.perspective ?? "outline";
-  const languages = useMemo(() => outline?.items.filter((item) => item.kind === "Language") ?? [], [outline]);
-  const language = layout.language ?? languages[0]?.subject;
+  const setContext = (id: string | undefined) => {
+    setContextState(id);
+    history.replaceState(null, "", id ? `#${id}` : location.pathname);
+  };
 
-  const notify = (text: string, error = false) => setMessage({ text, error });
+  const refreshContexts = useCallback(() => api.contexts().then(setContexts, (e) => setError(e.message)), []);
   useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(undefined), message.error ? 8000 : 3000);
-    return () => clearTimeout(timer);
-  }, [message]);
-  const failed = (error: unknown) => notify((error as Error).message, true);
-
+    void api.editors().then(setOperations, (e) => setError(e.message));
+    void refreshContexts();
+  }, [refreshContexts]);
+  useEffect(() => events.subscribe((event) => (event.type === "contexts" || event.type === "saved" || event.type === "edit") && void refreshContexts()), [events, refreshContexts]);
   useEffect(() => {
-    void Promise.all([api.editors(), api.perspectives(), api.contexts()]).then(([ops, ps, cs]) => {
-      setOperations(ops);
-      setPerspectives(ps);
-      setContexts(cs);
-      if (cs[0]) setContext(cs[0].id);
-    }, failed);
-  }, []);
+    if (context && contexts.length > 0 && !contexts.some((c) => c.id === context)) setContext(undefined);
+  }, [context, contexts]);
 
-  // A session of our own on the context we show, and its saved layout.
-  useEffect(() => {
-    if (!context) return;
-    setSelected(undefined);
-    setRun(undefined);
-    let started = sessions.current.get(context);
-    if (!started) {
-      started = api.startSession(context).then(({ session }) => session);
-      sessions.current.set(context, started);
-    }
-    void started.then(setSession, failed);
-    void api.attachment(context, "ui").then((data) => setLayout((data as Layout | null) ?? {}), failed);
-  }, [context]);
-
-  const refresh = useCallback(async () => {
-    if (!context) return;
-    try {
-      const [o, d, h, cs] = await Promise.all([api.view(context, "outline"), api.diagnostics(context), api.history(context), api.contexts()]);
-      setOutline(o);
-      setDiagnostics(d);
-      setHistory(h);
-      setContexts(cs);
-      const needsLanguage = perspective === "language";
-      const languageId = layout.language ?? o.items.find((item) => item.kind === "Language")?.subject;
-      if (perspective === "outline") setView(o);
-      else if (needsLanguage && !languageId) setView({ perspective, title: "Language", items: [], links: [] });
-      else setView(await api.view(context, perspective, needsLanguage ? languageId : undefined));
-    } catch (error) {
-      failed(error);
-    }
-  }, [context, perspective, layout.language]);
-
-  useEffect(() => void refresh(), [refresh]);
-
-  // Every Edit, by any client, refreshes what is shown.
-  useEffect(
-    () =>
-      api.events((event) => {
-        if (event.type === "contexts") void api.contexts().then(setContexts);
-        if ("context" in event && event.context === context) {
-          if (event.type === "verified") setRun(event.run);
-          void refresh();
-        }
-      }),
-    [context, refresh],
-  );
-
-  const saveLayout = (next: Layout) => {
-    setLayout(next);
-    if (context) void api.setAttachment(context, "ui", next).catch(failed);
-  };
-
-  const elements: Elements = useMemo(() => {
-    const index: Elements = new Map();
-    for (const item of outline?.items ?? []) {
-      if (item.kind === "group") continue;
-      const label = item.kind === "End" ? (item.detail ?? item.label) : item.label;
-      const list = index.get(item.kind) ?? [];
-      if (!list.some((e) => e.id === item.subject)) list.push({ id: item.subject, label });
-      index.set(item.kind, list);
-    }
-    return index;
-  }, [outline]);
-
-  const selectedItem = outline?.items.find((item) => item.subject === selected && item.kind !== "group");
-
-  const select = (subject: string) => {
-    setSelected(subject);
-    if (context && session) void api.select(context, session, [subject]).catch(() => undefined);
-  };
-
-  const apply = async (op: OperationInfo, args: Record<string, unknown>) => {
-    if (!context || !session) return;
-    const edit = await api.apply(context, session, op.editor, op.name, args);
-    if (edit.kind === "addition" && edit.elements[0]) setSelected(edit.elements[0]);
-    notify(`${edit.summary}`);
-  };
-
-  const undo = async () => {
-    if (!context || !session) return;
-    const edit = await api.undo(context, session).catch(failed);
-    notify(edit ? edit.summary : "Nothing of yours to undo");
-  };
-
-  const verify = async () => {
-    if (!context) return;
-    try {
-      const result = await api.verify(context);
-      setRun(result);
-      setTab("verification");
-      notify(`${result.profile}: ${result.errors} errors, ${result.warnings} warnings`, result.errors > 0);
-    } catch (error) {
-      failed(error);
-      setTab("diagnostics");
-    }
-  };
-
-  const specification = async () => {
-    if (!context) return;
-    try {
-      setDialog({ kind: "specification", markdown: (await api.specification(context)).markdown });
-    } catch (error) {
-      failed(error);
-    }
-  };
-
-  const current = contexts.find((c) => c.id === context);
-  const structural = diagnostics.filter((d) => d.kind === "condition" && d.severity === "error").length;
+  const info = contexts.find((c) => c.id === context);
+  /** Shows a System once the list of open ones has it. */
+  const show = (id: string) => void refreshContexts().then(() => setContext(id));
 
   return (
     <div className="app">
-      <header className="topbar">
-        <strong className="brand">Systemathic</strong>
-        <select value={context ?? ""} onChange={(e) => setContext(e.target.value || undefined)} aria-label="System">
-          {contexts.length === 0 && <option value="">No System open</option>}
-          {contexts.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-              {c.path ? ` — ${c.path.split(/[\\/]/).pop()}` : ""}
-            </option>
-          ))}
-        </select>
-        <button onClick={() => setDialog({ kind: "new" })}>New</button>
-        <button onClick={() => setDialog({ kind: "open" })}>Open…</button>
-        <button disabled={!context} onClick={() => (current?.path ? void api.save(context!).then(() => notify(`Saved ${current.path}`), failed) : setDialog({ kind: "save" }))}>
-          Save
-        </button>
-        <span className="spacer" />
-        <button disabled={!context} onClick={undo} title="Undo your own latest edit">
-          Undo
-        </button>
-        <button disabled={!context} onClick={() => setDialog({ kind: "catalog" })}>
-          Catalog
-        </button>
-        <button disabled={!context || structural > 0} onClick={verify} title={structural > 0 ? "Solve the structural errors first" : "Verify against the System's profile"}>
-          Verify
-        </button>
-        <button disabled={!context || structural > 0} onClick={specification}>
-          Specification
-        </button>
-      </header>
-
-      {!context ? (
-        <main className="welcome">
-          <h1>Design a System as a precise model</h1>
-          <p>Create a new System, or open a System file the host can read.</p>
-          <div className="row-buttons">
-            <button className="primary" onClick={() => setDialog({ kind: "new" })}>
-              New System
-            </button>
-            <button onClick={() => setDialog({ kind: "open" })}>Open a file…</button>
-          </div>
-        </main>
+      {!events.connected && <div className="offline">The host is not answering. Is <code>systemathic serve</code> still running?</div>}
+      {context && info ? (
+        <WorkspaceProvider key={context} context={context} info={info} operations={operations} onEvent={events.subscribe}>
+          <Shell contexts={contexts} onContext={setContext} onDialog={setDialog} />
+          {dialog === "catalog" && <CatalogDialog close={() => setDialog(undefined)} />}
+          {dialog === "save" && <SaveAsDialog close={() => setDialog(undefined)} />}
+        </WorkspaceProvider>
       ) : (
-        <main className="workspace">
-          <nav className="perspectives">
-            {perspectives.map((p) => (
-              <button key={p.perspective} className={p.perspective === perspective ? "active" : ""} title={p.about} onClick={() => saveLayout({ ...layout, perspective: p.perspective })}>
-                {p.title}
-              </button>
-            ))}
-            {perspective === "language" && (
-              <select value={language ?? ""} onChange={(e) => saveLayout({ ...layout, language: e.target.value })} aria-label="Language">
-                {languages.map((l) => (
-                  <option key={l.subject} value={l.subject}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </nav>
-
-          <section className="view">
-            {view &&
-              (GRAPHS.has(perspective) ? (
-                <Graph
-                  key={`${context}/${perspective}/${language}`}
-                  view={view}
-                  saved={layout.positions?.[`${perspective}${perspective === "language" ? `/${language}` : ""}`] ?? {}}
-                  selected={selected}
-                  onSelect={select}
-                  onMove={(positions) => saveLayout({ ...layout, positions: { ...layout.positions, [`${perspective}${perspective === "language" ? `/${language}` : ""}`]: positions } })}
-                />
-              ) : (
-                <Tree
-                  view={view}
-                  selected={selected}
-                  collapsed={new Set(layout.collapsed ?? [])}
-                  onToggle={(id) => {
-                    const collapsed = new Set(layout.collapsed ?? []);
-                    if (collapsed.has(id)) collapsed.delete(id);
-                    else collapsed.add(id);
-                    saveLayout({ ...layout, collapsed: [...collapsed] });
-                  }}
-                  onSelect={select}
-                />
-              ))}
-          </section>
-
-          <aside className="inspector">
-            {selectedItem ? (
-              <div className="selection">
-                <span className="kind">{selectedItem.kind}</span>
-                <h2>{selectedItem.label}</h2>
-                {selectedItem.detail && <p className="detail">{selectedItem.detail}</p>}
-                <code className="id">{selectedItem.subject}</code>
-                {diagnostics
-                  .filter((d) => d.subjects.includes(selectedItem.subject))
-                  .map((d, i) => (
-                    <p key={i} className={`mark ${d.severity}`}>
-                      <b>{d.check}</b> {d.message}
-                    </p>
-                  ))}
-              </div>
-            ) : (
-              <p className="hint">Select something to edit it, or pick an operation below.</p>
-            )}
-            <Editors operations={operations} elements={elements} selected={selectedItem ? { id: selectedItem.subject, kind: selectedItem.kind } : undefined} onRun={apply} />
-          </aside>
-
-          <section className="bottom">
-            <nav className="tabs">
-              <button className={tab === "diagnostics" ? "active" : ""} onClick={() => setTab("diagnostics")}>
-                Diagnostics {diagnostics.length > 0 && <span className={`badge ${structural > 0 ? "error" : "warning"}`}>{diagnostics.length}</span>}
-              </button>
-              <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>
-                History <span className="count">{history.length}</span>
-              </button>
-              <button className={tab === "verification" ? "active" : ""} onClick={() => setTab("verification")}>
-                Verification
-              </button>
-            </nav>
-            <div className="tab-body">
-              {tab === "diagnostics" &&
-                (diagnostics.length === 0 ? (
-                  <p className="ok">No structural errors. {run ? "" : "Verify to check the design's rules."}</p>
-                ) : (
-                  <ul className="diagnostics">
-                    {diagnostics.map((d, i) => (
-                      <li key={i} className={d.severity} onClick={() => d.subjects[0] && select(d.subjects[0])}>
-                        <span className={`badge ${d.severity}`}>{d.kind === "condition" ? "structural" : d.severity}</span>
-                        <b>{d.check}</b> {d.message}
-                        {d.suggestions.map((s, j) => (
-                          <div key={j} className="suggestion">
-                            → {s.message}
-                          </div>
-                        ))}
-                      </li>
-                    ))}
-                  </ul>
-                ))}
-              {tab === "history" && (
-                <ol className="history" reversed>
-                  {[...history].reverse().map((edit) => (
-                    <li key={edit.id} className={edit.author === session ? "mine" : ""}>
-                      <span className={`op-kind ${edit.kind}`} />
-                      <span className="who">{edit.client}</span> {edit.summary}
-                    </li>
-                  ))}
-                </ol>
-              )}
-              {tab === "verification" &&
-                (run ? (
-                  <div>
-                    <p>
-                      Profile <b>{run.profile}</b> ({run.script}), {run.rules} rules, at edit {run.atEdit}: <b>{run.errors}</b> errors, <b>{run.warnings}</b> warnings
-                      {run.failures.length > 0 && `, ${run.failures.length} failed rules`}.
-                    </p>
-                    <ul className="diagnostics">
-                      {run.violations.map((v, i) => (
-                        <li key={i} className={v.severity} onClick={() => v.subjects[0] && select(v.subjects[0])}>
-                          <span className={`badge ${v.severity}`}>{v.severity}</span> <b>{v.rule}</b> {v.message}
-                        </li>
-                      ))}
-                      {run.failures.map((f, i) => (
-                        <li key={`f${i}`} className="error">
-                          <span className="badge error">failed</span> <b>{f.rule}</b> <pre>{f.error}</pre>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="hint">Not verified yet.</p>
-                ))}
-            </div>
-          </section>
-        </main>
+        <Welcome contexts={contexts} onContext={show} onDialog={setDialog} error={error} />
       )}
-
-      {message && (
-        <div className={`toast ${message.error ? "error" : ""}`} onClick={() => setMessage(undefined)}>
-          {message.text}
-        </div>
+      {(dialog === "open" || dialog === "new") && (
+        <OpenDialog
+          mode={dialog}
+          close={() => setDialog(undefined)}
+          onOpened={(id) => {
+            setDialog(undefined);
+            show(id);
+          }}
+        />
       )}
-      {dialog && <DialogView dialog={dialog} context={context} session={session} close={() => setDialog(undefined)} onContext={setContext} notify={notify} />}
     </div>
   );
 }
 
-function DialogView(props: {
-  dialog: Dialog;
-  context?: string;
-  session?: string;
-  close(): void;
-  onContext(id: string): void;
-  notify(text: string, error?: boolean): void;
-}) {
-  const { dialog, context, session, close, onContext, notify } = props;
-  const [value, setValue] = useState("");
-  const [packages, setPackages] = useState<PackageSummary[]>([]);
-  const [error, setError] = useState<string | undefined>();
-  useEffect(() => {
-    if (dialog.kind === "catalog") void api.catalog(value).then(setPackages, (e) => setError(e.message));
-  }, [dialog.kind, value]);
+function Welcome(props: { contexts: ContextInfo[]; onContext(id: string): void; onDialog(d: Dialog): void; error?: string }) {
+  const [files, setFiles] = useState<string[]>([]);
+  useEffect(() => void api.files().then(setFiles, () => setFiles([])), []);
+  const open = async (path: string) => {
+    const opened = await api.open(path);
+    props.onContext(opened.id);
+  };
+  return (
+    <main className="welcome">
+      <div className="welcome-mark">
+        <Icon name="Domain" size={40} />
+      </div>
+      <h1>Systemathic</h1>
+      <p className="lead">Design a system as a precise model: closed vocabularies, the contexts that use them, and explicit crossings between them — checked, and exported as a contract.</p>
+      {props.error && <p className="inline-problem error">{props.error}</p>}
+      <div className="welcome-actions">
+        <button className="primary big" onClick={() => props.onDialog("new")}>
+          <Icon name="plus" /> New System
+        </button>
+        <button className="big" onClick={() => props.onDialog("open")}>
+          <Icon name="open" /> Open a file…
+        </button>
+      </div>
+      {props.contexts.length > 0 && (
+        <section className="welcome-list">
+          <h2>Open now</h2>
+          {props.contexts.map((c) => (
+            <button key={c.id} onClick={() => props.onContext(c.id)}>
+              <Icon name="System" />
+              <span className="card-title">{c.name}</span>
+              <span className="muted">{c.path?.split(/[\\/]/).pop() ?? "not saved"}</span>
+              {c.clients.length > 0 && <span className="muted">· {c.clients.join(", ")} editing</span>}
+            </button>
+          ))}
+        </section>
+      )}
+      {files.length > 0 && (
+        <section className="welcome-list">
+          <h2>System files here</h2>
+          {files.map((f) => (
+            <button key={f} onClick={() => void open(f)}>
+              <Icon name="open" />
+              <span className="card-title">{f.split("/").pop()}</span>
+              <span className="muted">{f}</span>
+            </button>
+          ))}
+        </section>
+      )}
+    </main>
+  );
+}
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
+function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefined): void; onDialog(d: Dialog): void }) {
+  const w = useWorkspace();
+  const model = useModel();
+  const [palette, setPalette] = useState(false);
+  const [panel, setPanel] = useState<PanelTab | undefined>(w.structural > 0 ? "problems" : undefined);
+  const [lastPanel, setLastPanel] = useState<PanelTab>("problems");
+  const showPanel = (tab: PanelTab | undefined) => {
+    setPanel(tab);
+    if (tab) setLastPanel(tab);
+  };
+  const save = useCallback(() => (w.info?.path ? void w.save() : props.onDialog("save")), [w, props]);
+
+  const commands = useMemo<Command[]>(() => {
+    const system = model.system.id;
+    const add = (operation: string, what: string) => async () => {
+      const edit = await w.act("SystemEditor", operation, { system, name: `New${what}` }, { quiet: true });
+      if (edit) w.reveal(edit.elements[0]!);
+    };
+    return [
+      { label: "New Language", icon: "Language", hint: "command", run: add("addLanguage", "Language") },
+      { label: "New Domain", icon: "Domain", hint: "command", run: add("addDomain", "Domain") },
+      { label: "New Mediation", icon: "Mediation", hint: "command", run: () => w.open({ kind: "system" }, "#new-mediation") },
+      { label: "Import from the catalog", icon: "catalog", hint: "command", run: () => props.onDialog("catalog") },
+      { label: "Verify", icon: "play", hint: "command", run: () => void w.verify() },
+      { label: "Edit the verification script", icon: "play", hint: "command", run: () => w.open({ kind: "script" }) },
+      { label: "Specification", icon: "specification", hint: "command", run: () => w.open({ kind: "specification" }) },
+      { label: "Save", icon: "save", hint: "command", shortcut: "Ctrl+S", run: save },
+      { label: "Save as…", icon: "save", hint: "command", run: () => props.onDialog("save") },
+      { label: "Undo", icon: "undo", hint: "command", shortcut: "Ctrl+Z", run: () => void w.undo() },
+      { label: "Redo", icon: "redo", hint: "command", shortcut: "Ctrl+Shift+Z", run: () => void w.redo() },
+      { label: "Show Problems", icon: "error", hint: "command", run: () => showPanel("problems") },
+      { label: "Show History", icon: "undo", hint: "command", run: () => showPanel("history") },
+      { label: "System overview", icon: "System", hint: "view", run: () => w.open({ kind: "system" }) },
+      { label: "Domain map", icon: "diagram", hint: "view", run: () => w.open({ kind: "view", perspective: "domain-map" }) },
+      { label: "Mediation stack", icon: "Mediation", hint: "view", run: () => w.open({ kind: "view", perspective: "mediation-stack" }) },
+      { label: "Levels", icon: "table", hint: "view", run: () => w.open({ kind: "view", perspective: "levels" }) },
+      { label: "Statistics", icon: "table", hint: "view", run: () => w.open({ kind: "view", perspective: "statistics" }) },
+      { label: "Open another System…", icon: "open", hint: "command", run: () => props.onDialog("open") },
+      { label: "Close this System", icon: "x", hint: "command", run: () => props.onContext(undefined) },
+    ];
+  }, [model, w, props, save]);
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const mod = event.ctrlKey || event.metaKey;
+      const typing = event.target instanceof HTMLElement && (event.target.closest("input, textarea, select, .cm-editor") !== null);
+      if (mod && event.key.toLowerCase() === "k") (event.preventDefault(), setPalette((p) => !p));
+      else if (mod && event.key.toLowerCase() === "s") (event.preventDefault(), save());
+      else if (mod && event.key.toLowerCase() === "j") (event.preventDefault(), showPanel(panel ? undefined : lastPanel));
+      else if (!typing && mod && event.key.toLowerCase() === "z") (event.preventDefault(), void (event.shiftKey ? w.redo() : w.undo()));
+      else if (!typing && mod && event.key.toLowerCase() === "y") (event.preventDefault(), void w.redo());
+    };
+    window.addEventListener("keydown", keys);
+    return () => window.removeEventListener("keydown", keys);
+  }, [w, save, panel, lastPanel]);
+
+  const active = w.tabs.find((t) => tabKey(t) === w.active) ?? w.tabs[0]!;
+  const errors = w.diagnostics.filter((d) => d.severity === "error").length;
+  const warnings = w.diagnostics.length - errors;
+  const others = (w.info?.clients ?? []).filter((c, i, all) => !(c === "ui" && all.indexOf("ui") === i));
+
+  return (
+    <div className="shell">
+      <header className="topbar">
+        <button className="brand" onClick={() => props.onContext(undefined)} title="All Systems">
+          <Icon name="Domain" size={18} /> Systemathic
+        </button>
+        <select className="system-switch" value={w.context} onChange={(e) => props.onContext(e.target.value)} aria-label="System">
+          {props.contexts.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.dirty ? " •" : ""}
+            </option>
+          ))}
+        </select>
+        <IconButton icon="open" label="Open" onClick={() => props.onDialog("open")} />
+        <IconButton icon="save" label={w.info?.dirty ? "Save (unsaved changes)" : "Save"} shortcut="Ctrl+S" onClick={save} className={w.info?.dirty ? "dirty" : ""} />
+        <span className="divider" />
+        <IconButton icon="undo" label="Undo your last edit" shortcut="Ctrl+Z" onClick={() => void w.undo()} />
+        <IconButton icon="redo" label="Redo" shortcut="Ctrl+Shift+Z" onClick={() => void w.redo()} />
+        <button className="palette-button" onClick={() => setPalette(true)}>
+          <Icon name="search" size={14} /> Go to anything or run a command… <kbd>Ctrl K</kbd>
+        </button>
+        <span className="spacer" />
+        <button className="small" onClick={() => props.onDialog("catalog")}>
+          <Icon name="catalog" /> Catalog
+        </button>
+        <button className="small primary" disabled={w.structural > 0} title={w.structural > 0 ? "Solve the structural errors first" : "Verify against the System's rules"} onClick={() => void w.verify()}>
+          <Icon name="play" /> Verify
+        </button>
+      </header>
+
+      <div className="body">
+        <aside className="sidebar">
+          <Explorer />
+        </aside>
+        <main className="main">
+          <nav className="tabstrip" role="tablist">
+            {w.tabs.map((tab) => {
+              const key = tabKey(tab);
+              const { icon, label } = tabTitle(tab, model);
+              return (
+                <div key={key} role="tab" aria-selected={key === w.active} className={`tab ${key === w.active ? "on" : ""}`} onClick={() => w.activate(key)} onAuxClick={(e) => e.button === 1 && w.close(key)}>
+                  <Icon name={icon} size={14} />
+                  <span>{label}</span>
+                  {w.tabs.length > 1 && (
+                    <button
+                      className="tab-close"
+                      aria-label={`Close ${label}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        w.close(key);
+                      }}
+                    >
+                      <Icon name="x" size={12} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+          <div className="tab-content" key={tabKey(active)}>
+            <Editor tab={active} onCatalog={() => props.onDialog("catalog")} />
+          </div>
+          {panel && <Panel tab={panel} onTab={showPanel} onClose={() => showPanel(undefined)} />}
+        </main>
+      </div>
+
+      <footer className="statusbar">
+        <button className={errors ? "status-errors" : ""} onClick={() => showPanel(panel === "problems" ? undefined : "problems")}>
+          <Icon name="error" size={13} /> {errors} <Icon name="warning" size={13} /> {warnings}
+        </button>
+        <button onClick={() => showPanel(panel === "verification" ? undefined : "verification")}>
+          {w.run ? `${w.run.profile}: ${w.run.errors} errors${w.run.atEdit !== w.history.length ? " (stale)" : ""}` : "not verified"}
+        </button>
+        <button onClick={() => showPanel(panel === "history" ? undefined : "history")}>{w.history.length} edits</button>
+        <span className="spacer" />
+        {others.length > 0 && (
+          <span className="presence" title="Also editing this System">
+            <span className="presence-dot" /> {others.join(", ")}
+          </span>
+        )}
+        <span>{w.info?.dirty ? "unsaved changes" : w.info?.path ? "saved" : "not saved yet"}</span>
+        <span className="muted">{w.info?.path?.split(/[\\/]/).pop()}</span>
+      </footer>
+
+      {palette && <Palette commands={commands} close={() => setPalette(false)} />}
+      <Toasts />
+    </div>
+  );
+}
+
+function Editor({ tab, onCatalog }: { tab: Tab; onCatalog(): void }) {
+  switch (tab.kind) {
+    case "system":
+      return <SystemEditor onCatalog={onCatalog} />;
+    case "language":
+      return <LanguageEditor id={tab.id} />;
+    case "domain":
+      return <DomainEditor id={tab.id} />;
+    case "transformation":
+      return <TransformationEditor id={tab.id} />;
+    case "mediation":
+      return <MediationEditor id={tab.id} />;
+    case "view":
+      return <ViewTab perspective={tab.perspective} />;
+    case "specification":
+      return <SpecificationTab />;
+    case "script":
+      return (
+        <Suspense fallback={<p className="empty">Loading the editor…</p>}>
+          <ScriptTab />
+        </Suspense>
+      );
+  }
+}
+
+function tabTitle(tab: Tab, model: ReturnType<typeof useModel>): { icon: string; label: string } {
+  switch (tab.kind) {
+    case "system":
+      return { icon: "System", label: "Overview" };
+    case "view":
+      return { icon: "diagram", label: { "domain-map": "Domain map", "mediation-stack": "Mediation stack", levels: "Levels", statistics: "Statistics" }[tab.perspective] ?? tab.perspective };
+    case "specification":
+      return { icon: "specification", label: "Specification" };
+    case "script":
+      return { icon: "play", label: "Verification script" };
+    default:
+      return { icon: tab.kind.charAt(0).toUpperCase() + tab.kind.slice(1), label: model.name(tab.id) };
+  }
+}
+
+function Toasts() {
+  const w = useWorkspace();
+  return (
+    <div className="toasts" aria-live="polite">
+      {w.toasts.map((t) => (
+        <div key={t.id} className={`toast ${t.tone}`}>
+          <span>{t.text}</span>
+          {t.undo && (
+            <button
+              onClick={() => {
+                w.dismiss(t.id);
+                void w.undo();
+              }}
+            >
+              Undo
+            </button>
+          )}
+          <button className="toast-close" aria-label="Dismiss" onClick={() => w.dismiss(t.id)}>
+            <Icon name="x" size={12} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OpenDialog({ mode, close, onOpened }: { mode: "open" | "new"; close(): void; onOpened(id: string): void }) {
+  const [value, setValue] = useState("");
+  const [files, setFiles] = useState<string[]>([]);
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    if (mode === "open") void api.files().then(setFiles, () => setFiles([]));
+  }, [mode]);
+  const open = async (path: string) => {
     try {
-      if (dialog.kind === "new") onContext((await api.create(value || "Untitled")).id);
-      if (dialog.kind === "open") {
-        const opened = await api.open(value);
-        onContext(opened.id);
-        if (opened.problems.length > 0) notify(`${opened.problems.length} references could not be followed`, true);
-      }
-      if (dialog.kind === "save" && context) notify(`Saved ${(await api.save(context, value)).path}`);
-      close();
+      onOpened((await api.open(path)).id);
     } catch (e) {
       setError((e as Error).message);
     }
   };
-
-  const title = { new: "New System", open: "Open a System file", save: "Save as", catalog: "Catalog", specification: "Specification" }[dialog.kind];
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (mode === "open") return open(value);
+    try {
+      onOpened((await api.create(value || "Untitled")).id);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const shown = files.filter((f) => f.toLowerCase().includes(value.toLowerCase()));
   return (
-    <div className="backdrop" onClick={close}>
-      <div className="dialog" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <h2>{title}</h2>
-        {(dialog.kind === "new" || dialog.kind === "open" || dialog.kind === "save") && (
-          <form onSubmit={submit}>
-            <input
-              autoFocus
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={dialog.kind === "new" ? "Name" : "Path, relative to where the host runs: examples/game.systemathic.json"}
-            />
-            <div className="row-buttons">
-              <button type="button" onClick={close}>
-                Cancel
-              </button>
-              <button className="primary" type="submit">
-                {dialog.kind === "new" ? "Create" : dialog.kind === "open" ? "Open" : "Save"}
-              </button>
+    <Modal title={mode === "new" ? "New System" : "Open a System"} close={close}>
+      <form onSubmit={submit}>
+        <input autoFocus className="wide" value={value} onChange={(e) => setValue(e.target.value)} placeholder={mode === "new" ? "Its name — e.g. Shop" : "Filter, or a path relative to where the host runs"} />
+        {mode === "open" && (
+          <ul className="file-list">
+            {shown.map((f) => (
+              <li key={f}>
+                <button type="button" onClick={() => void open(f)}>
+                  <Icon name="open" /> <span className="card-title">{f.split("/").pop()}</span> <span className="muted">{f}</span>
+                </button>
+              </li>
+            ))}
+            {shown.length === 0 && <li className="muted">No System file matches; press Enter to open the path as typed.</li>}
+          </ul>
+        )}
+        {error && <p className="inline-problem error">{error}</p>}
+        <div className="row-buttons">
+          <button type="button" onClick={close}>
+            Cancel
+          </button>
+          <button className="primary" type="submit">
+            {mode === "new" ? "Create" : "Open"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function SaveAsDialog({ close }: { close(): void }) {
+  const w = useWorkspace();
+  const [value, setValue] = useState(w.info?.path ? "" : `${w.model?.system.name.replace(/\W+/g, "-").toLowerCase() || "system"}.systemathic.json`);
+  return (
+    <Modal title="Save as" close={close}>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (await w.save(value)) close();
+        }}
+      >
+        <input autoFocus className="wide" value={value} onChange={(e) => setValue(e.target.value)} placeholder="A path relative to where the host runs, ending in .systemathic.json" />
+        <div className="row-buttons">
+          <button type="button" onClick={close}>
+            Cancel
+          </button>
+          <button className="primary" type="submit" disabled={!value}>
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function CatalogDialog({ close }: { close(): void }) {
+  const w = useWorkspace();
+  const [text, setText] = useState("");
+  const [tag, setTag] = useState("");
+  const [packages, setPackages] = useState<PackageSummary[]>([]);
+  const [all, setAll] = useState<PackageSummary[]>([]);
+  useEffect(() => void api.catalog().then(setAll), []);
+  useEffect(() => void api.catalog(text, tag).then(setPackages), [text, tag]);
+  const tags = [...new Set(all.flatMap((p) => p.tags))].sort();
+  const imported = new Set(w.model?.languages.map((l) => l.id));
+  return (
+    <Modal title="Catalog" close={close} wide>
+      <p className="muted">Standard Languages, Domains and Mediations to build on. Importing copies them into this System; what is already here is reused.</p>
+      <input autoFocus className="wide" value={text} onChange={(e) => setText(e.target.value)} placeholder="Search: http, network, data…" />
+      <div className="tag-row">
+        <button className={tag === "" ? "on" : ""} onClick={() => setTag("")}>
+          all
+        </button>
+        {tags.map((t) => (
+          <button key={t} className={tag === t ? "on" : ""} onClick={() => setTag(tag === t ? "" : t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <ul className="package-grid">
+        {packages.map((p) => (
+          <li key={p.id}>
+            <div>
+              <strong>{p.name}</strong>
+              <p>{p.about}</p>
+              <span className="tags">{p.tags.join(" · ")}</span>
             </div>
-          </form>
-        )}
-        {dialog.kind === "catalog" && (
-          <>
-            <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="Search: http, network, data…" />
-            <ul className="packages">
-              {packages.map((p) => (
-                <li key={p.id}>
-                  <div>
-                    <b>{p.name}</b> <span className="tags">{p.tags.join(" · ")}</span>
-                    <p>{p.about}</p>
-                  </div>
-                  <button
-                    className="primary"
-                    disabled={!context || !session}
-                    onClick={() =>
-                      void api.importPackage(context!, session!, p.id).then((r) => {
-                        notify(`Imported ${p.name}: ${r.edits.length} edits`);
-                        close();
-                      }, (e) => setError(e.message))
-                    }
-                  >
-                    Import
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        {dialog.kind === "specification" && (
-          <>
-            <pre className="markdown">{dialog.markdown}</pre>
-            <div className="row-buttons">
-              <button onClick={() => void navigator.clipboard.writeText(dialog.markdown).then(() => notify("Copied"))}>Copy</button>
-              <button className="primary" onClick={close}>
-                Close
-              </button>
-            </div>
-          </>
-        )}
-        {error && <p className="error-text">{error}</p>}
+            <button
+              className="primary small"
+              disabled={!w.session}
+              onClick={async () => {
+                const result = await api.importPackage(w.context, w.session!, p.id).catch((e) => (w.notify(e.message, "error"), undefined));
+                if (!result) return;
+                w.notify(`Imported ${p.name}: ${result.edits.length} added${result.reused.length ? `, ${result.reused.length} already here` : ""}`, "ok");
+                close();
+              }}
+            >
+              {imported.has(`lib.${p.id}`) ? "Import again" : "Import"}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Modal>
+  );
+}
+
+export function Modal(props: { title: string; close(): void; children: React.ReactNode; wide?: boolean }) {
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => e.key === "Escape" && props.close();
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [props]);
+  return (
+    <div className="backdrop" onMouseDown={props.close}>
+      <div className={`dialog ${props.wide ? "wide" : ""}`} role="dialog" aria-label={props.title} onMouseDown={(e) => e.stopPropagation()}>
+        <header>
+          <h2>{props.title}</h2>
+          <IconButton icon="x" label="Close" onClick={props.close} />
+        </header>
+        {props.children}
       </div>
     </div>
   );

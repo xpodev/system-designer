@@ -165,7 +165,15 @@ async function host(args: readonly string[], io: Io): Promise<number> {
       return 2;
     }
   }
-  const { server, url } = await serve(hosted, { port, ui: fileURLToPath(UI) });
+  let served;
+  try {
+    served = await serve(hosted, { port, ui: fileURLToPath(UI) });
+  } catch (error) {
+    const busy = (error as NodeJS.ErrnoException).code === "EADDRINUSE";
+    io.err(busy ? `port ${port} is taken — is a host already running there? Open http://127.0.0.1:${port}, or choose another: --port N` : (error as Error).message);
+    return 2;
+  }
+  const { server, url } = served;
   io.out(`Systemathic is hosting on ${url}`);
   return new Promise((done) => server.on("close", () => done(0)));
 }

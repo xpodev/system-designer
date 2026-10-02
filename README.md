@@ -48,6 +48,15 @@ The visual UI: start the host, then open http://127.0.0.1:4747.
 pnpm serve examples/game.systemathic.json
 ```
 
+The Explorer on the left holds the whole System; a click opens what it is in its editor — a
+Language's Entities, Relationships, Interactions and Axioms (or its diagram: drag between
+Entities to relate them), a Domain's scope and Transformations, a Transformation's mappings,
+a Mediation and its witness. Everything is edited in place. `Ctrl K` goes anywhere or runs
+any command; `Ctrl Z` / `Ctrl Shift Z` undo and redo your own edits; `Ctrl S` saves;
+`Ctrl J` shows the Problems, History and Verification. The verification script is edited in
+the UI too — Python, with problems as you type, completion and documentation — or in any
+editor: it is the `.rules.py` file beside the System.
+
 An LLM, over MCP: register `node packages/mcp/dist/main.js` as a stdio MCP server. It joins
 the host if one is running (or `SYSTEMATHIC_HOST`), so the model and the UI edit the same
 System and see each other's edits; otherwise it hosts the Systems itself on port 4747.

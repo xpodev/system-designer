@@ -58,8 +58,20 @@ export function Graph(props: {
   selected?: string;
   onSelect(subject: string): void;
   onMove(positions: Positions): void;
+  /** Dragging from one box's handle onto another: what to make of it. Without it, boxes have no handles. */
+  onConnect?(source: string, target: string): void;
+  /** A double click on empty space, with where it was. */
+  onCreate?(at: [number, number]): void;
+  /** Some Items are not boxes but text beside a box (an Interaction's signature). */
+  height?: number;
 }) {
-  const { view, saved, selected, onSelect, onMove } = props;
+  const { view, saved, selected, onSelect, onMove, onConnect, onCreate } = props;
+  const [linking, setLinking] = useState<{ from: string; x: number; y: number; sx: number; sy: number }>();
+  const svg = useRef<SVGSVGElement>(null);
+  const point = (event: { clientX: number; clientY: number }): [number, number] => {
+    const box = svg.current!.getBoundingClientRect();
+    return [event.clientX - box.left, event.clientY - box.top];
+  };
   const base = useMemo(() => layout(view), [view]);
   const [moved, setMoved] = useState<Positions>({});
   const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean } | undefined>(undefined);
@@ -74,26 +86,50 @@ export function Graph(props: {
     drag.current = { id, dx: event.clientX - x, dy: event.clientY - y, moved: false };
   };
   const move = (event: PointerEvent) => {
+    if (linking) {
+      const [x, y] = point(event);
+      setLinking({ ...linking, x, y });
+      return;
+    }
     if (!drag.current) return;
     drag.current.moved = true;
     const { id, dx, dy } = drag.current;
     setMoved((m) => ({ ...m, [id]: [Math.max(0, event.clientX - dx), Math.max(0, event.clientY - dy)] }));
   };
   const up = (subject: string) => {
+    if (linking) {
+      if (Math.hypot(linking.x - linking.sx, linking.y - linking.sy) > 8) onConnect?.(linking.from, subject);
+      setLinking(undefined);
+      return;
+    }
     const current = drag.current;
     drag.current = undefined;
     if (current?.moved) onMove({ ...saved, ...moved, [current.id]: at(current.id) });
     else onSelect(subject);
   };
 
-  if (tops.length === 0) return <p className="empty">Nothing to show yet.</p>;
+  if (tops.length === 0 && !onCreate) return <p className="empty">Nothing to show yet.</p>;
   return (
-    <svg className="graph" width={width} height={height} onPointerMove={move}>
+    <svg
+      ref={svg}
+      className={`graph ${linking ? "linking" : ""}`}
+      width={width}
+      height={Math.max(height, props.height ?? 0)}
+      onPointerMove={move}
+      onPointerUp={() => setLinking(undefined)}
+      onDoubleClick={(event) => {
+        if (onCreate && event.target === svg.current) onCreate(point(event));
+      }}
+    >
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" className="arrowhead" />
         </marker>
       </defs>
+      {linking && (() => {
+        const [x, y] = at(linking.from);
+        return <line className="linking-line" x1={x + WIDTH} y1={y + HEIGHT / 2} x2={linking.x} y2={linking.y} />;
+      })()}
       {view.links.map((link) => {
         if (!base[link.source] || !base[link.target]) return null;
         const [x1, y1] = at(link.source);
@@ -135,6 +171,22 @@ export function Graph(props: {
             <text x={10} y={32} className="label">
               {item.label.length > 24 ? `${item.label.slice(0, 23)}…` : item.label}
             </text>
+            {onConnect && item.kind === "Entity" && (
+              <circle
+                className="handle"
+                cx={WIDTH}
+                cy={HEIGHT / 2}
+                r={6}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  (event.target as Element).releasePointerCapture?.(event.pointerId);
+                  const [x, y] = point(event);
+                  setLinking({ from: item.subject, x, y, sx: x, sy: y });
+                }}
+              >
+                <title>Drag onto an Entity to relate them</title>
+              </circle>
+            )}
           </g>
         );
       })}
