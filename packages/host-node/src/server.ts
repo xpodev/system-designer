@@ -21,6 +21,7 @@ function routes(host: HostApi): [method: string, pattern: string, handler: Handl
     ["GET", "/api/catalog", (_, __, q) => host.catalog(q.get("text") ?? undefined, q.get("tag") ?? undefined)],
     ["GET", "/api/contexts", () => host.contexts()],
     ["GET", "/api/files", () => host.files()],
+    ["PUT", "/api/files", (_, b) => host.writeFile(String(b.path), String(b.text ?? ""))],
     ["POST", "/api/contexts", (_, b) => host.create(String(b.name ?? "Untitled"))],
     ["POST", "/api/contexts/open", (_, b) => host.open(String(b.path))],
     ["POST", `${C}/save`, (p, b) => host.save(p.context!, b.path)],

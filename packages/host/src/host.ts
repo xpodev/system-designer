@@ -168,6 +168,13 @@ export class Host implements HostApi {
     return this.store.list(".systemathic.json");
   }
 
+  async writeFile(path: string, text: string) {
+    const where = this.store.resolve(path);
+    if (where === "" || where.startsWith("..")) throw new HostError(400, `${path}: not a place in the host's folder`);
+    await this.store.write(where, text);
+    return { path: where };
+  }
+
   async select(context: string, session: string, ids: readonly string[]) {
     const target = this.get(context).target;
     const s = this.session(target, session);

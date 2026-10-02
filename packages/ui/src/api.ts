@@ -1,11 +1,37 @@
 /**
- * The host's HTTP API, from the browser. The types are the host's own; the transport is
- * plain fetch and EventSource, to the host that served this page.
+ * The host, from the page. Served by `systemathic serve`, the page talks to it over HTTP; built
+ * as a static site, the page carries its own host, in the browser (docs/tool-design.md,
+ * `Tool / Host`: a local process, or a browser tab). Everything else in the UI is the same.
  */
-import type { ContextInfo, EditInfo, HostEvent, OperationInfo, PackageSummary, RunInfo } from "@systemathic/host";
+import { HostClient, HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "@systemathic/host";
 import type { SystemFile } from "./model";
 
 export type { ContextInfo, EditInfo, HostEvent, OperationInfo, PackageSummary, RunInfo };
+export { HostError as ApiError };
+
+/** Where the host is: a process the page talks to, or the page itself. */
+export type HostMode = "served" | "browser";
+
+let host: HostApi = new HostClient("");
+let mode: HostMode = "served";
+
+/** Finds the host: the page's own when it was built to stand alone, the one that served it otherwise. */
+export async function connect(): Promise<HostMode> {
+  if (import.meta.env.MODE === "static") {
+    const { browserHost } = await import("@systemathic/host-browser");
+    host = await browserHost();
+    mode = "browser";
+  }
+  return mode;
+}
+
+/** For tests: a host of their choosing. */
+export function useHost(chosen: HostApi, as: HostMode): void {
+  host = chosen;
+  mode = as;
+}
+
+export const hostMode = (): HostMode => mode;
 
 export interface Mark {
   severity: "error" | "warning";
@@ -70,66 +96,50 @@ export interface ScriptCheck {
   profiles: { name: string; rules: string[] }[];
 }
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method,
-    headers: body === undefined ? {} : { "content-type": "application/json" },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const value = await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, value?.error ?? response.statusText);
-  return value as T;
-}
-
-const c = (context: string) => `/api/contexts/${encodeURIComponent(context)}`;
-const s = (context: string, session: string) => `${c(context)}/sessions/${encodeURIComponent(session)}`;
-
 export const api = {
-  editors: () => call<OperationInfo[]>("GET", "/api/editors"),
-  perspectives: () => call<PerspectiveInfo[]>("GET", "/api/perspectives"),
-  catalog: (text = "", tag = "") => call<PackageSummary[]>("GET", `/api/catalog?${new URLSearchParams({ text, ...(tag ? { tag } : {}) })}`),
+  editors: () => host.editors(),
+  perspectives: () => host.perspectives() as Promise<PerspectiveInfo[]>,
+  catalog: (text = "", tag = "") => host.catalog(text, tag || undefined),
   /** Read so that what an older host leaves out does not break the page. */
   contexts: () =>
-    call<Partial<ContextInfo>[]>("GET", "/api/contexts").then((all) =>
-      all.map((c) => ({ edits: 0, sessions: 0, structuralErrors: 0, ...c, clients: c.clients ?? [], dirty: c.dirty ?? false }) as ContextInfo),
+    host.contexts().then((all) =>
+      (all as Partial<ContextInfo>[]).map((c) => ({ edits: 0, sessions: 0, structuralErrors: 0, ...c, clients: c.clients ?? [], dirty: c.dirty ?? false }) as ContextInfo),
     ),
-  files: () => call<string[]>("GET", "/api/files"),
-  create: (name: string) => call<ContextInfo>("POST", "/api/contexts", { name }),
-  open: (path: string) => call<ContextInfo & { problems: { at: string; message: string }[] }>("POST", "/api/contexts/open", { path }),
-  save: (context: string, path?: string) => call<{ path: string }>("POST", `${c(context)}/save`, path ? { path } : {}),
-  startSession: (context: string) => call<{ session: string }>("POST", `${c(context)}/sessions`, { client: "ui" }),
+  files: () => host.files(),
+  writeFile: (path: string, text: string) => host.writeFile(path, text),
+  create: (name: string) => host.create(name),
+  open: (path: string) => host.open(path),
+  save: (context: string, path?: string) => host.save(context, path),
+  startSession: (context: string) => host.startSession(context, "ui"),
   /** Ends a session, even as the page closes. */
-  endSession: (context: string, session: string) => void fetch(s(context, session), { method: "DELETE", keepalive: true }).catch(() => undefined),
-  apply: (context: string, session: string, editor: string, operation: string, args: Record<string, unknown>) =>
-    call<EditInfo>("POST", `${s(context, session)}/operations/${editor}/${operation}`, { args }),
-  undo: (context: string, session: string) => call<EditInfo | null>("POST", `${s(context, session)}/undo`, {}),
-  redo: (context: string, session: string) => call<EditInfo | null>("POST", `${s(context, session)}/redo`, {}),
-  select: (context: string, session: string, ids: string[]) => call<string[]>("POST", `${s(context, session)}/select`, { ids }),
-  importPackage: (context: string, session: string, id: string) => call<{ edits: EditInfo[]; reused: string[] }>("POST", `${s(context, session)}/import`, { package: id }),
-  system: (context: string) => call<SystemFile>("GET", `${c(context)}/system`),
-  history: (context: string) => call<EditInfo[]>("GET", `${c(context)}/history`),
-  diagnostics: (context: string) => call<Diagnostic[]>("GET", `${c(context)}/diagnostics`),
-  view: (context: string, perspective: string, language?: string) =>
-    call<View>("GET", `${c(context)}/views/${perspective}${language ? `?language=${encodeURIComponent(language)}` : ""}`),
-  verify: (context: string) => call<RunInfo>("POST", `${c(context)}/verify`, {}),
-  specification: (context: string) => call<{ markdown: string }>("GET", `${c(context)}/specification`),
-  exportSelection: (context: string, ids: string[], name: string, path?: string) => call<{ path?: string }>("POST", `${c(context)}/export`, { ids, name, path }),
-  script: (context: string) => call<{ path: string; profile: string; source: string; exists: boolean }>("GET", `${c(context)}/script`),
-  saveScript: (context: string, path: string, source: string) => call<{ path: string }>("PUT", `${c(context)}/script`, { path, source }),
-  checkScript: (source: string) => call<ScriptCheck>("POST", "/api/scripts/check", { source }),
-  symbols: () => call<ScriptSymbol[]>("GET", "/api/scripts/symbols"),
-  attachment: (context: string, owner: string) => call<unknown>("GET", `${c(context)}/attachments/${owner}`),
-  setAttachment: (context: string, owner: string, data: unknown) => call<void>("PUT", `${c(context)}/attachments/${owner}`, { data }),
+  endSession: (context: string, session: string) => {
+    if (mode === "served") void fetch(`/api/contexts/${encodeURIComponent(context)}/sessions/${encodeURIComponent(session)}`, { method: "DELETE", keepalive: true }).catch(() => undefined);
+    else void host.endSession(context, session).catch(() => undefined);
+  },
+  apply: (context: string, session: string, editor: string, operation: string, args: Record<string, unknown>) => host.apply(context, session, editor, operation, args),
+  undo: (context: string, session: string) => host.undo(context, session),
+  redo: (context: string, session: string) => host.redo(context, session),
+  select: (context: string, session: string, ids: string[]) => host.select(context, session, ids),
+  importPackage: (context: string, session: string, id: string) => host.importPackage(context, session, { package: id }),
+  system: (context: string) => host.system(context) as unknown as Promise<SystemFile>,
+  history: (context: string) => host.history(context),
+  diagnostics: (context: string) => host.diagnostics(context) as Promise<Diagnostic[]>,
+  view: (context: string, perspective: string, language?: string) => host.view(context, perspective, language) as unknown as Promise<View>,
+  verify: (context: string) => host.verify(context),
+  specification: (context: string) => host.specification(context),
+  exportSelection: (context: string, ids: string[], name: string, path?: string) => host.exportSelection(context, ids, name, path),
+  script: (context: string) => host.script(context),
+  saveScript: (context: string, path: string, source: string) => host.saveScript(context, path, source),
+  checkScript: (source: string) => host.checkScript(source) as Promise<ScriptCheck>,
+  symbols: () => host.symbols() as Promise<ScriptSymbol[]>,
+  attachment: (context: string, owner: string) => host.attachment(context, owner),
+  setAttachment: (context: string, owner: string, data: unknown) => host.setAttachment(context, owner, data),
+  /** Every event of the host. A served page also hears whether the host is still there. */
   events: (listener: (event: HostEvent) => void, onConnection: (connected: boolean) => void): (() => void) => {
+    if (mode === "browser" || typeof EventSource === "undefined") {
+      onConnection(true);
+      return host.subscribe(listener);
+    }
     const source = new EventSource("/api/events");
     source.onopen = () => onConnection(true);
     source.onerror = () => onConnection(false);

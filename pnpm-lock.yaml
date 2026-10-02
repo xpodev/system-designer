@@ -272,6 +272,9 @@ importers:
       '@systemathic/host':
         specifier: workspace:*
         version: link:../host
+      '@systemathic/host-browser':
+        specifier: workspace:*
+        version: link:../host-browser
       codemirror:
         specifier: ^6.0.2
         version: 6.0.2
@@ -282,6 +285,9 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
+      '@systemathic/pyodide-host':
+        specifier: workspace:*
+        version: link:../pyodide-host
       '@testing-library/dom':
         specifier: ^10.4.2
         version: 10.4.2
@@ -303,6 +309,9 @@ importers:
       jsdom:
         specifier: ^30.1.1
         version: 30.1.1
+      pyodide:
+        specifier: ^314.0.7
+        version: 314.0.7
       vite:
         specifier: ^8.3.2
         version: 8.3.2(@types/node@24.19.0)(esbuild@0.28.2)(tsx@4.23.15)

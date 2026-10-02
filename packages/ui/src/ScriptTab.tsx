@@ -13,7 +13,7 @@ import { EditorView, highlightActiveLine, highlightActiveLineGutter, hoverToolti
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
 import { api, type ScriptCheck as Check, type ScriptSymbol } from "./api";
-import { Badge, Icon, InlineText, Splitter } from "./widgets";
+import { Badge, download, Icon, InlineText, Splitter } from "./widgets";
 import { useModel, useSize, useWorkspace } from "./workspace";
 
 let symbolsOnce: Promise<ScriptSymbol[]> | undefined;
@@ -308,6 +308,9 @@ export function ScriptTab() {
           </label>
           <button onClick={() => void save()} disabled={!dirty && exists}>
             <Icon name="save" /> Save
+          </button>
+          <button onClick={() => source !== undefined && download(path?.split("/").pop() ?? "rules.py", source, "text/x-python")} title="Download the script">
+            <Icon name="download" />
           </button>
           <button className="primary" disabled={busy || errors > 0} onClick={() => void run()} title={errors > 0 ? "Fix the script's errors first" : "Save, and verify the System with this script"}>
             <Icon name="play" /> {busy ? "Running…" : "Run"}

@@ -6,7 +6,9 @@
   "description": "The visual UI: Rendering of Views and one panel per concept editor, a client of the host over HTTP.",
   "scripts": {
     "dev": "vite",
+    "dev:static": "vite --mode static",
     "build": "tsc --noEmit -p . && vite build",
+    "build:static": "tsc --noEmit -p . && vite build --mode static",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
@@ -21,7 +23,8 @@
     "@systemathic/host": "workspace:*",
     "codemirror": "^6.0.2",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "@systemathic/host-browser": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
@@ -31,6 +34,8 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.1.1",
-    "vite": "^8.3.2"
+    "vite": "^8.3.2",
+    "@systemathic/pyodide-host": "workspace:*",
+    "pyodide": "^314.0.7"
   }
 }

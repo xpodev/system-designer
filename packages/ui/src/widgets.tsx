@@ -37,6 +37,7 @@ const PATHS: Record<string, string> = {
   play: "M7 4v16l13-8z",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
   open: "M4 6h6l2 2h8v11H4z",
+  download: "M12 4v11m-5-5 5 5 5-5M5 20h14",
   keyboard: "M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M8 14h8",
 };
 
@@ -422,5 +423,38 @@ export function Splitter(props: {
         props.onResized(clamp(props.size + towards * step));
       }}
     />
+  );
+}
+
+/** Gives the person a file, as their browser downloads one. */
+export function download(name: string, text: string, type = "application/json"): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** A button that asks for a file from the person's computer, and hands over its name and text. */
+export function UploadButton(props: { label: string; accept: string; onFile(name: string, text: string): void; className?: string }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button type="button" className={props.className} onClick={() => input.current?.click()}>
+        <Icon name="open" /> {props.label}
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept={props.accept}
+        hidden
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) props.onFile(file.name, await file.text());
+        }}
+      />
+    </>
   );
 }

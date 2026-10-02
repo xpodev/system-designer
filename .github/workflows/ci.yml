@@ -1,0 +1,64 @@
+name: CI
+
+# Every push and pull request is built and tested; main is also deployed, as a static site
+# whose host runs in the browser (packages/host-browser), through Site Manager.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Rule scripts are Python: the CLI and the local host run them with it.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm test:python
+      - run: pnpm check-self
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-site
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:static
+
+      - uses: xpodev/site-manager-deploy@v1
+        with:
+          url: ${{ vars.SSMA_DEPLOY_URL }}
+          token: ${{ secrets.SSMA_DEPLOY_TOKEN }}
+          path: packages/ui/dist-static
+          site: system-designer

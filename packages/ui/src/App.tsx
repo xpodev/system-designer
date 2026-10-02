@@ -3,7 +3,7 @@
  * tabs, the Problems panel — with its own EditSession; what other clients do arrives live.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError, type ContextInfo, type HostEvent, type OperationInfo, type PackageSummary } from "./api";
+import { api, ApiError, hostMode, type ContextInfo, type HostEvent, type OperationInfo, type PackageSummary } from "./api";
 import { DomainEditor } from "./editors/DomainEditor";
 import { LanguageEditor } from "./editors/LanguageEditor";
 import { MediationEditor } from "./editors/MediationEditor";
@@ -14,7 +14,7 @@ import { tabKey, type Tab } from "./model";
 import { Palette, type Command } from "./Palette";
 import { Panel, type PanelTab } from "./Panel";
 import { SpecificationTab, ViewTab } from "./ViewTab";
-import { Icon, IconButton, Splitter } from "./widgets";
+import { download, Icon, IconButton, Splitter, UploadButton } from "./widgets";
 import { useModel, useSize, useWorkspace, WorkspaceProvider } from "./workspace";
 
 type Dialog = "open" | "new" | "save" | "catalog" | undefined;
@@ -61,6 +61,13 @@ export function App() {
   }, [context, contexts]);
 
   const info = contexts.find((c) => c.id === context);
+  const unsaved = contexts.some((c) => c.dirty);
+  useEffect(() => {
+    if (hostMode() !== "browser" || !unsaved) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
   /** Shows a System once the list of open ones has it. */
   const show = (id: string) => void refreshContexts().then(() => setContext(id));
 
@@ -109,6 +116,12 @@ function Welcome(props: { contexts: ContextInfo[]; onContext(id: string): void; 
       </div>
       <h1>Systemathic</h1>
       <p className="lead">Design a system as a precise model: closed vocabularies, the contexts that use them, and explicit crossings between them — checked, and exported as a contract.</p>
+      {hostMode() === "browser" && (
+        <p className="browser-note">
+          Everything runs in this page: your Systems are kept in this browser, and their rules run here, in Python. Open files from your computer, and download what you
+          want to keep elsewhere.
+        </p>
+      )}
       {props.error && <p className="inline-problem error">{props.error}</p>}
       <div className="welcome-actions">
         <button className="primary big" onClick={() => props.onDialog("new")}>
@@ -160,6 +173,11 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
     if (tab) setLastPanel(tab);
   };
   const save = useCallback(() => (w.info?.path ? void w.save() : props.onDialog("save")), [w, props]);
+  const downloadSystem = useCallback(async () => {
+    const file = await api.system(w.context);
+    const name = w.info?.path?.split("/").pop() ?? `${file.design.name.replace(/\W+/g, "-").toLowerCase() || "system"}.systemathic.json`;
+    download(name, JSON.stringify(file, null, 2) + "\n");
+  }, [w]);
 
   const commands = useMemo<Command[]>(() => {
     const system = model.system.id;
@@ -177,6 +195,7 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
       { label: "Specification", icon: "specification", hint: "command", run: () => w.open({ kind: "specification" }) },
       { label: "Save", icon: "save", hint: "command", shortcut: "Ctrl+S", run: save },
       { label: "Save as…", icon: "save", hint: "command", run: () => props.onDialog("save") },
+      { label: "Download the System file", icon: "save", hint: "command", run: () => void downloadSystem() },
       { label: "Undo", icon: "undo", hint: "command", shortcut: "Ctrl+Z", run: () => void w.undo() },
       { label: "Redo", icon: "redo", hint: "command", shortcut: "Ctrl+Shift+Z", run: () => void w.redo() },
       { label: "Show Problems", icon: "error", hint: "command", run: () => showPanel("problems") },
@@ -226,7 +245,14 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
           ))}
         </select>
         <IconButton icon="open" label="Open" onClick={() => props.onDialog("open")} />
-        <IconButton icon="save" label={w.info?.dirty ? "Save (unsaved changes)" : "Save"} shortcut="Ctrl+S" onClick={save} className={w.info?.dirty ? "dirty" : ""} />
+        <IconButton
+          icon="save"
+          label={`${hostMode() === "browser" ? "Save in this browser" : "Save"}${w.info?.dirty ? " (unsaved changes)" : ""}`}
+          shortcut="Ctrl+S"
+          onClick={save}
+          className={w.info?.dirty ? "dirty" : ""}
+        />
+        <IconButton icon="download" label="Download the System file" onClick={() => void downloadSystem()} />
         <span className="divider" />
         <IconButton icon="undo" label="Undo your last edit" shortcut="Ctrl+Z" onClick={() => void w.undo()} />
         <IconButton icon="redo" label="Redo" shortcut="Ctrl+Shift+Z" onClick={() => void w.redo()} />
@@ -398,10 +424,29 @@ function OpenDialog({ mode, close, onOpened }: { mode: "open" | "new"; close(): 
     }
   };
   const shown = files.filter((f) => f.toLowerCase().includes(value.toLowerCase()));
+  const upload = async (name: string, text: string) => {
+    try {
+      const { path } = await api.writeFile(name, text);
+      if (name.endsWith(".json")) await open(path);
+      else {
+        setFiles(await api.files());
+        setError(undefined);
+        setValue("");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
   return (
     <Modal title={mode === "new" ? "New System" : "Open a System"} close={close}>
+      {mode === "open" && (
+        <div className="upload-row">
+          <UploadButton label="From your computer…" accept=".json,.py" onFile={(name, text) => void upload(name, text)} />
+          <span className="muted">a System file, or a rule script to use with one</span>
+        </div>
+      )}
       <form onSubmit={submit}>
-        <input autoFocus className="wide" value={value} onChange={(e) => setValue(e.target.value)} placeholder={mode === "new" ? "Its name — e.g. Shop" : "Filter, or a path relative to where the host runs"} />
+        <input autoFocus className="wide" value={value} onChange={(e) => setValue(e.target.value)} placeholder={mode === "new" ? "Its name — e.g. Shop" : hostMode() === "browser" ? "Filter the Systems kept in this browser" : "Filter, or a path relative to where the host runs"} />
         {mode === "open" && (
           <ul className="file-list">
             {shown.map((f) => (

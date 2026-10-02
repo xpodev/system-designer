@@ -2151,3 +2151,16 @@ body.resizing-y * {
     display: none;
   }
 }
+
+.browser-note {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}

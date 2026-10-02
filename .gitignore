@@ -10,3 +10,4 @@ __pycache__/
 docs/alloy/core/
 docs/alloy/std/
 *.tsbuildinfo
+dist-static/

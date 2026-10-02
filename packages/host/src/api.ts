@@ -78,6 +78,8 @@ export interface HostApi {
   contexts(): Promise<ContextInfo[]>;
   /** The System files under the host's folder, by path relative to it. */
   files(): Promise<string[]>;
+  /** Puts a file in the host's folder — one a person brought from elsewhere — and says where it is. */
+  writeFile(path: string, text: string): Promise<{ path: string }>;
   /** `new() → SystemContext` */
   create(name: string): Promise<ContextInfo>;
   /** `open(System) → SystemContext`; a file open already is the same system context. */

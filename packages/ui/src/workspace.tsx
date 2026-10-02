@@ -94,6 +94,8 @@ export function WorkspaceProvider(props: { context: string; info?: ContextInfo; 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextToast = useRef(1);
   const sessionRef = useRef<string | undefined>(undefined);
+  /** The model last read, for what runs right after an Edit, before a render catches up. */
+  const latest = useRef<Model | undefined>(undefined);
 
   const notify = useCallback((text: string, tone: Toast["tone"] = "info", undo = false) => {
     const id = nextToast.current++;
@@ -106,7 +108,9 @@ export function WorkspaceProvider(props: { context: string; info?: ContextInfo; 
   const read = useCallback(async () => {
     try {
       const [file, d, h] = await Promise.all([api.system(context), api.diagnostics(context), api.history(context)]);
-      setModel(new Model(file));
+      const next = new Model(file);
+      latest.current = next;
+      setModel(next);
       setDiagnostics(d);
       setHistory(h);
       setVersion((v) => v + 1);
@@ -188,10 +192,11 @@ export function WorkspaceProvider(props: { context: string; info?: ContextInfo; 
 
   const reveal = useCallback(
     (id: string) => {
-      const home = model?.home(id);
+      // The newest model, which may be newer than this render's: what was just added is in it.
+      const home = latest.current?.home(id);
       if (home) open(home.tab, home.focus ?? id);
     },
-    [model, open],
+    [open],
   );
 
   const close = useCallback(

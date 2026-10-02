@@ -24,7 +24,7 @@ const below: Record<string, string[]> = {
   catalog: ["core", "tool", "tool-json", "editing", "editors"],
   host: ["core", "tool", "tool-json", "editing", "editors", "diagnoser", "verifier", "perspectives", "exporter", "catalog"],
   mcp: ["host", "host-node"],
-  ui: ["host"],
+  ui: ["host", "host-browser"],
   "host-node": ["host", "catalog", "python-host"],
   "pyodide-host": ["verifier", "tool-json"],
   "host-browser": ["host", "catalog", "pyodide-host"],
@@ -58,11 +58,13 @@ describe("layering", () => {
     });
   }
 
-  it("the UI only types against the host: it runs in a browser, as a client over HTTP", () => {
+  it("the UI runs in a browser: nothing of Node, and the browser's own host only when built to stand alone", () => {
     for (const file of sources(join(root, "packages", "ui", "src"))) {
-      for (const line of readFileSync(file, "utf8").split("\n").filter((l) => l.includes('"@systemathic/'))) {
-        expect(line, relative(root, file)).toMatch(/^import type /);
+      const text = readFileSync(file, "utf8");
+      for (const spec of imports(file)) {
+        expect(spec.startsWith("node:") || spec === "@systemathic/host-node" || spec === "@systemathic/python-host", `${relative(root, file)} imports ${spec}`).toBe(false);
       }
+      expect(/^import [^;]*"@systemathic\/host-browser"/m.test(text), `${relative(root, file)} imports the browser host up front`).toBe(false);
     }
   });
 
