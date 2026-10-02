@@ -26,6 +26,7 @@ const below: Record<string, string[]> = {
   mcp: ["host", "host-node"],
   ui: ["host"],
   "host-node": ["host", "catalog", "python-host"],
+  "pyodide-host": ["verifier", "tool-json"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host-node"],
 };
 

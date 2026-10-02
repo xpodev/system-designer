@@ -20,6 +20,7 @@ export default defineConfig({
       "@systemathic/host": source("host"),
       "@systemathic/mcp": source("mcp"),
       "@systemathic/host-node": source("host-node"),
+      "@systemathic/pyodide-host": source("pyodide-host"),
     },
   },
   test: {

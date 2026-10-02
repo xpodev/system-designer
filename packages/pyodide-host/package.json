@@ -1,0 +1,20 @@
+{
+  "name": "@systemathic/pyodide-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RuleHost in WebAssembly: rule scripts run by the systemathic Python package in Pyodide, in a Web Worker or in Node.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/tool-json": "workspace:*",
+    "@systemathic/verifier": "workspace:*",
+    "pyodide": "^314.0.7"
+  }
+}
