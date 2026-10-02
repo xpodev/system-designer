@@ -160,7 +160,10 @@ class Assist(unittest.TestCase):
             "from systemathic.std import *\n\n@rule(severity=ERROR)\ndef lonely(system):\n    return []\n\nstrict = Profile(*standard_rules)\n"
         ))
         found = sorted((p["line"], p["severity"]) for p in result["problems"])
-        self.assertEqual(found, [(1, "warning"), (4, "info"), (4, "warning")])
+        self.assertEqual(found, [(4, "info"), (4, "warning")])
+        # `from systemathic.std import *` brings `standard` in; a script without it has none.
+        bare = assist.check(self.script("from systemathic.std import rule\n"))
+        self.assertEqual([p["message"][:28] for p in bare["problems"]], ["There is no profile to verif"])
         self.assertEqual(next(r for r in result["rules"] if r["name"] == "lonely")["line"], 4)
 
     def test_finds_nothing_wrong_with_the_tool_designs_profile(self):

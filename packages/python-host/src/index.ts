@@ -17,7 +17,7 @@ export const PYTHON_PACKAGE = fileURLToPath(new URL("../../../python/", import.m
 
 interface Described {
   rules: Rule[];
-  profiles: { name: string; rules: string[] }[];
+  profiles: { name: string; rules: string[]; severities?: Record<string, Rule["severity"]> }[];
 }
 
 interface Ran {
@@ -40,7 +40,10 @@ export class PythonHost implements ScriptHost, ScriptAssistant {
     return described.profiles.map((profile) => ({
       name: profile.name,
       script,
-      rules: profile.rules.map((name) => rules.get(name)!).filter((rule) => rule !== undefined),
+      rules: profile.rules
+        .map((name) => rules.get(name))
+        .filter((rule) => rule !== undefined)
+        .map((rule) => ({ ...rule, severity: profile.severities?.[rule.name] ?? rule.severity })),
     }));
   }
 

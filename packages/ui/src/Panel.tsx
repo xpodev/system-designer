@@ -5,14 +5,14 @@ import { useModel, useWorkspace } from "./workspace";
 
 export type PanelTab = "problems" | "history" | "verification";
 
-export function Panel({ tab, onTab, onClose }: { tab: PanelTab; onTab(tab: PanelTab): void; onClose(): void }) {
+export function Panel({ tab, onTab, onClose, height }: { tab: PanelTab; onTab(tab: PanelTab): void; onClose(): void; height: number }) {
   const w = useWorkspace();
   const model = useModel();
   const [filter, setFilter] = useState<"all" | "error" | "warning">("all");
   const errors = w.diagnostics.filter((d) => d.severity === "error").length;
   const shown = w.diagnostics.filter((d) => filter === "all" || d.severity === filter);
   return (
-    <section className="panel">
+    <section className="panel" style={{ height }}>
       <nav className="panel-tabs">
         <button className={tab === "problems" ? "on" : ""} onClick={() => onTab("problems")}>
           Problems {w.diagnostics.length > 0 && <Badge severity={errors ? "error" : "warning"}>{w.diagnostics.length}</Badge>}

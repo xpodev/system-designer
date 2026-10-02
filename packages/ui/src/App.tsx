@@ -14,8 +14,8 @@ import { tabKey, type Tab } from "./model";
 import { Palette, type Command } from "./Palette";
 import { Panel, type PanelTab } from "./Panel";
 import { SpecificationTab, ViewTab } from "./ViewTab";
-import { Icon, IconButton } from "./widgets";
-import { useModel, useWorkspace, WorkspaceProvider } from "./workspace";
+import { Icon, IconButton, Splitter } from "./widgets";
+import { useModel, useSize, useWorkspace, WorkspaceProvider } from "./workspace";
 
 type Dialog = "open" | "new" | "save" | "catalog" | undefined;
 
@@ -151,6 +151,8 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
   const w = useWorkspace();
   const model = useModel();
   const [palette, setPalette] = useState(false);
+  const [sidebar, resizeSidebar, keepSidebar] = useSize("sidebar", 270);
+  const [panelHeight, resizePanel, keepPanel] = useSize("panel", 240);
   const [panel, setPanel] = useState<PanelTab | undefined>(w.structural > 0 ? "problems" : undefined);
   const [lastPanel, setLastPanel] = useState<PanelTab>("problems");
   const showPanel = (tab: PanelTab | undefined) => {
@@ -240,10 +242,11 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
         </button>
       </header>
 
-      <div className="body">
+      <div className="body" style={{ gridTemplateColumns: `${sidebar}px auto 1fr` }}>
         <aside className="sidebar">
           <Explorer />
         </aside>
+        <Splitter axis="x" size={sidebar} grows="with" min={180} max={560} initial={270} onResize={resizeSidebar} onResized={keepSidebar} label="Resize the Explorer" />
         <main className="main">
           <nav className="tabstrip" role="tablist">
             {w.tabs.map((tab) => {
@@ -272,7 +275,12 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
           <div className="tab-content" key={tabKey(active)}>
             <Editor tab={active} onCatalog={() => props.onDialog("catalog")} />
           </div>
-          {panel && <Panel tab={panel} onTab={showPanel} onClose={() => showPanel(undefined)} />}
+          {panel && (
+            <>
+              <Splitter axis="y" size={panelHeight} grows="against" min={100} max={Math.round(window.innerHeight * 0.75)} initial={240} onResize={resizePanel} onResized={keepPanel} label="Resize the panel" />
+              <Panel height={panelHeight} tab={panel} onTab={showPanel} onClose={() => showPanel(undefined)} />
+            </>
+          )}
         </main>
       </div>
 

@@ -5,7 +5,7 @@
  * jsdom is installed by hand on Node's globals, rather than as Vitest's environment, which would
  * rewrite the host's `new URL(…, import.meta.url)` into web addresses.
  */
-import { copyFileSync, mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,7 +45,10 @@ class HostEventSource {
 
 beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), "systemathic-ui-"));
-  copyFileSync(join(root, "examples/game.systemathic.json"), join(dir, "game.systemathic.json"));
+  // The example, without whatever layout a person left in it while using the UI.
+  const game = JSON.parse(readFileSync(join(root, "examples/game.systemathic.json"), "utf8"));
+  game.attachments = game.attachments.filter((a: { owner: string }) => a.owner !== "ui");
+  writeFileSync(join(dir, "game.systemathic.json"), JSON.stringify(game));
   host = new Host({ cwd: dir });
   const served = await serve(host, { port: 0 });
   url = served.url;
@@ -189,6 +192,35 @@ describe("the UI", () => {
     await waitFor(async () => expect(await host.attachment((await host.contexts())[0]!.id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" }));
   }, 20_000);
 
+  it("switches profile, and resizes the verification pane", async () => {
+    const { id } = await host.open("game.systemathic.json");
+    const source = [
+      "from systemathic.core import *",
+      "from systemathic.std import *",
+      "",
+      "profile = Profile(*standard_rules)",
+      "strict = Profile(*standard_rules, completeness.at(ERROR))",
+      "",
+    ].join("\n");
+    await host.saveScript(id, "game.rules.py", source);
+    await openGame();
+    fireEvent.click(explorerRow("Verification script"));
+    const picker = await waitFor(() => {
+      const select = document.querySelector<HTMLSelectElement>(".profile-picker select");
+      expect([...(select?.options ?? [])].map((o) => o.value).sort()).toEqual(["profile", "standard", "strict"]);
+      return select!;
+    }, { timeout: 10_000 });
+    fireEvent.change(picker, { target: { value: "strict" } });
+    await waitFor(async () => expect(await host.attachment(id, "verifier")).toEqual({ script: "game.rules.py", profile: "strict" }));
+    expect((await host.verify(id)).errors).toBeGreaterThan(0);
+
+    const pane = document.querySelector<HTMLElement>(".script-side")!;
+    expect(pane.style.width).toBe("320px");
+    fireEvent.keyDown(screen.getByRole("separator", { name: "Resize the verification pane" }), { key: "ArrowLeft", shiftKey: true });
+    await waitFor(() => expect(pane.style.width).toBe("368px"));
+    await waitFor(async () => expect(((await host.attachment(id, "ui")) as { sizes: Record<string, number> }).sizes["script-side"]).toBe(368), { timeout: 3000 });
+  }, 20_000);
+
   it("says so when the host is older than the page, rather than breaking", async () => {
     const current = globalThis.fetch;
     // An older host: no file listing, and Systems without who is editing them.
@@ -226,6 +258,7 @@ describe("the UI", () => {
     await openGame();
     fireEvent.click(document.querySelector(".system-row")!);
     fireEvent.click(await screen.findByText("Verify", { selector: ".health-card button" }));
-    await screen.findByText(/^0 rule errors, \d+ warnings?$/, {}, { timeout: 15000 });
+    // Whichever profile an earlier test left it with: what matters is that the result shows.
+    await screen.findByText(/^\d+ rule errors?, \d+ warnings?$/, {}, { timeout: 15000 });
   }, 20_000);
 });

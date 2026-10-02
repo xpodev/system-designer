@@ -74,8 +74,8 @@ def check(path: str) -> dict[str, Any]:
             problems.append(_problem(line, column, f"The rule {name} is in no profile, so it never runs.", "warning", end_column=column + 4 + len(name)))
         if not value.function.__doc__:
             problems.append(_problem(line, column, f"Say what {name} checks in a docstring: it is how the rule reads in a specification.", "info", end_column=column + 4 + len(name)))
-    if "profile" not in {p["name"] for p in described["profiles"]}:
-        problems.append(_problem(1, 1, "There is no `profile`: verification uses the profile named `profile`, as in `profile = Profile(*standard_rules, my_rule)`.", "warning"))
+    if not described["profiles"]:
+        problems.append(_problem(1, 1, "There is no profile to verify with: add one, as in `profile = Profile(*standard_rules, my_rule)`.", "warning"))
     for rule in described["rules"]:
         node = defined.get(rule["name"])
         if node:

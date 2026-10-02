@@ -362,3 +362,65 @@ export function Marks({ diagnostics }: { diagnostics: { severity: string; check:
     </span>
   );
 }
+
+/**
+ * A handle between two panes, dragged to resize one of them. `size` is that pane's size along
+ * `axis`; `grows` says whether dragging right (or down) makes it bigger or smaller. Double-click
+ * puts it back to `initial`.
+ */
+export function Splitter(props: {
+  axis: "x" | "y";
+  size: number;
+  grows: "with" | "against";
+  min: number;
+  max: number;
+  initial: number;
+  onResize(size: number): void;
+  onResized(size: number): void;
+  label: string;
+}) {
+  const start = useRef<{ at: number; size: number; last: number }>(undefined);
+  const clamp = (n: number) => Math.min(props.max, Math.max(props.min, n));
+  const at = (event: React.PointerEvent) => (props.axis === "x" ? event.clientX : event.clientY);
+  return (
+    <div
+      className={`splitter ${props.axis}`}
+      role="separator"
+      aria-orientation={props.axis === "x" ? "vertical" : "horizontal"}
+      aria-label={props.label}
+      aria-valuenow={Math.round(props.size)}
+      aria-valuemin={props.min}
+      aria-valuemax={props.max}
+      tabIndex={0}
+      title={`${props.label}: drag to resize, double-click to reset`}
+      onPointerDown={(event) => {
+        (event.target as Element).setPointerCapture(event.pointerId);
+        start.current = { at: at(event), size: props.size, last: props.size };
+        document.body.classList.add(props.axis === "x" ? "resizing-x" : "resizing-y");
+      }}
+      onPointerMove={(event) => {
+        if (!start.current) return;
+        const delta = at(event) - start.current.at;
+        const size = clamp(start.current.size + (props.grows === "with" ? delta : -delta));
+        start.current.last = size;
+        props.onResize(size);
+      }}
+      onPointerUp={() => {
+        if (!start.current) return;
+        props.onResized(start.current.last);
+        start.current = undefined;
+        document.body.classList.remove("resizing-x", "resizing-y");
+      }}
+      onDoubleClick={() => props.onResized(props.initial)}
+      onKeyDown={(event) => {
+        const step = event.shiftKey ? 48 : 16;
+        const forward = props.axis === "x" ? "ArrowRight" : "ArrowDown";
+        const back = props.axis === "x" ? "ArrowLeft" : "ArrowUp";
+        if (event.key !== forward && event.key !== back) return;
+        event.preventDefault();
+        const towards = (event.key === forward ? 1 : -1) * (props.grows === "with" ? 1 : -1);
+        props.onResized(clamp(props.size + towards * step));
+      }}
+    />
+  );
+}

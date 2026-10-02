@@ -64,7 +64,11 @@ def describe(path: str) -> dict:
 def describe_module(script: ModuleType) -> dict:
     return {
         "rules": [{"name": r.name, "severity": r.severity, "about": r.about, "script": _origin(r)} for r in rules(script)],
-        "profiles": [{"name": name, "rules": [r.name for r in p.rules]} for name, p in profiles(script).items()],
+        # A profile may run a rule at another severity than the rule's own (`completeness.at(ERROR)`).
+        "profiles": [
+            {"name": name, "rules": [r.name for r in p.rules], "severities": {r.name: r.severity for r in p.rules}}
+            for name, p in profiles(script).items()
+        ],
     }
 
 

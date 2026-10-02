@@ -23,6 +23,8 @@ export interface UiLayout {
   positions?: Record<string, Record<string, [number, number]>>;
   /** Per Language editor: the diagram or the lists. */
   languageMode?: Record<string, "lists" | "diagram">;
+  /** Sizes of the panes a person has resized, in pixels, by pane. */
+  sizes?: Record<string, number>;
 }
 
 export interface Workspace {
@@ -311,4 +313,22 @@ export function useFocusRow(id: string): (element: HTMLElement | null) => void {
     },
     [focus, id],
   );
+}
+
+/**
+ * A pane's size: what the person last made it, or `initial`. Resizing is live and local; the
+ * size is kept with the System's layout once the drag ends.
+ */
+export function useSize(key: string, initial: number): [number, (size: number) => void, (size: number) => void] {
+  const { layout, setLayout } = useWorkspace();
+  const kept = layout.sizes?.[key] ?? initial;
+  const [live, setLive] = useState<number>();
+  const keep = useCallback(
+    (size: number) => {
+      setLive(undefined);
+      setLayout((l) => ({ ...l, sizes: { ...l.sizes, [key]: Math.round(size) } }));
+    },
+    [key, setLayout],
+  );
+  return [live ?? kept, setLive, keep];
 }

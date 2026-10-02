@@ -13,8 +13,8 @@ import { EditorView, highlightActiveLine, highlightActiveLineGutter, hoverToolti
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
 import { api, type ScriptCheck as Check, type ScriptSymbol } from "./api";
-import { Badge, Icon, InlineText } from "./widgets";
-import { useModel, useWorkspace } from "./workspace";
+import { Badge, Icon, InlineText, Splitter } from "./widgets";
+import { useModel, useSize, useWorkspace } from "./workspace";
 
 let symbolsOnce: Promise<ScriptSymbol[]> | undefined;
 const loadSymbols = () => (symbolsOnce ??= api.symbols().catch(() => []));
@@ -55,6 +55,9 @@ export function ScriptTab() {
   const view = useRef<EditorView | undefined>(undefined);
   const [path, setPath] = useState<string>();
   const [exists, setExists] = useState(false);
+  /** The profile the System is verified with: one of this script's. */
+  const [profileName, setProfileName] = useState("profile");
+  const [side, resizeSide, keepSide] = useSize("script-side", 320);
   const [saved, setSaved] = useState<string>();
   const [source, setSource] = useState<string>();
   const [check, setCheck] = useState<Check>();
@@ -68,6 +71,7 @@ export function ScriptTab() {
     void api.script(w.context).then((script) => {
       if (!alive) return;
       setPath(script.path);
+      setProfileName(script.profile);
       setExists(script.exists);
       setSaved(script.exists ? script.source : undefined);
       setSource(script.source);
@@ -183,10 +187,11 @@ export function ScriptTab() {
     if (!path || source === undefined) return false;
     try {
       const result = await api.saveScript(w.context, path, source);
+      await api.setAttachment(w.context, "verifier", { script: result.path, profile: profileName });
       setPath(result.path);
       setSaved(source);
       setExists(true);
-      w.notify(`Saved ${result.path}; the System is verified with it`, "ok");
+      w.notify(`Saved ${result.path}; the System is verified with its profile ${profileName}`, "ok");
       return true;
     } catch (e) {
       w.notify((e as Error).message, "error");
@@ -251,7 +256,21 @@ export function ScriptTab() {
   const dirty = saved !== source;
   const errors = check?.problems.filter((p) => p.severity === "error").length ?? 0;
   const ownRules = check?.rules.filter((r) => r.script !== "std") ?? [];
-  const profile = check?.profiles.find((p) => p.name === "profile");
+  const profiles = check?.profiles ?? [];
+  const profile = profiles.find((p) => p.name === profileName);
+  const rulesByName = new Map((check?.rules ?? []).map((r) => [r.name, r]));
+
+  /** Verifies the System with another of the script's profiles from now on. */
+  const choose = async (name: string) => {
+    setProfileName(name);
+    if (!exists || !path) return;
+    try {
+      await api.setAttachment(w.context, "verifier", { script: path, profile: name });
+      w.notify(`The System is verified with the profile ${name} from now on`, "ok");
+    } catch (e) {
+      w.notify((e as Error).message, "error");
+    }
+  };
 
   return (
     <div className="editor script-editor">
@@ -263,13 +282,30 @@ export function ScriptTab() {
           <span className="editor-kind">Verification script · Python</span>
           <h1>{path ? <InlineText value={path} mono onCommit={setPath} /> : "…"}</h1>
           <span className="editor-summary">
-            {exists ? "The System is verified with this script's `profile`." : "Not saved yet: the System is verified with the standard rules until it is."}{" "}
+            {exists ? (
+              <>
+                The System is verified with this script's profile <code>{profileName}</code>.
+              </>
+            ) : (
+              "Not saved yet: the System is verified with the standard rules until it is."
+            )}{" "}
             <kbd>Ctrl S</kbd> save · <kbd>Ctrl Enter</kbd> save and run · <kbd>Ctrl Space</kbd> complete
           </span>
         </div>
         <div className="editor-actions">
           {dirty && <Badge severity="warning">unsaved</Badge>}
           {errors > 0 && <Badge severity="error">{errors} error{errors === 1 ? "" : "s"}</Badge>}
+          <label className="profile-picker" title="Which of the script's profiles the System is verified with">
+            <span>Profile</span>
+            <select value={profileName} onChange={(e) => void choose(e.target.value)} className={profile || profiles.length === 0 ? "" : "invalid-value"}>
+              {!profiles.some((p) => p.name === profileName) && <option value={profileName}>{profileName} (not in the script)</option>}
+              {profiles.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name} — {p.rules.length} rules
+                </option>
+              ))}
+            </select>
+          </label>
           <button onClick={() => void save()} disabled={!dirty && exists}>
             <Icon name="save" /> Save
           </button>
@@ -280,14 +316,28 @@ export function ScriptTab() {
       </header>
       <div className="script-body">
         <div className="code" ref={host} />
-        <aside className="script-side">
-          <h3>Profile</h3>
+        <Splitter axis="x" size={side} grows="against" min={220} max={760} initial={320} onResize={resizeSide} onResized={keepSide} label="Resize the verification pane" />
+        <aside className="script-side" style={{ width: side }}>
+          <h3>Profile {profileName}</h3>
           {profile ? (
-            <p className="muted">
-              <code>profile</code> runs {profile.rules.length} rules.
-            </p>
+            <ul className="profile-rules">
+              {profile.rules.map((name) => {
+                const rule = rulesByName.get(name);
+                return (
+                  <li key={name} title={rule?.about}>
+                    <button onClick={() => rule?.line && goTo(rule.line)} disabled={!rule?.line}>
+                      <span className={`severity-dot ${rule?.severity ?? "error"}`} />
+                      <code>{name}</code>
+                    </button>
+                    {rule?.script === "std" && <span className="muted">std</span>}
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
-            <p className="inline-problem warning">No `profile` yet.</p>
+            <p className="inline-problem warning">
+              {profiles.length === 0 ? "The script has no profile yet." : `The script has no profile ${profileName}: choose another above.`}
+            </p>
           )}
           <h3>This script's rules</h3>
           <ul className="rule-list">
