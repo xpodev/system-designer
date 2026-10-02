@@ -15,7 +15,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
     "@systemathic/host": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@systemathic/host-node": "workspace:*"
   },
   "bin": {
     "systemathic-mcp": "dist/main.js"

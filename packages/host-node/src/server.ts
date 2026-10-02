@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
-import { HostError, type HostApi } from "./api.js";
+import { HostError, type HostApi } from "@systemathic/host";
 
 type Params = Record<string, string>;
 type Handler = (params: Params, body: Record<string, any>, query: URLSearchParams) => Promise<unknown>;

@@ -10,9 +10,6 @@
  * Target — the same Element, by id, Entity and name, as when "HTTP over TCP" is imported
  * over an HTTP imported before — is reused rather than copied again.
  */
-import { readdirSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { copy, nameOf, setName, systemComposition, systemGraph, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { SystemEditor } from "@systemathic/editors";
@@ -41,8 +38,7 @@ export interface PackageInfo {
 
 export const ATTACHMENT_OWNER = "catalog";
 
-/** The folder of the standard catalog. */
-export const STANDARD_CATALOG = fileURLToPath(new URL("../../../catalog/", import.meta.url));
+const basename = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
 export function packageOf(content: ToolSystem, origin: Origin, path: string): Package {
   const info = content.attachments.find((attachment) => attachment.owner === ATTACHMENT_OWNER)?.data as Partial<PackageInfo> | undefined;
@@ -58,9 +54,12 @@ export function packageOf(content: ToolSystem, origin: Origin, path: string): Pa
   };
 }
 
-/** Reads a System file as a Package. Content that cannot be followed fully is refused: a Package must be closed. */
-export function readPackage(path: string, origin: Origin = "file"): Package {
-  const { system, problems } = readSystem(JSON.parse(readFileSync(path, "utf8")));
+/**
+ * A parsed System file as a Package; where it came from is for messages. Content that cannot be
+ * followed fully is refused: a Package must be closed. Reading the file is the caller's.
+ */
+export function parsePackage(file: unknown, origin: Origin, path: string): Package {
+  const { system, problems } = readSystem(file);
   if (problems.length > 0) throw new Error(`${path}: ${problems.map((problem) => `${problem.at}: ${problem.message}`).join("; ")}`);
   return packageOf(system, origin, path);
 }
@@ -70,12 +69,6 @@ export class Catalog {
 
   constructor(packages: readonly Package[] = []) {
     for (const p of packages) this.add(p);
-  }
-
-  /** The standard catalog. */
-  static standard(folder = STANDARD_CATALOG): Catalog {
-    const files = readdirSync(folder).filter((file) => file.endsWith(".systemathic.json")).sort();
-    return new Catalog(files.map((file) => readPackage(join(folder, file), "standard")));
   }
 
   get packages(): Package[] {
@@ -89,11 +82,6 @@ export class Catalog {
   add(p: Package): Package {
     this.byId.set(p.id, p);
     return p;
-  }
-
-  /** Adds a Package from a file. */
-  addFile(path: string): Package {
-    return this.add(readPackage(path, "file"));
   }
 
   find(id: string): Package | undefined {

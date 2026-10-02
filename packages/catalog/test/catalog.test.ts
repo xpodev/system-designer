@@ -1,14 +1,20 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { nameOf } from "@systemathic/core";
 import { diagnose } from "@systemathic/diagnoser";
 import { Target, undo } from "@systemathic/editing";
 import { newSystem, open } from "@systemathic/tool";
 import { readSystem, writeSystem } from "@systemathic/tool-json";
 import { describe, expect, it } from "vitest";
-import { Catalog, closure, exportSelection, importPackage, packageOf } from "../src/index.js";
+import { Catalog, closure, exportSelection, importPackage, packageOf, parsePackage } from "../src/index.js";
 import { files } from "../../../scripts/build-catalog.js";
 
-const catalog = Catalog.standard();
+const folder = new URL("../../../catalog/", import.meta.url);
+const catalog = new Catalog(
+  readdirSync(folder)
+    .filter((file) => file.endsWith(".systemathic.json"))
+    .sort()
+    .map((file) => parsePackage(JSON.parse(readFileSync(new URL(file, folder), "utf8")), "standard", file)),
+);
 const fresh = () => {
   const target = new Target(newSystem("Api"));
   return { target, session: target.startSession("test") };

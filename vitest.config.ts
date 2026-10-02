@@ -19,6 +19,7 @@ export default defineConfig({
       "@systemathic/catalog": source("catalog"),
       "@systemathic/host": source("host"),
       "@systemathic/mcp": source("mcp"),
+      "@systemathic/host-node": source("host-node"),
     },
   },
   test: {

@@ -38,6 +38,9 @@
       "path": "packages/host"
     },
     {
+      "path": "packages/host-node"
+    },
+    {
       "path": "packages/mcp"
     },
     {

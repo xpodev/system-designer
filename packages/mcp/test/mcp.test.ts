@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { Host } from "@systemathic/host";
+import { nodeHost } from "@systemathic/host-node";
 import { describe, expect, it } from "vitest";
 import { createServer } from "../src/index.js";
 
@@ -13,7 +13,7 @@ const root = fileURLToPath(new URL("../../../", import.meta.url));
 async function connected() {
   const dir = mkdtempSync(join(tmpdir(), "systemathic-mcp-"));
   copyFileSync(join(root, "examples/game.systemathic.json"), join(dir, "game.json"));
-  const host = new Host({ cwd: dir });
+  const host = nodeHost({ cwd: dir });
   const server = await createServer(host);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });

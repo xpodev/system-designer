@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { describe } from "@systemathic/core";
 import { diagnose, structuralErrors } from "@systemathic/diagnoser";
 import { specify, toJson, toMarkdown } from "@systemathic/exporter";
-import { Host, serve } from "@systemathic/host";
+import { nodeHost, serve } from "@systemathic/host-node";
 import { PythonHost } from "@systemathic/python-host";
 import { newSystem, open, save } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type ReadResult } from "@systemathic/tool-json";
@@ -155,7 +155,7 @@ async function host(args: readonly string[], io: Io): Promise<number> {
     io.err(USAGE);
     return 2;
   }
-  const hosted = new Host();
+  const hosted = nodeHost();
   for (const file of files) {
     try {
       const context = await hosted.open(file);

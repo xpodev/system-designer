@@ -22,10 +22,11 @@ const below: Record<string, string[]> = {
   perspectives: ["core", "tool", "diagnoser"],
   exporter: ["core", "tool", "verifier"],
   catalog: ["core", "tool", "tool-json", "editing", "editors"],
-  host: ["core", "tool", "tool-json", "editing", "editors", "diagnoser", "verifier", "python-host", "perspectives", "exporter", "catalog"],
-  mcp: ["host"],
+  host: ["core", "tool", "tool-json", "editing", "editors", "diagnoser", "verifier", "perspectives", "exporter", "catalog"],
+  mcp: ["host", "host-node"],
   ui: ["host"],
-  cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host"],
+  "host-node": ["host", "catalog", "python-host"],
+  cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host-node"],
 };
 
 const coreLayers = ["kernel", "contexts", "operations", "std"];

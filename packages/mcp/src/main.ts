@@ -7,7 +7,8 @@
  */
 import { fileURLToPath } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { DEFAULT_HOST, Host, HostClient, serve, type HostApi } from "@systemathic/host";
+import { HostClient, type HostApi } from "@systemathic/host";
+import { DEFAULT_HOST, nodeHost, serve } from "@systemathic/host-node";
 import { createServer } from "./server.js";
 
 export async function connect(): Promise<HostApi> {
@@ -15,7 +16,7 @@ export async function connect(): Promise<HostApi> {
     console.error(`systemathic-mcp: using the host at ${DEFAULT_HOST}`);
     return new HostClient(DEFAULT_HOST);
   }
-  const host = new Host();
+  const host = nodeHost();
   const port = Number(new URL(DEFAULT_HOST).port || 4747);
   try {
     const { url } = await serve(host, { port, ui: fileURLToPath(new URL("../../ui/dist/", import.meta.url)) });

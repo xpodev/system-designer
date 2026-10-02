@@ -9,9 +9,13 @@ import { save, type SystemContext, type ToolSystem } from "@systemathic/tool";
 
 export type Severity = "error" | "warning";
 
-/** A script of rules, by where it is: a path, or `std` for the standard rules. */
+/**
+ * A script of rules, by where it is: a path, or `std` for the standard rules. Its source comes
+ * with it when whoever holds it has it at hand, for a host that cannot read the path itself.
+ */
 export interface Script {
   readonly path: string;
+  readonly source?: string;
 }
 
 export interface Rule {
@@ -100,7 +104,8 @@ export interface ScriptSymbol {
 
 /** Helps write scripts: what is wrong with one, and what one can use. A minimal language server. */
 export interface ScriptAssistant {
-  check(script: Script): Promise<ScriptCheck>;
+  /** What is wrong with a script, as it is being written: its source, not yet saved anywhere. */
+  check(source: string): Promise<ScriptCheck>;
   symbols(): Promise<ScriptSymbol[]>;
 }
 

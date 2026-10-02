@@ -30,7 +30,7 @@
       "path": "../exporter"
     },
     {
-      "path": "../host"
+      "path": "../host-node"
     }
   ]
 }

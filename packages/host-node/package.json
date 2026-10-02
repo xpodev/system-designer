@@ -1,0 +1,20 @@
+{
+  "name": "@systemathic/host-node",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Hosting in a local process: files on disk, Python for rules, the standard catalog from catalog/, and the host over HTTP.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/host": "workspace:*",
+    "@systemathic/catalog": "workspace:*",
+    "@systemathic/python-host": "workspace:*"
+  }
+}

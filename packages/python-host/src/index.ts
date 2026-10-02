@@ -59,8 +59,15 @@ export class PythonHost implements ScriptHost, ScriptAssistant {
     }
   }
 
-  check(script: Script): Promise<ScriptCheck> {
-    return this.call<ScriptCheck>(["check", this.path(script)]);
+  async check(source: string): Promise<ScriptCheck> {
+    const folder = mkdtempSync(join(tmpdir(), "systemathic-script-"));
+    try {
+      const file = join(folder, "script.py");
+      writeFileSync(file, source);
+      return await this.call<ScriptCheck>(["check", file]);
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
   }
 
   /** Read once: what a script can use does not change while the host runs. */

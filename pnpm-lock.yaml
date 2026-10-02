@@ -50,9 +50,9 @@ importers:
       '@systemathic/exporter':
         specifier: workspace:*
         version: link:../exporter
-      '@systemathic/host':
+      '@systemathic/host-node':
         specifier: workspace:*
-        version: link:../host
+        version: link:../host-node
       '@systemathic/python-host':
         specifier: workspace:*
         version: link:../python-host
@@ -133,9 +133,6 @@ importers:
       '@systemathic/perspectives':
         specifier: workspace:*
         version: link:../perspectives
-      '@systemathic/python-host':
-        specifier: workspace:*
-        version: link:../python-host
       '@systemathic/tool':
         specifier: workspace:*
         version: link:../tool
@@ -146,6 +143,18 @@ importers:
         specifier: workspace:*
         version: link:../verifier
 
+  packages/host-node:
+    dependencies:
+      '@systemathic/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@systemathic/host':
+        specifier: workspace:*
+        version: link:../host
+      '@systemathic/python-host':
+        specifier: workspace:*
+        version: link:../python-host
+
   packages/mcp:
     dependencies:
       '@modelcontextprotocol/sdk':
@@ -154,6 +163,9 @@ importers:
       '@systemathic/host':
         specifier: workspace:*
         version: link:../host
+      '@systemathic/host-node':
+        specifier: workspace:*
+        version: link:../host-node
       zod:
         specifier: ^4.6.5
         version: 4.6.5

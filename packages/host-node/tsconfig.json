@@ -12,7 +12,10 @@
       "path": "../host"
     },
     {
-      "path": "../host-node"
+      "path": "../catalog"
+    },
+    {
+      "path": "../python-host"
     }
   ]
 }

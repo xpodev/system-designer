@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { Host, HostClient, HostError, serve, type HostEvent } from "../src/index.js";
+import { HostClient, HostError, type HostEvent } from "@systemathic/host";
+import { nodeHost, serve } from "../src/index.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -15,7 +16,7 @@ function workspace() {
 
 describe("Host", () => {
   it("is one authority per file: opening it twice gives the same system context", async () => {
-    const host = new Host({ cwd: workspace() });
+    const host = nodeHost({ cwd: workspace() });
     const a = await host.open("game.json");
     const b = await host.open("./game.json");
     expect(b.id).toBe(a.id);
@@ -23,7 +24,7 @@ describe("Host", () => {
   });
 
   it("applies every client's Edits in one order, and tells every subscriber", async () => {
-    const host = new Host({ cwd: workspace() });
+    const host = nodeHost({ cwd: workspace() });
     const { id } = await host.create("Shop");
     const events: HostEvent[] = [];
     host.subscribe((event) => events.push(event));
@@ -41,7 +42,7 @@ describe("Host", () => {
   });
 
   it("says who is editing, whether there is anything unsaved, and which System files there are", async () => {
-    const host = new Host({ cwd: workspace() });
+    const host = nodeHost({ cwd: workspace() });
     expect(await host.files()).toEqual([]);
     const { id } = await host.open("game.json");
     const { session } = await host.startSession(id, "ui");
@@ -60,7 +61,7 @@ describe("Host", () => {
 
   it("edits the verification script: a template to start, saved as the System's profile, checked as it is written", async () => {
     const dir = workspace();
-    const host = new Host({ cwd: dir });
+    const host = nodeHost({ cwd: dir });
     const { id } = await host.open("game.json");
     const fresh = await host.script(id);
     expect(fresh).toMatchObject({ path: "game.rules.py", profile: "profile", exists: false });
@@ -75,7 +76,7 @@ describe("Host", () => {
   }, 30_000);
 
   it("refuses malformed requests, never ill-formed results", async () => {
-    const host = new Host({ cwd: workspace() });
+    const host = nodeHost({ cwd: workspace() });
     const { id } = await host.open("game.json");
     const { session } = await host.startSession(id, "test");
     await expect(host.apply(id, session, "LanguageEditor", "addEntity", { language: "nothing", name: "X" })).rejects.toThrow(HostError);
@@ -87,7 +88,7 @@ describe("Host", () => {
   });
 
   it("verifies, and shows the Violations with the structural Diagnostics", async () => {
-    const host = new Host({ cwd: workspace() });
+    const host = nodeHost({ cwd: workspace() });
     const { id } = await host.open("game.json");
     const run = await host.verify(id);
     expect(run).toMatchObject({ profile: "standard", rules: 9, errors: 0, warnings: 1 });
@@ -98,7 +99,7 @@ describe("Host", () => {
 
   it("saves, imports from the catalog, exports, and keeps attachments", async () => {
     const dir = workspace();
-    const host = new Host({ cwd: dir });
+    const host = nodeHost({ cwd: dir });
     const { id } = await host.create("Api");
     const { session } = await host.startSession(id, "test");
     await expect(host.save(id)).rejects.toThrow("no file yet");
@@ -118,7 +119,7 @@ describe("Host over HTTP", () => {
   let url: string;
   let close: () => void;
   beforeAll(async () => {
-    const served = await serve(new Host({ cwd: workspace() }), { port: 0 });
+    const served = await serve(nodeHost({ cwd: workspace() }), { port: 0 });
     url = served.url;
     close = () => served.server.close();
   });

@@ -4,18 +4,18 @@
  * client, is applied by it, in one order, and every subscriber is told of every Edit. A file
  * opened twice is one system context, so a UI and an LLM editing "the same file" edit the
  * same History.
+ *
+ * Where it lives is not its business: files, the catalog and the script host are given to it.
+ * A local process gives it the disk and Python (@systemathic/host-node); a browser tab gives it
+ * the browser's storage and Python in WebAssembly (@systemathic/host-browser).
  */
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, relative, resolve, sep } from "node:path";
 import { describe as describeElement, nameOf } from "@systemathic/core";
-import { Catalog, exportSelection, importPackage, readPackage } from "@systemathic/catalog";
+import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
 import { ArgumentError, editors, findOperation } from "@systemathic/editors";
 import { specify, toMarkdown } from "@systemathic/exporter";
 import { perspectives, view, type Perspective, type View } from "@systemathic/perspectives";
-import { PythonHost } from "@systemathic/python-host";
 import { newSystem, open, save, type SystemContext } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type SystemFile } from "@systemathic/tool-json";
 import {
@@ -32,6 +32,20 @@ import {
 } from "@systemathic/verifier";
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
 
+/**
+ * The files a Host reads and writes: Systems, scripts, packages. Paths are relative to the
+ * Host's workspace, with forward slashes; `resolve` gives the one form two names of the same
+ * file share.
+ */
+export interface Files {
+  resolve(path: string): string;
+  /** A file's text; undefined if there is none. */
+  read(path: string): Promise<string | undefined>;
+  write(path: string, text: string): Promise<void>;
+  /** The files whose names end with `suffix`, sorted. */
+  list(suffix: string): Promise<string[]>;
+}
+
 interface Hosted {
   readonly id: string;
   readonly target: Target;
@@ -42,25 +56,24 @@ interface Hosted {
 }
 
 export interface HostOptions {
-  /** Where relative paths are resolved from. */
-  readonly cwd?: string;
-  readonly catalog?: Catalog;
-  readonly scripts?: ScriptHost & ScriptAssistant;
+  readonly files: Files;
+  readonly catalog: Catalog;
+  readonly scripts: ScriptHost & ScriptAssistant;
 }
 
 export class Host implements HostApi {
   private readonly hosted = new Map<string, Hosted>();
   private readonly listeners = new Set<(event: HostEvent) => void>();
-  private readonly cwd: string;
+  private readonly store: Files;
   private readonly library: Catalog;
   private readonly verifier: Verifier;
   private readonly scripts: ScriptHost & ScriptAssistant;
   private next = 1;
 
-  constructor(options: HostOptions = {}) {
-    this.cwd = options.cwd ?? process.cwd();
-    this.library = options.catalog ?? Catalog.standard();
-    this.scripts = options.scripts ?? new PythonHost(undefined, this.cwd);
+  constructor(options: HostOptions) {
+    this.store = options.files;
+    this.library = options.catalog;
+    this.scripts = options.scripts;
     this.verifier = new Verifier(this.scripts);
   }
 
@@ -87,15 +100,17 @@ export class Host implements HostApi {
   }
 
   async open(path: string) {
-    const file = resolve(this.cwd, path);
+    const file = this.store.resolve(path);
     const already = [...this.hosted.values()].find((hosted) => hosted.path === file);
     if (already) return { ...this.info(already), problems: [] };
+    const text = await this.store.read(file);
+    if (text === undefined) throw new HostError(404, `${path}: no such file`);
     let read;
     try {
-      read = readSystem(JSON.parse(readFileSync(file, "utf8")));
+      read = readSystem(JSON.parse(text));
     } catch (error) {
       if (error instanceof FormatError || error instanceof SyntaxError) throw new HostError(400, `${path}: not a System file: ${error.message}`);
-      throw new HostError(404, `${path}: ${(error as Error).message}`);
+      throw error;
     }
     const hosted = this.host(open(read.system), file);
     return { ...this.info(hosted), problems: read.problems };
@@ -103,9 +118,9 @@ export class Host implements HostApi {
 
   async save(context: string, path?: string) {
     const hosted = this.get(context);
-    const file = path === undefined ? hosted.path : resolve(this.cwd, path);
+    const file = path === undefined ? hosted.path : this.store.resolve(path);
     if (file === undefined) throw new HostError(400, "this System has no file yet: save it to a path");
-    writeFileSync(file, JSON.stringify(writeSystem(save(hosted.target.context)), null, 2) + "\n");
+    await this.store.write(file, JSON.stringify(writeSystem(save(hosted.target.context)), null, 2) + "\n");
     hosted.path = file;
     hosted.saved = hosted.target.history.edits.length;
     this.emit({ type: "contexts" });
@@ -150,16 +165,7 @@ export class Host implements HostApi {
   }
 
   async files(): Promise<string[]> {
-    const found: string[] = [];
-    const walk = (dir: string, depth: number) => {
-      for (const entry of readdirSync(join(this.cwd, dir), { withFileTypes: true })) {
-        const path = dir ? `${dir}/${entry.name}` : entry.name;
-        if (entry.isDirectory() && depth < 4 && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "dist") walk(path, depth + 1);
-        else if (entry.isFile() && entry.name.endsWith(".systemathic.json")) found.push(path);
-      }
-    };
-    walk("", 0);
-    return found.sort();
+    return this.store.list(".systemathic.json");
   }
 
   async select(context: string, session: string, ids: readonly string[]) {
@@ -171,7 +177,7 @@ export class Host implements HostApi {
 
   async importPackage(context: string, session: string, from: { package: string } | { path: string }) {
     const target = this.get(context).target;
-    const p = "package" in from ? this.library.find(from.package) : readPackage(resolve(this.cwd, from.path));
+    const p = "package" in from ? this.library.find(from.package) : await this.packageFile(from.path);
     if (!p) throw new HostError(404, `no package ${"package" in from ? from.package : from.path}`);
     const result = importPackage(this.session(target, session), p);
     this.emit({ type: "attachments", context, owner: "catalog" });
@@ -211,7 +217,9 @@ export class Host implements HostApi {
     const path = script ?? setting?.script ?? STANDARD.path;
     let run: Run;
     try {
-      const profile = await this.verifier.profile({ path }, profileName ?? (script === undefined ? setting?.profile : undefined));
+      const source = path === STANDARD.path ? undefined : await this.store.read(path);
+      if (path !== STANDARD.path && source === undefined) throw new Error(`there is no script ${path}`);
+      const profile = await this.verifier.profile(source === undefined ? { path } : { path, source }, profileName ?? (script === undefined ? setting?.profile : undefined));
       run = await this.verifier.verify(snapshot(hosted.target.context), profile);
     } catch (error) {
       throw new HostError(400, `cannot verify: ${(error as Error).message}`);
@@ -236,33 +244,24 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const setting = profileSetting(hosted.target.context.attachments);
     if (setting && setting.script !== STANDARD.path) {
-      const file = resolve(this.cwd, setting.script);
-      const source = existsSync(file) ? readFileSync(file, "utf8") : undefined;
+      const source = await this.store.read(setting.script);
       return { path: setting.script, profile: setting.profile, source: source ?? TEMPLATE, exists: source !== undefined };
     }
-    const beside = hosted.path ? posix(relative(this.cwd, hosted.path)).replace(/\.systemathic\.json$|\.json$/, ".rules.py") : "rules.py";
+    const beside = hosted.path ? hosted.path.replace(/\.systemathic\.json$|\.json$/, ".rules.py") : "rules.py";
     return { path: beside, profile: "profile", source: TEMPLATE, exists: false };
   }
 
   async saveScript(context: string, path: string, source: string) {
     const hosted = this.get(context);
-    const file = resolve(this.cwd, path);
-    writeFileSync(file, source);
-    const script = posix(relative(this.cwd, file));
+    const script = this.store.resolve(path);
+    await this.store.write(script, source);
     const current = profileSetting(hosted.target.context.attachments);
     await this.setAttachment(context, VERIFIER, { script, profile: current?.script === script ? current.profile : "profile" });
     return { path: script };
   }
 
   async checkScript(source: string): Promise<ScriptCheck> {
-    const folder = mkdtempSync(join(tmpdir(), "systemathic-script-"));
-    try {
-      const file = join(folder, "script.py");
-      writeFileSync(file, source);
-      return await this.scripts.check({ path: file });
-    } finally {
-      rmSync(folder, { recursive: true, force: true });
-    }
+    return this.scripts.check(source);
   }
 
   async symbols(): Promise<ScriptSymbol[]> {
@@ -281,8 +280,8 @@ export class Host implements HostApi {
     const content = exportSelection(this.get(context).target.context, ids, { name });
     const file = writeSystem(content);
     if (path === undefined) return { file };
-    const where = resolve(this.cwd, path);
-    writeFileSync(where, JSON.stringify(file, null, 2) + "\n");
+    const where = this.store.resolve(path);
+    await this.store.write(where, JSON.stringify(file, null, 2) + "\n");
     return { path: where, file };
   }
 
@@ -305,6 +304,16 @@ export class Host implements HostApi {
   /** How an Element reads, for messages. */
   describe(context: string, id: string): string {
     return describeElement(this.get(context).target.graph, id);
+  }
+
+  private async packageFile(path: string) {
+    const text = await this.store.read(path);
+    if (text === undefined) return undefined;
+    try {
+      return parsePackage(JSON.parse(text), "file", path);
+    } catch (error) {
+      throw new HostError(400, `${path}: ${(error as Error).message}`);
+    }
   }
 
   private host(context: SystemContext, path?: string): Hosted {
@@ -354,9 +363,6 @@ export class Host implements HostApi {
     for (const listener of this.listeners) listener(event);
   }
 }
-
-/** A path with forward slashes, as files name each other in a System's attachments. */
-const posix = (path: string) => path.split(sep).join("/");
 
 /** A new System's verification script: the standard rules, and one of its own to start from. */
 const TEMPLATE = `"""The rules this System is verified against."""

@@ -9,7 +9,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Host, HostClient, serve } from "@systemathic/host";
+import { HostClient, type Host } from "@systemathic/host";
+import { nodeHost, serve } from "@systemathic/host-node";
 import { JSDOM } from "jsdom";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -49,7 +50,7 @@ beforeAll(async () => {
   const game = JSON.parse(readFileSync(join(root, "examples/game.systemathic.json"), "utf8"));
   game.attachments = game.attachments.filter((a: { owner: string }) => a.owner !== "ui");
   writeFileSync(join(dir, "game.systemathic.json"), JSON.stringify(game));
-  host = new Host({ cwd: dir });
+  host = nodeHost({ cwd: dir });
   const served = await serve(host, { port: 0 });
   url = served.url;
   close = () => served.server.close();

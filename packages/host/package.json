@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Hosting: where system contexts live — one authority per system context, served in-process or over HTTP to every client.",
+  "description": "Hosting: where system contexts live — one authority per system context, on whatever files, catalog and script host it is given.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -20,7 +20,6 @@
     "@systemathic/editors": "workspace:*",
     "@systemathic/diagnoser": "workspace:*",
     "@systemathic/verifier": "workspace:*",
-    "@systemathic/python-host": "workspace:*",
     "@systemathic/perspectives": "workspace:*",
     "@systemathic/exporter": "workspace:*",
     "@systemathic/catalog": "workspace:*"
