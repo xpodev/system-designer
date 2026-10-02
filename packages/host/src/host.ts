@@ -6,7 +6,8 @@
  * same History.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe as describeElement, nameOf } from "@systemathic/core";
 import { Catalog, exportSelection, importPackage, readPackage } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
@@ -25,6 +26,8 @@ interface Hosted {
   readonly target: Target;
   path?: string;
   run?: { run: Run; info: RunInfo };
+  /** How many Edits the History had when it was last read from or written to its file. */
+  saved: number;
 }
 
 export interface HostOptions {
@@ -91,17 +94,22 @@ export class Host implements HostApi {
     if (file === undefined) throw new HostError(400, "this System has no file yet: save it to a path");
     writeFileSync(file, JSON.stringify(writeSystem(save(hosted.target.context)), null, 2) + "\n");
     hosted.path = file;
+    hosted.saved = hosted.target.history.edits.length;
+    this.emit({ type: "contexts" });
     this.emit({ type: "saved", context, path: file });
     return { path: file };
   }
 
   async startSession(context: string, client: string) {
-    return { session: this.get(context).target.startSession(client).id };
+    const session = this.get(context).target.startSession(client).id;
+    this.emit({ type: "contexts" });
+    return { session };
   }
 
   async endSession(context: string, session: string) {
     const target = this.get(context).target;
     target.endSession(this.session(target, session));
+    this.emit({ type: "contexts" });
   }
 
   async apply(context: string, session: string, editor: string, name: string, args: Record<string, unknown>): Promise<EditInfo> {
@@ -120,6 +128,25 @@ export class Host implements HostApi {
     const target = this.get(context).target;
     const edit = target.undo(this.session(target, session));
     return edit === undefined ? null : this.edit(target, edit);
+  }
+
+  async redo(context: string, session: string) {
+    const target = this.get(context).target;
+    const edit = target.redo(this.session(target, session));
+    return edit === undefined ? null : this.edit(target, edit);
+  }
+
+  async files(): Promise<string[]> {
+    const found: string[] = [];
+    const walk = (dir: string, depth: number) => {
+      for (const entry of readdirSync(join(this.cwd, dir), { withFileTypes: true })) {
+        const path = dir ? `${dir}/${entry.name}` : entry.name;
+        if (entry.isDirectory() && depth < 4 && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "dist") walk(path, depth + 1);
+        else if (entry.isFile() && entry.name.endsWith(".systemathic.json")) found.push(path);
+      }
+    };
+    walk("", 0);
+    return found.sort();
   }
 
   async select(context: string, session: string, ids: readonly string[]) {
@@ -233,7 +260,7 @@ export class Host implements HostApi {
   private host(context: SystemContext, path?: string): Hosted {
     const id = `c${this.next++}`;
     const target = new Target(context);
-    const hosted: Hosted = path === undefined ? { id, target } : { id, target, path };
+    const hosted: Hosted = path === undefined ? { id, target, saved: 0 } : { id, target, path, saved: 0 };
     target.onEdit((edit) => this.emit({ type: "edit", context: id, edit: this.edit(target, edit) }));
     this.hosted.set(id, hosted);
     this.emit({ type: "contexts" });
@@ -261,6 +288,8 @@ export class Host implements HostApi {
       ...(hosted.path === undefined ? {} : { path: hosted.path }),
       edits: target.history.edits.length,
       sessions: target.sessionCount,
+      clients: target.activeSessions.map((session) => session.client),
+      dirty: target.history.edits.length !== hosted.saved,
       structuralErrors: structuralErrors(diagnose(target.context)).length,
     };
   }

@@ -1,7 +1,7 @@
 import { nameOf, remove, setName } from "@systemathic/core";
 import { newSystem } from "@systemathic/tool";
 import { describe, expect, it } from "vitest";
-import { Target, undo, type Edit } from "../src/index.js";
+import { redo, Target, undo, type Edit } from "../src/index.js";
 
 function setup() {
   const target = new Target(newSystem("Game"));
@@ -56,6 +56,25 @@ describe("editing", () => {
     expect(target.graph.has("combat")).toBe(true);
     expect(undo(ui)).toBeUndefined();
     expect(target.history.edits).toHaveLength(5);
+  });
+
+  it("redoes what was undone, newest first, until the session makes a new Edit", () => {
+    const { target, ui, addLanguage } = setup();
+    addLanguage(ui, "core", "Core");
+    addLanguage(ui, "net", "Network");
+    undo(ui);
+    undo(ui);
+    expect(redo(ui)).toMatchObject({ kind: "addition", summary: "redo addLanguage Core" });
+    expect(target.graph.has("core")).toBe(true);
+    expect(target.graph.has("net")).toBe(false);
+    expect(undo(ui)).toMatchObject({ summary: "undo addLanguage Core" });
+    expect(redo(ui)).toMatchObject({ summary: "redo addLanguage Core" });
+    expect(redo(ui)).toMatchObject({ summary: "redo addLanguage Network" });
+    expect(redo(ui)).toBeUndefined();
+    undo(ui);
+    addLanguage(ui, "ops", "Operations");
+    expect(redo(ui)).toBeUndefined();
+    expect(target.history.edits.map((edit) => target.role(edit))).toEqual(["do", "do", "undo", "undo", "redo", "undo", "redo", "redo", "undo", "do"]);
   });
 
   it("undoes as far as still applies after another session's Edits", () => {

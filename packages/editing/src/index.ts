@@ -127,6 +127,11 @@ export class Target {
     return this.sessions.size;
   }
 
+  /** The sessions editing now. */
+  get activeSessions(): EditSession[] {
+    return [...this.sessions.values()];
+  }
+
   /** The client of a session, even one that has ended. */
   client(session: string): string | undefined {
     return this.clients.get(session);
@@ -150,27 +155,62 @@ export class Target {
   }
 
   /**
-   * `undo(EditSession) → Edit`: reverts the session's latest Edit that is not an undo and has
-   * not been undone. Whatever other sessions changed since is kept; the revert applies as far
-   * as it still does. Undefined when there is nothing left to undo.
+   * `undo(EditSession) → Edit`: reverts the session's latest Edit still in effect — one it made,
+   * or redid. Whatever other sessions changed since is kept; the revert applies as far as it
+   * still does. Undefined when there is nothing left to undo.
    */
   undo(session: EditSession): Edit | undefined {
+    this.own(session);
+    const edit = this.latest(session, (e) => this.role(e) !== "undo");
+    return edit === undefined ? undefined : this.revert(session, edit, `undo ${this.original(edit).summary}`);
+  }
+
+  /**
+   * Reverts the session's latest undo still in effect, as long as the session has made no new
+   * Edit since: what was undone is done again. Undefined when there is nothing to redo.
+   */
+  redo(session: EditSession): Edit | undefined {
     this.own(session);
     const edits = this.history.edits;
     for (let index = edits.length - 1; index >= 0; index--) {
       const edit = edits[index]!;
-      if (edit.author !== session.id || edit.reverts !== undefined || this.history.revertedBy(edit.id)) continue;
-      const delta = this.graph.apply(invert(edit.delta));
-      return this.commit({
-        kind: opposite(edit.kind),
-        author: session.id,
-        summary: `undo ${edit.summary}`,
-        elements: elements(this.graph, edit.elements.filter((id) => this.graph.has(id)), delta),
-        delta,
-        reverts: edit.id,
-      });
+      if (edit.author !== session.id) continue;
+      if (this.role(edit) === "do") return undefined;
+      if (this.role(edit) === "undo" && !this.history.revertedBy(edit.id)) return this.revert(session, edit, `redo ${this.original(edit).summary}`);
     }
     return undefined;
+  }
+
+  /** Whether an Edit was made, undid one, or redid one. */
+  role(edit: Edit): "do" | "undo" | "redo" {
+    if (edit.reverts === undefined) return "do";
+    return this.role(this.history.get(edit.reverts)!) === "undo" ? "redo" : "undo";
+  }
+
+  /** The Edit an undo or redo goes back to. */
+  private original(edit: Edit): Edit {
+    return edit.reverts === undefined ? edit : this.original(this.history.get(edit.reverts)!);
+  }
+
+  private latest(session: EditSession, wanted: (edit: Edit) => boolean): Edit | undefined {
+    const edits = this.history.edits;
+    for (let index = edits.length - 1; index >= 0; index--) {
+      const edit = edits[index]!;
+      if (edit.author === session.id && wanted(edit) && !this.history.revertedBy(edit.id)) return edit;
+    }
+    return undefined;
+  }
+
+  private revert(session: EditSession, edit: Edit, summary: string): Edit {
+    const delta = this.graph.apply(invert(edit.delta));
+    return this.commit({
+      kind: opposite(edit.kind),
+      author: session.id,
+      summary,
+      elements: elements(this.graph, edit.elements.filter((id) => this.graph.has(id)), delta),
+      delta,
+      reverts: edit.id,
+    });
   }
 
   private own(session: EditSession): void {
@@ -188,6 +228,11 @@ export class Target {
 /** `undo(EditSession) → Edit` */
 export function undo(session: EditSession): Edit | undefined {
   return session.target.undo(session);
+}
+
+/** Does again what the session's latest undo undid. */
+export function redo(session: EditSession): Edit | undefined {
+  return session.target.redo(session);
 }
 
 /** `startSession(Target) → EditSession` */

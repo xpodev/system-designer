@@ -20,6 +20,7 @@ function routes(host: HostApi): [method: string, pattern: string, handler: Handl
     ["GET", "/api/perspectives", () => host.perspectives()],
     ["GET", "/api/catalog", (_, __, q) => host.catalog(q.get("text") ?? undefined, q.get("tag") ?? undefined)],
     ["GET", "/api/contexts", () => host.contexts()],
+    ["GET", "/api/files", () => host.files()],
     ["POST", "/api/contexts", (_, b) => host.create(String(b.name ?? "Untitled"))],
     ["POST", "/api/contexts/open", (_, b) => host.open(String(b.path))],
     ["POST", `${C}/save`, (p, b) => host.save(p.context!, b.path)],
@@ -36,6 +37,7 @@ function routes(host: HostApi): [method: string, pattern: string, handler: Handl
     ["DELETE", S, (p) => host.endSession(p.context!, p.session!)],
     ["POST", `${S}/operations/:editor/:operation`, (p, b) => host.apply(p.context!, p.session!, p.editor!, p.operation!, b.args ?? {})],
     ["POST", `${S}/undo`, (p) => host.undo(p.context!, p.session!)],
+    ["POST", `${S}/redo`, (p) => host.redo(p.context!, p.session!)],
     ["POST", `${S}/select`, (p, b) => host.select(p.context!, p.session!, b.ids ?? [])],
     ["POST", `${S}/import`, (p, b) => host.importPackage(p.context!, p.session!, b.package !== undefined ? { package: b.package } : { path: b.path })],
   ];

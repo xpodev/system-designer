@@ -52,6 +52,7 @@ export class HostClient implements HostApi {
     return this.call<PackageSummary[]>("GET", `/api/catalog?${query}`);
   };
   contexts = () => this.call<ContextInfo[]>("GET", "/api/contexts");
+  files = () => this.call<string[]>("GET", "/api/files");
   create = (name: string) => this.call<ContextInfo>("POST", "/api/contexts", { name });
   open = (path: string) => this.call<ContextInfo & { problems: { at: string; message: string }[] }>("POST", "/api/contexts/open", { path });
   save = (context: string, path?: string) => this.call<{ path: string }>("POST", `${this.c(context)}/save`, path === undefined ? {} : { path });
@@ -60,6 +61,7 @@ export class HostClient implements HostApi {
   apply = (context: string, session: string, editor: string, operation: string, args: Record<string, unknown>) =>
     this.call<EditInfo>("POST", `${this.s(context, session)}/operations/${enc(editor)}/${enc(operation)}`, { args });
   undo = (context: string, session: string) => this.call<EditInfo | null>("POST", `${this.s(context, session)}/undo`, {});
+  redo = (context: string, session: string) => this.call<EditInfo | null>("POST", `${this.s(context, session)}/redo`, {});
   select = (context: string, session: string, ids: readonly string[]) => this.call<string[]>("POST", `${this.s(context, session)}/select`, { ids });
   importPackage = (context: string, session: string, from: { package: string } | { path: string }) =>
     this.call<{ edits: EditInfo[]; reused: string[] }>("POST", `${this.s(context, session)}/import`, from);

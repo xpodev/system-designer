@@ -113,6 +113,9 @@ export async function createServer(host: HostApi): Promise<McpServer> {
   server.registerTool("undo", { description: "Undoes your own latest edit to a system context.", inputSchema: { context: CONTEXT } }, ({ context }) =>
     guarded(async () => (await host.undo(context, await session(context))) ?? "nothing to undo"),
   );
+  server.registerTool("redo", { description: "Does again what your latest undo undid, unless you have edited since.", inputSchema: { context: CONTEXT } }, ({ context }) =>
+    guarded(async () => (await host.redo(context, await session(context))) ?? "nothing to redo"),
+  );
   server.registerTool("history", { description: "Every edit to a system context, by every client, in order.", inputSchema: { context: CONTEXT } }, ({ context }) =>
     guarded(() => host.history(context)),
   );

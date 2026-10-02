@@ -17,6 +17,10 @@ export interface ContextInfo {
   readonly path?: string;
   readonly edits: number;
   readonly sessions: number;
+  /** The clients editing it now, one per session: `ui`, `mcp`, … */
+  readonly clients: readonly string[];
+  /** Whether it has Edits its file does not have yet. */
+  readonly dirty: boolean;
   readonly structuralErrors: number;
 }
 
@@ -71,6 +75,8 @@ export interface HostApi {
   catalog(text?: string, tag?: string): Promise<PackageSummary[]>;
 
   contexts(): Promise<ContextInfo[]>;
+  /** The System files under the host's folder, by path relative to it. */
+  files(): Promise<string[]>;
   /** `new() → SystemContext` */
   create(name: string): Promise<ContextInfo>;
   /** `open(System) → SystemContext`; a file open already is the same system context. */
@@ -82,6 +88,7 @@ export interface HostApi {
   endSession(context: string, session: string): Promise<void>;
   apply(context: string, session: string, editor: string, operation: string, args: Record<string, unknown>): Promise<EditInfo>;
   undo(context: string, session: string): Promise<EditInfo | null>;
+  redo(context: string, session: string): Promise<EditInfo | null>;
   select(context: string, session: string, ids: readonly string[]): Promise<readonly string[]>;
   importPackage(context: string, session: string, from: { package: string } | { path: string }): Promise<{ edits: EditInfo[]; reused: readonly string[] }>;
 

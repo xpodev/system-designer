@@ -40,6 +40,24 @@ describe("Host", () => {
     expect(await host.undo(id, ui)).toBeNull();
   });
 
+  it("says who is editing, whether there is anything unsaved, and which System files there are", async () => {
+    const host = new Host({ cwd: workspace() });
+    expect(await host.files()).toEqual([]);
+    const { id } = await host.open("game.json");
+    const { session } = await host.startSession(id, "ui");
+    await host.startSession(id, "mcp");
+    expect((await host.contexts())[0]).toMatchObject({ clients: ["ui", "mcp"], dirty: false });
+    await host.apply(id, session, "LanguageEditor", "addEntity", { language: "core", name: "Item" });
+    expect((await host.contexts())[0]!.dirty).toBe(true);
+    await host.undo(id, session);
+    expect((await host.redo(id, session))!.summary).toBe("redo addEntity Item");
+    await host.save(id, "saved.systemathic.json");
+    expect((await host.contexts())[0]!.dirty).toBe(false);
+    expect(await host.files()).toEqual(["saved.systemathic.json"]);
+    await host.endSession(id, session);
+    expect((await host.contexts())[0]!.clients).toEqual(["mcp"]);
+  });
+
   it("refuses malformed requests, never ill-formed results", async () => {
     const host = new Host({ cwd: workspace() });
     const { id } = await host.open("game.json");
