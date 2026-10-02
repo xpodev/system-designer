@@ -48,7 +48,10 @@ type Builder = (graph: Graph, system: string, options: ViewOptions & { diagnosti
 
 /** A thing's name, or, for what has none (a Relationship), how it reads. */
 const name = (graph: Graph, id: string) =>
-  graph.vocabulary.step(graph.get(id).entity, "name") ? (nameOf(graph, id) ?? id) : describeElement(graph, id);
+  graph.vocabulary.step(graph.get(id).entity, "name") ? (nameOf(graph, id) ?? (graph.get(id).entity === "End" ? UNNAMED : id)) : describeElement(graph, id);
+
+/** How an unnamed end reads where its name would be: there is no way through it. */
+const UNNAMED = "(unnamed)";
 const first = (graph: Graph, id: string, end: string) => graph.navigate(id, end)[0];
 
 /** An end, as `name min..max`. */
@@ -58,17 +61,28 @@ function endLabel(graph: Graph, end: string): string {
   return `${name(graph, end)} ${min === undefined ? "?" : graph.get(min).value}..${max === undefined ? "N" : graph.get(max).value}`;
 }
 
-/** An end with its Entity, as `Entity.name min..max`. */
+/** The other end of an end's Relationship. */
+function otherEnd(graph: Graph, end: string): string | undefined {
+  const [relationship] = graph.navigate(end, "relationship");
+  return relationship === undefined ? undefined : graph.navigate(relationship, "ends").find((e) => e !== end);
+}
+
+/**
+ * The navigation that reaches an end, as `From.name min..max`: an end is named from the other
+ * end's Entity, so `Player.prey 0..N` is what a Player reaches through the end `prey`.
+ */
 function endText(graph: Graph, end: string): string {
-  const [entity] = graph.navigate(end, "entity");
+  const from = otherEnd(graph, end);
+  const [entity] = from === undefined ? [] : graph.navigate(from, "entity");
   return `${entity === undefined ? "?" : name(graph, entity)}.${endLabel(graph, end)}`;
 }
 
+/** Both ways through a Relationship: `Player.prey 0..N ⟷ Monster.hunters 0..N`. */
 function relationshipText(graph: Graph, relationship: string): string {
-  return graph
-    .navigate(relationship, "ends")
+  return [...graph.navigate(relationship, "ends")]
+    .reverse()
     .map((end) => endText(graph, end))
-    .join(" <——> ");
+    .join(" ⟷ ");
 }
 
 function signature(graph: Graph, interaction: string): string {
@@ -160,7 +174,8 @@ const builders: Readonly<Record<Perspective, Builder>> = {
       const [a, b] = graph.navigate(relationship, "ends").map((end) => first(graph, end, "entity"));
       const [ea, eb] = graph.navigate(relationship, "ends");
       if (a !== undefined && b !== undefined && ea !== undefined && eb !== undefined) {
-        view.link(a, b, "Relationship", `${endLabel(graph, ea)} <——> ${endLabel(graph, eb)}`);
+        // From a, the end at b is reached; from b, the end at a.
+        view.link(a, b, "Relationship", `${endLabel(graph, eb)} ⟷ ${endLabel(graph, ea)}`);
       }
     }
     for (const interaction of graph.navigate(language, "interactions")) {

@@ -148,7 +148,7 @@ def abstract_language(language: Element) -> bool:
 
 def abstract(element: Element) -> bool:
     """A Language that is never the "how" side of a Mediation, or a Domain all of whose Languages are."""
-    if element.entity == "Language":
+    if element.kind == "Language":
         return abstract_language(element)
     return not (langs(element) & hows(element.system))
 

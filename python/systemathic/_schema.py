@@ -27,7 +27,7 @@ ENTITIES = {
 RELATIONSHIPS = [
     ('Kernel#0', ('name', 'Name', 1, 1), ('language', 'Language', 0, None)),
     ('Kernel#1', ('name', 'Name', 1, 1), ('entity', 'Entity', 0, None)),
-    ('Kernel#2', ('name', 'Name', 1, 1), ('end', 'End', 0, None)),
+    ('Kernel#2', ('name', 'Name', 0, 1), ('end', 'End', 0, None)),
     ('Kernel#3', ('min', 'Bound', 1, 1), ('minOf', 'End', 0, None)),
     ('Kernel#4', ('max', 'Bound', 0, 1), ('maxOf', 'End', 0, None)),
     ('Kernel#5', ('predecessor', 'Bound', 0, 1), ('successor', 'Bound', 0, 1)),
@@ -87,7 +87,7 @@ AXIOMS = [
     ('Kernel', 'W1', "A constraint is in its Relationship's Language", 'all f in Formula, r in f.constrains. r.language == f.language'),
     ('Kernel', 'W2', 'min <= max, where max is present', 'all e in End, m in e.max. m in e.min.*successor'),
     ('Kernel', 'W2', 'Bounds are well-founded: no Bound succeeds itself', 'all b in Bound. not b in b.^successor'),
-    ('Kernel', 'W3', 'From any Entity, the ends reachable across its Relationships have distinct names', 'all a in End, b in End, na in a.relationship.ends, nb in b.relationship.ends. (a != b and na != a and nb != b and na.entity == nb.entity) => a.name != b.name'),
+    ('Kernel', 'W3', 'From any Entity, the ends reachable across its Relationships have distinct names', 'all a in End, b in End, na in a.relationship.ends, nb in b.relationship.ends. (a != b and na != a and nb != b and na.entity == nb.entity) => (no a.name or a.name != b.name)'),
     ('Contexts', 'W4', "A Transformation's source is in scope of its holder", 'all t in Transformation. t.source in t.holder.*references.languages'),
     ('Contexts', 'W4', "A Transformation's target is in scope of its holder", 'all t in Transformation. t.target in t.holder.*references.languages'),
     ('Contexts', 'W5', 'A Relationship mapping requires both end Entities mapped', 'all m in RelationshipMapping, e in m.source.ends. some n in m.transformation.entityMappings. n.source == e.entity'),

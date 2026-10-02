@@ -77,6 +77,28 @@ describe("concept editors", () => {
     expect(LanguageEditor.addEntity(s, core, "Loot").elements).toEqual([`${core}.loot`, core]);
   });
 
+  it("leave an end unnamed: the Relationship is navigable one way only", async () => {
+    const { target, s, core, monster, pack, acyclic } = game();
+    const player = created(LanguageEditor.addEntity(s, core, "Player"));
+    const owns = created(
+      LanguageEditor.addRelationship(s, core, { entity: player, name: "owner", range: "1..1" }, { entity: monster, name: "pets", range: "0..N" }),
+    );
+    const [, pets] = target.graph.navigate(owns, "ends");
+    RelationshipEditor.renameEnd(s, pets!, undefined);
+    expect(target.history.edits.at(-1)!.summary).toBe("unnameEnd");
+    expect(wrong(target)).toEqual([]);
+    // Monsters still reach their owner; no Player reaches its pets.
+    FormulaEditor.setText(s, acyclic, "all m in Monster. some m.owner");
+    expect(wrong(target)).toEqual([]);
+    FormulaEditor.setText(s, acyclic, "all p in Player. some p.pets");
+    expect(diagnose(target.context).map((d) => d.message)).toEqual(["the formula does not fit its Language: Player has no end 'pets'"]);
+    // Two unnamed ends reached from one Entity do not clash (W3).
+    const [, followers] = target.graph.navigate(pack, "ends");
+    RelationshipEditor.renameEnd(s, followers!, undefined);
+    FormulaEditor.setText(s, acyclic, "all m in Monster. not m in m.^leader");
+    expect(wrong(target)).toEqual([]);
+  });
+
   it("keep Formulas' mentions in step with renames", () => {
     const { target, s, pack, acyclic } = game();
     const leader = target.graph.navigate(pack, "ends")[0]!;

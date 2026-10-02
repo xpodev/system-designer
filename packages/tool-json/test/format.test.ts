@@ -24,6 +24,15 @@ describe("Tool::System / JSON", () => {
     expect(writeSystem(save(open(readSystem(design).system)))).toEqual(design);
   });
 
+  it("reads and writes an unnamed end as a null name", () => {
+    const file = structuredClone(game);
+    file.design.languages[0].relationships[0].ends[1].name = null;
+    const { system, problems } = readSystem(file);
+    expect(problems).toEqual([]);
+    expect(nameOf(system.design, "core.hunts.prey")).toBeUndefined();
+    expect(writeSystem(save(open(system)))).toEqual(file);
+  });
+
   it("derives a formula's mentions from its text", () => {
     const { system } = readSystem(game);
     expect(system.design.navigate("core.no-leadership-cycles", "mentionedEnds")).toEqual(["core.pack.leader"]);

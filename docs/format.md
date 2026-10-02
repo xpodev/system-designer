@@ -55,6 +55,7 @@ it. It is identified by `"format": "systemathic/1"`.
 - **Ids** are strings, unique in the file. Mappings and reverses have none; they are owned
   by their Transformation and identified by position.
 - **Names** are strings. Two things with the same name share one Name, as the Kernel says.
+  An end's `name` may be `null`: an unnamed end, which cannot be navigated to.
 - **Ranges**: `min` is a natural number; `max` is a natural number or `"N"` for unbounded.
 - **Parameters** are in order; the array order is the Interaction's parameter order.
 - **A Formula** is its `text`, in the ASCII syntax of [foundation.md](foundation.md). Which

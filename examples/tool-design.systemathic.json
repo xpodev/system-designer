@@ -83,7 +83,7 @@
                 "id": "rel:Kernel#2.name",
                 "name": "name",
                 "entity": "ent:Kernel.Name",
-                "min": 1,
+                "min": 0,
                 "max": 1
               },
               {
@@ -332,7 +332,7 @@
           },
           {
             "id": "f:Kernel#6",
-            "text": "all a in End, b in End, na in a.relationship.ends, nb in b.relationship.ends. (a != b and na != a and nb != b and na.entity == nb.entity) => a.name != b.name"
+            "text": "all a in End, b in End, na in a.relationship.ends, nb in b.relationship.ends. (a != b and na != a and nb != b and na.entity == nb.entity) => (no a.name or a.name != b.name)"
           }
         ],
         "interactions": []

@@ -73,7 +73,8 @@ no inheritance. Two instances are equal iff they are the same instance.
 A **Relationship** is a pair of **ends**. A Relationship itself has no name; its ends
 do. Each end has:
 
-- a **name**, used to navigate to it;
+- a **name**, used to navigate to it — or none: an **unnamed** end cannot be navigated to,
+  so the instances at the other end do not reach it, while it still reaches them;
 - an **Entity**;
 - a **range** `min..max`, with `min ∈ ℕ` and `max ∈ ℕ ∪ {N}` (`N` is unbounded): how
   many instances of that end's Entity each instance at the other end is linked to.
@@ -88,11 +89,16 @@ From an instance, navigating by an end's name gives the linked instances at that
 `o.lines`, `l.order`. The same reading applies when both ends are the same Entity, and
 the names give the direction: `Parameter <——> Parameter` with ends `prev` and `next`.
 
+A name is read from the other side: `Order.lines` is the navigation from an Order, through
+the end named `lines`, which is at OrderLine. Leaving that end unnamed makes the
+Relationship one-way: every OrderLine still reaches its `order`, but no Order reaches its
+lines.
+
 - A range is **well-formed** iff `max = N` or `min ≤ max`.
 - Any number of Relationships may join the same pair of Entities; they are told apart
   by their end names.
-- **End names are unique per Entity:** from any Entity, the ends reachable across its
-  Relationships have distinct names, so navigation is never ambiguous.
+- **End names are unique per Entity:** from any Entity, the named ends reachable across
+  its Relationships have distinct names, so navigation is never ambiguous.
 
 ### The logic
 
@@ -321,7 +327,7 @@ belongs to the layer whose vocabulary it is about.
 |----|-----------|-------|
 | W1 | **Closure.** Both ends of every Relationship, every symbol of every formula of `L`, and the types of every Interaction's Parameters and its output, belong to `L`. | Kernel; Operations for Interactions |
 | W2 | **Ranges.** Every range is well-formed. | Kernel |
-| W3 | **End names.** From every Entity, the ends reachable across its Relationships have distinct names. | Kernel |
+| W3 | **End names.** From every Entity, the named ends reachable across its Relationships have distinct names. | Kernel |
 | W4 | **Transformation scope.** For `τ: L_src → L_tgt` held by `D`: `L_src, L_tgt ∈ langs*(D)`. | Contexts |
 | W5 | **Definition before use.** Every mapping references only mapped things. | Contexts; Operations for Interaction mappings |
 | W6 | **Witness.** Every Mediation is witnessed by its mediator. | Contexts |

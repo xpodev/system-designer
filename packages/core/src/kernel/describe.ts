@@ -10,7 +10,7 @@ export function describe(graph: Graph, id: string): string {
   if (instance.entity === "End") {
     const [entity] = graph.navigate(id, "entity");
     const owner = entity === undefined ? "?" : (nameOf(graph, entity) ?? entity);
-    return `end '${name ?? id}' at ${owner}`;
+    return name === undefined ? `unnamed end at ${owner}` : `end '${name}' at ${owner}`;
   }
   if (instance.entity === "Relationship") {
     const sides = graph.navigate(id, "ends").map((end) => {

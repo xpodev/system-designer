@@ -63,8 +63,15 @@ function language(graph: Graph, id: string): Section {
   for (const entity of graph.navigate(id, "entities")) statements.push(statement(`entity:${entity}`, `Entity ${name(graph, entity)}.`, entity));
   for (const relationship of graph.navigate(id, "relationships")) {
     const ends = graph.navigate(relationship, "ends");
-    const sides = ends.map((end) => `${name(graph, graph.navigate(end, "entity")[0])} (end '${name(graph, end)}', ${range(graph, end)})`);
-    statements.push(statement(`relationship:${relationship}`, `Relationship ${sides.join(" <——> ")}.`, relationship, ...ends));
+    const sides = ends.map((end) => {
+      const at = name(graph, graph.navigate(end, "entity")[0]);
+      return nameOf(graph, end) === undefined ? `${at} (an unnamed end, ${range(graph, end)})` : `${at} (end '${nameOf(graph, end)}', ${range(graph, end)})`;
+    });
+    const ways = ends.map((end, i) => {
+      const from = name(graph, graph.navigate(ends[1 - i]!, "entity")[0]);
+      return nameOf(graph, end) === undefined ? `no ${from} reaches its ${name(graph, graph.navigate(end, "entity")[0])}` : `${from}.${nameOf(graph, end)}`;
+    });
+    statements.push(statement(`relationship:${relationship}`, `Relationship ${sides.join(" <——> ")}: ${ways.reverse().join("; ")}.`, relationship, ...ends));
   }
   for (const interaction of graph.navigate(id, "interactions")) {
     const params = parameters(graph, interaction);

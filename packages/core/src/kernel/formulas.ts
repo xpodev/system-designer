@@ -22,16 +22,19 @@ export function languageVocabulary(graph: Graph, language: string): { vocabulary
     const ends: EndSpec[] = [];
     for (const end of graph.navigate(relationship, "ends")) {
       const [entity] = graph.navigate(end, "entity");
-      const name = nameOf(graph, end);
       const entityName = entity === undefined ? undefined : nameOf(graph, entity);
-      if (name === undefined || entityName === undefined) break;
-      ends.push({ name, entity: entityName, min: 0, max: null });
+      if (entityName === undefined) break;
+      // An unnamed end cannot be navigated to: it gets a name no formula can write.
+      ends.push({ name: nameOf(graph, end) ?? UNNAMED, entity: entityName, min: 0, max: null });
     }
     if (ends.length === 2) relationships.push({ id: relationship, ends });
   }
   const vocabulary = new Vocabulary({ entities: [...entityIds.keys()], relationships, axioms: [] });
   return { vocabulary, entityIds };
 }
+
+/** What an unnamed end is called inside a vocabulary: nothing a formula's text can spell. */
+const UNNAMED = "\u0000unnamed";
 
 export type FormulaAnalysis =
   | { readonly ok: true; readonly entities: string[]; readonly ends: string[] }

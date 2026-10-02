@@ -41,8 +41,8 @@ describe("perspectives", () => {
     expect(children(v, "languages/core")).toEqual([
       "Monster",
       "Player",
-      "Player.hunters 0..N <——> Monster.prey 0..N",
-      "Monster.leader 0..1 <——> Monster.followers 0..N",
+      "Player.prey 0..N ⟷ Monster.hunters 0..N",
+      "Monster.followers 0..N ⟷ Monster.leader 0..1",
       "all m in Monster. not m in m.^leader",
     ]);
     expect(v.items.find((item) => item.subject === "combat.attack")!.detail).toBe("attack(attacker: Attacker, target: Targetable) → Damage");

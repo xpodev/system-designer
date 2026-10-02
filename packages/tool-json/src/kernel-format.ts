@@ -6,7 +6,8 @@
 import { boundInstance, boundOf, linkMentions, nameOf, setName, type Graph } from "@systemathic/core";
 import { array, FormatError, object, string, type Reader } from "./reader.js";
 
-export interface EndJson { id: string; name: string; entity: string; min: number; max: number | "N" }
+/** An end; `name` is null for an unnamed end, which cannot be navigated to. */
+export interface EndJson { id: string; name: string | null; entity: string; min: number; max: number | "N" }
 export interface RelationshipJson { id: string; ends: EndJson[] }
 export interface FormulaJson { id: string; text: string; constrains?: string }
 export interface EntityJson { id: string; name: string }
@@ -39,7 +40,7 @@ export function readLanguage(reader: Reader, value: unknown, at: string): string
       const end = object(value, at);
       const endId = reader.create("End", end.id, at);
       if (endId === undefined) return;
-      setName(graph, endId, string(end.name, `${at}.name`));
+      if (end.name !== null) setName(graph, endId, string(end.name, `${at}.name`));
       graph.connect(id, "ends", endId);
       reader.refer(endId, "entity", end.entity, `${at}.entity`);
       graph.connect(endId, "min", boundInstance(graph, natural(end.min, `${at}.min`)));
@@ -69,7 +70,7 @@ export function writeLanguage(graph: Graph, language: string): KernelLanguageJso
       id,
       ends: graph.navigate(id, "ends").map((end) => ({
         id: end,
-        name: nameOf(graph, end) ?? "",
+        name: nameOf(graph, end) ?? null,
         entity: graph.navigate(end, "entity")[0] ?? "",
         min: boundOf(graph, end, "min") ?? 0,
         max: boundOf(graph, end, "max") ?? "N",

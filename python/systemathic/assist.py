@@ -133,5 +133,5 @@ def symbols() -> list[dict[str, Any]]:
             add(far[0], "property", f"{near[1]}.{far[0]} → {'list of ' if many else ''}{far[1]}", f"From a {near[1]}: {'its' if not many else 'the'} {far[1]}{'s' if many else ''} through `{far[0]}`.", "systemathic.core")
     add("text", "property", "Formula.text → str", "A Formula's text, in the ASCII syntax.", "systemathic.core")
     add("id", "property", "Element.id → str", "The Element's id in the System file.", "systemathic.core")
-    add("entity", "property", "Element.entity → str", "Which Entity of the Systemathic Languages the Element is: 'Domain', 'Language', …", "systemathic.core")
+    add("kind", "property", "Element.kind → str", "Which Entity of the Systemathic Languages the Element is: 'Domain', 'Language', …", "systemathic.core")
     return found

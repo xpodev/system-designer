@@ -52,14 +52,17 @@ _STEPS = _steps()
 
 
 class Element:
-    """An instance of an Entity of the Systemathic Languages: an Entity, a Domain, a Mediation, …"""
+    """An instance of an Entity of the Systemathic Languages: an Entity, a Domain, a Mediation, …
 
-    __slots__ = ("model", "id", "entity", "value")
+    Which of them it is, is its `kind`; `entity`, like any other end, is navigated (`end.entity`).
+    """
 
-    def __init__(self, model: Model, id: str, entity: str, value: Any = None):
+    __slots__ = ("model", "id", "kind", "value")
+
+    def __init__(self, model: Model, id: str, kind: str, value: Any = None):
         self.model = model
         self.id = id
-        self.entity = entity
+        self.kind = kind
         self.value = value
 
     def __getattr__(self, end: str) -> Any:
@@ -73,8 +76,8 @@ class Element:
         return self.value
 
     def __repr__(self) -> str:
-        name = self.model.navigate(self, "name") if "name" in _STEPS.get(self.entity, {}) else None
-        return f"<{self.entity} {name!r}>" if name else f"<{self.entity} {self.id}>"
+        name = self.model.navigate(self, "name") if "name" in _STEPS.get(self.kind, {}) else None
+        return f"<{self.kind} {name!r}>" if name else f"<{self.kind} {self.id}>"
 
 
 class System(Element):
@@ -93,7 +96,7 @@ class System(Element):
 
     def all(self, entity: str) -> list[Element]:
         """Every Element of an Entity, in the order they were read."""
-        return [element for element in self.model.elements.values() if element.entity == entity]
+        return [element for element in self.model.elements.values() if element.kind == entity]
 
 
 def _one(elements: Iterable[Element], name: str, kind: str) -> Element:
@@ -120,9 +123,9 @@ class Model:
         return element
 
     def connect(self, source: Element, end: str, target: Element) -> None:
-        step = _STEPS.get(source.entity, {}).get(end)
+        step = _STEPS.get(source.kind, {}).get(end)
         if step is None:
-            raise AttributeError(f"{source.entity} has no end {end!r}")
+            raise AttributeError(f"{source.kind} has no end {end!r}")
         forward, backward = self._links.setdefault(step.relationship, ({}, {}))
         a, b = (source.id, target.id) if step.far == 1 else (target.id, source.id)
         if b not in forward.setdefault(a, []):
@@ -130,17 +133,17 @@ class Model:
             backward.setdefault(b, []).append(a)
 
     def ids(self, element: Element, end: str) -> list[str]:
-        step = _STEPS.get(element.entity, {}).get(end)
+        step = _STEPS.get(element.kind, {}).get(end)
         if step is None:
-            raise AttributeError(f"{element.entity} has no end {end!r}")
+            raise AttributeError(f"{element.kind} has no end {end!r}")
         forward, backward = self._links.get(step.relationship, ({}, {}))
         return list((forward if step.far == 1 else backward).get(element.id, []))
 
     def navigate(self, element: Element, end: str) -> Any:
-        step = _STEPS[element.entity].get(end) if element.entity in _STEPS else None
+        step = _STEPS[element.kind].get(end) if element.kind in _STEPS else None
         if step is None:
-            raise AttributeError(f"{element.entity} has no end {end!r}")
-        if element.entity == "Interaction" and end == "parameters":
+            raise AttributeError(f"{element.kind} has no end {end!r}")
+        if element.kind == "Interaction" and end == "parameters":
             return _chain(self, element)
         found = [self.elements[id] for id in self.ids(element, end)]
         if step.entity in _VALUES:
@@ -176,7 +179,8 @@ class _Reader:
         element = self.create(entity, json["id"])
         if element is None:
             return None
-        self.value(element, "name", "Name", json["name"])
+        if json["name"] is not None:  # an unnamed end has none
+            self.value(element, "name", "Name", json["name"])
         if owner is not None and end is not None:
             self.model.connect(owner, end, element)
         return element
@@ -192,8 +196,8 @@ class _Reader:
     def finish(self) -> None:
         for element, end, id in self.pending:
             target = self.model.elements.get(id)
-            step = _STEPS[element.entity].get(end)
-            if target is None or step is None or target.entity != step.entity:
+            step = _STEPS[element.kind].get(end)
+            if target is None or step is None or target.kind != step.entity:
                 self.problems.append(f"{element.id}.{end}: cannot refer to {id!r}")
                 continue
             self.model.connect(element, end, target)

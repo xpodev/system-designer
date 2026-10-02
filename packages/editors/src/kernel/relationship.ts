@@ -1,7 +1,7 @@
 /** RelationshipEditor (Kernel): a Relationship, its Ends and their Bounds. */
 import { remove as removeFromModel, setName } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
-import { element, operation, range, relinkFormulas, setBounds, str, text, type Operation } from "../operation.js";
+import { element, maybe, operation, range, relinkFormulas, setBounds, str, text, type Operation } from "../operation.js";
 
 const EDITOR = "RelationshipEditor";
 
@@ -13,9 +13,14 @@ export function setEntity(session: EditSession, end: string, entity: string): Ed
   });
 }
 
-export function renameEnd(session: EditSession, end: string, name: string): Edit {
-  return session.edit("change", `renameEnd ${name}`, [end], (graph) => {
-    setName(graph, end, name);
+/**
+ * Names an end, or, without a name, leaves it unnamed: then nothing at the other end can
+ * navigate to it, and the Relationship is navigable one way only.
+ */
+export function renameEnd(session: EditSession, end: string, name: string | undefined): Edit {
+  return session.edit("change", name === undefined ? "unnameEnd" : `renameEnd ${name}`, [end], (graph) => {
+    if (name === undefined) graph.disconnect(end, "name");
+    else setName(graph, end, name);
     relinkFormulas(graph);
   });
 }
@@ -37,7 +42,14 @@ export const relationshipEditor: readonly Operation[] = [
   operation(EDITOR, "setEntity", "change", "Sets the Entity an end is at.", [END, element("entity", "Entity", "the Entity")], (s, a) =>
     setEntity(s, str(a, "end"), str(a, "entity")),
   ),
-  operation(EDITOR, "renameEnd", "change", "Renames an end.", [END, text("name", "the new name")], (s, a) => renameEnd(s, str(a, "end"), str(a, "name"))),
+  operation(
+    EDITOR,
+    "renameEnd",
+    "change",
+    "Renames an end — the name the other end's Entity navigates by. Without a name the end is unnamed, and cannot be navigated to.",
+    [END, text("name", "the new name; none to leave it unnamed", true)],
+    (s, a) => renameEnd(s, str(a, "end"), maybe(a, "name")),
+  ),
   operation(EDITOR, "setRange", "change", "Sets an end's range, such as 0..1 or 1..N.", [END, range("range", "the range")], (s, a) =>
     setRange(s, str(a, "end"), str(a, "range")),
   ),

@@ -26,7 +26,7 @@ sig Entity extends Element {
 
 sig End {
   entity: one Entity,
-  ename: one Name,
+  ename: lone Name,                             -- absent = unnamed: not navigable to
   min: one Int,
   max: lone Int                                 -- absent = unbounded (N)
 }
@@ -124,7 +124,7 @@ pred ranges[A: set Element] {
 
 -- W3
 pred endNames[A: set Element] {
-  all x: Entity & A, disj a, b: reachable[x, A] | a.ename != b.ename
+  all x: Entity & A, disj a, b: reachable[x, A] | some a.ename implies a.ename != b.ename
 }
 
 -- W4

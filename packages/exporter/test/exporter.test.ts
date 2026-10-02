@@ -20,7 +20,7 @@ describe("specification", () => {
 
   it("states each Language's vocabulary, what each Domain may use, and which crossings exist", () => {
     const text = (id: string) => all().find((s) => s.id === id)?.text;
-    expect(text("relationship:core.pack")).toBe("Relationship Monster (end 'leader', 0..1) <——> Monster (end 'followers', 0..N).");
+    expect(text("relationship:core.pack")).toBe("Relationship Monster (end 'leader', 0..1) <——> Monster (end 'followers', 0..N): Monster.followers; Monster.leader.");
     expect(text("interaction:combat.attack")).toBe("Interaction attack(attacker: Attacker, target: Targetable) → Damage. It is an Action on 'attacker'.");
     expect(text("scope:d.combat")).toBe("May use exactly the Languages Combat, Core, and nothing else.");
     expect(text("transformation:combat-in-unity")).toBe(

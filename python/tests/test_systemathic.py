@@ -62,6 +62,13 @@ class Binding(unittest.TestCase):
         self.assertEqual({l.name for l in langs(system.domain("Combat"))}, {"Combat", "Core"})
         self.assertEqual(system.model.problems, [])
 
+    def test_reads_an_unnamed_end(self):
+        file = copy.deepcopy(GAME)
+        file["design"]["languages"][0]["relationships"][0]["ends"][1]["name"] = None
+        end = read(file).language("Core").relationships[0].ends[1]
+        self.assertIsNone(end.name)
+        self.assertEqual(end.entity.name, "Monster")
+
     def test_lookups_raise_on_missing_or_ambiguous_names(self):
         file = copy.deepcopy(GAME)
         domain(file, "d.unity")["name"] = "Core"
