@@ -27,6 +27,7 @@ const below: Record<string, string[]> = {
   ui: ["host"],
   "host-node": ["host", "catalog", "python-host"],
   "pyodide-host": ["verifier", "tool-json"],
+  "host-browser": ["host", "catalog", "pyodide-host"],
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host-node"],
 };
 

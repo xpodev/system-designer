@@ -47,6 +47,9 @@
       "path": "packages/pyodide-host"
     },
     {
+      "path": "packages/host-browser"
+    },
+    {
       "path": "packages/cli"
     }
   ]

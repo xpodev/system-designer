@@ -21,6 +21,7 @@ export default defineConfig({
       "@systemathic/mcp": source("mcp"),
       "@systemathic/host-node": source("host-node"),
       "@systemathic/pyodide-host": source("pyodide-host"),
+      "@systemathic/host-browser": source("host-browser"),
     },
   },
   test: {

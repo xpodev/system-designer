@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "vite/client"
+    ]
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../host"
+    },
+    {
+      "path": "../catalog"
+    },
+    {
+      "path": "../pyodide-host"
+    }
+  ]
+}
