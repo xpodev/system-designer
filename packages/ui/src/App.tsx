@@ -3,7 +3,7 @@
  * tabs, the Problems panel — with its own EditSession; what other clients do arrives live.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, type ContextInfo, type HostEvent, type OperationInfo, type PackageSummary } from "./api";
+import { api, ApiError, type ContextInfo, type HostEvent, type OperationInfo, type PackageSummary } from "./api";
 import { DomainEditor } from "./editors/DomainEditor";
 import { LanguageEditor } from "./editors/LanguageEditor";
 import { MediationEditor } from "./editors/MediationEditor";
@@ -40,7 +40,10 @@ export function App() {
   const [context, setContextState] = useState<string | undefined>(() => location.hash.slice(1) || undefined);
   const [dialog, setDialog] = useState<Dialog>();
   const [error, setError] = useState<string>();
+  const [stale, setStale] = useState(false);
   const events = useEvents();
+  // A host started before this page was built does not know its newest requests: say so, rather than fail in pieces.
+  useEffect(() => void api.files().catch((e) => e instanceof ApiError && e.status === 404 && setStale(true)), []);
 
   const setContext = (id: string | undefined) => {
     setContextState(id);
@@ -64,6 +67,11 @@ export function App() {
   return (
     <div className="app">
       {!events.connected && <div className="offline">The host is not answering. Is <code>systemathic serve</code> still running?</div>}
+      {stale && (
+        <div className="offline">
+          The host serving this page is older than the page. Stop <code>systemathic serve</code> and start it again to update it.
+        </div>
+      )}
       {context && info ? (
         <WorkspaceProvider key={context} context={context} info={info} operations={operations} onEvent={events.subscribe}>
           <Shell contexts={contexts} onContext={setContext} onDialog={setDialog} />

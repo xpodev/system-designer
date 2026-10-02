@@ -97,7 +97,11 @@ export const api = {
   editors: () => call<OperationInfo[]>("GET", "/api/editors"),
   perspectives: () => call<PerspectiveInfo[]>("GET", "/api/perspectives"),
   catalog: (text = "", tag = "") => call<PackageSummary[]>("GET", `/api/catalog?${new URLSearchParams({ text, ...(tag ? { tag } : {}) })}`),
-  contexts: () => call<ContextInfo[]>("GET", "/api/contexts"),
+  /** Read so that what an older host leaves out does not break the page. */
+  contexts: () =>
+    call<Partial<ContextInfo>[]>("GET", "/api/contexts").then((all) =>
+      all.map((c) => ({ edits: 0, sessions: 0, structuralErrors: 0, ...c, clients: c.clients ?? [], dirty: c.dirty ?? false }) as ContextInfo),
+    ),
   files: () => call<string[]>("GET", "/api/files"),
   create: (name: string) => call<ContextInfo>("POST", "/api/contexts", { name }),
   open: (path: string) => call<ContextInfo & { problems: { at: string; message: string }[] }>("POST", "/api/contexts/open", { path }),

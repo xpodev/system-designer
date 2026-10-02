@@ -189,6 +189,29 @@ describe("the UI", () => {
     await waitFor(async () => expect(await host.attachment((await host.contexts())[0]!.id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" }));
   }, 20_000);
 
+  it("says so when the host is older than the page, rather than breaking", async () => {
+    const current = globalThis.fetch;
+    // An older host: no file listing, and Systems without who is editing them.
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.startsWith("/api/files")) return new Response(JSON.stringify({ error: "no route" }), { status: 404 });
+      const response = await current(input, init);
+      if (path === "/api/contexts") {
+        const contexts = (await response.json()) as Record<string, unknown>[];
+        return new Response(JSON.stringify(contexts.map(({ clients: _c, dirty: _d, ...rest }) => rest)));
+      }
+      return response;
+    }) as typeof fetch;
+    try {
+      window.history.replaceState(null, "", "#");
+      render(<App />);
+      await screen.findByText(/older than the page/);
+      expect(await screen.findByText("Open now")).toBeTruthy();
+    } finally {
+      globalThis.fetch = current;
+    }
+  });
+
   it("goes anywhere from the command palette", async () => {
     await openGame();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
