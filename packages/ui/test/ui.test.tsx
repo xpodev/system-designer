@@ -141,6 +141,16 @@ describe("the UI", () => {
     await waitFor(() => expect(row.querySelector(".navigation.unnamed")?.textContent).toBe(".(unnamed)"));
   });
 
+  it("on a narrow screen, keeps the Explorer in a drawer that closes once something is opened", async () => {
+    await openGame();
+    const shell = document.querySelector(".shell")!;
+    expect(shell.classList.contains("drawer-open")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Explorer" }));
+    expect(shell.classList.contains("drawer-open")).toBe(true);
+    fireEvent.click(explorerRow("Combat"));
+    await waitFor(() => expect(shell.classList.contains("drawer-open")).toBe(false));
+  });
+
   it("shows a problem where it is, and undoes it", async () => {
     const id = await openGame();
     const session = (await host.startSession(id, "mcp")).session;

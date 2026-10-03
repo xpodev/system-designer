@@ -37,6 +37,7 @@ const PATHS: Record<string, string> = {
   play: "M7 4v16l13-8z",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
   open: "M4 6h6l2 2h8v11H4z",
+  menu: "M4 7h16M4 12h16M4 17h16",
   download: "M12 4v11m-5-5 5 5 5-5M5 20h14",
   keyboard: "M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M8 14h8",
 };

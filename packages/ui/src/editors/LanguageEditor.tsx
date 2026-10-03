@@ -212,7 +212,7 @@ function RelationshipRow({ relationship, entities }: { relationship: Relationshi
     const invalid = w.about(at.id).length > 0 || w.about(far.id).length > 0;
     const from = model.name(at.entity);
     return (
-      <>
+      <span className="side">
         <Picker value={at.entity} choices={entities} invalid={w.about(at.id).length > 0} onChange={(entity) => entity && void w.act("RelationshipEditor", "setEntity", { end: at.id, entity })} />
         <span className={`navigation ${far.name === null ? "unnamed" : ""}`} title={far.name === null ? `No ${from} reaches its ${model.name(far.entity)} this way: name it to make it navigable` : `From a ${from}, .${far.name} reaches ${model.name(far.entity)}`}>
           <span className="dot-step">.</span>
@@ -225,7 +225,7 @@ function RelationshipRow({ relationship, entities }: { relationship: Relationshi
           />
         </span>
         <RangePicker value={rangeOf(far)} invalid={w.about(far.id).length > 0} onChange={(range) => void w.act("RelationshipEditor", "setRange", { end: far.id, range })} />
-      </>
+      </span>
     );
   };
   return (

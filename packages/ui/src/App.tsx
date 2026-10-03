@@ -164,6 +164,9 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
   const w = useWorkspace();
   const model = useModel();
   const [palette, setPalette] = useState(false);
+  /** On a narrow screen the Explorer is a drawer, out of the way until asked for. */
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => setDrawer(false), [w.active, w.focus]);
   const [sidebar, resizeSidebar, keepSidebar] = useSize("sidebar", 270);
   const [panelHeight, resizePanel, keepPanel] = useSize("panel", 240);
   const [panel, setPanel] = useState<PanelTab | undefined>(w.structural > 0 ? "problems" : undefined);
@@ -231,10 +234,11 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
   const others = (w.info?.clients ?? []).filter((c, i, all) => !(c === "ui" && all.indexOf("ui") === i));
 
   return (
-    <div className="shell">
+    <div className={`shell ${drawer ? "drawer-open" : ""}`}>
       <header className="topbar">
+        <IconButton icon="menu" label="Explorer" className="drawer-button" onClick={() => setDrawer(!drawer)} />
         <button className="brand" onClick={() => props.onContext(undefined)} title="All Systems">
-          <Icon name="Domain" size={18} /> Systemathic
+          <Icon name="Domain" size={18} /> <span className="brand-name">Systemathic</span>
         </button>
         <select className="system-switch" value={w.context} onChange={(e) => props.onContext(e.target.value)} aria-label="System">
           {props.contexts.map((c) => (
@@ -244,7 +248,7 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
             </option>
           ))}
         </select>
-        <IconButton icon="open" label="Open" onClick={() => props.onDialog("open")} />
+        <IconButton icon="open" label="Open" className="wide-only" onClick={() => props.onDialog("open")} />
         <IconButton
           icon="save"
           label={`${hostMode() === "browser" ? "Save in this browser" : "Save"}${w.info?.dirty ? " (unsaved changes)" : ""}`}
@@ -252,19 +256,19 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
           onClick={save}
           className={w.info?.dirty ? "dirty" : ""}
         />
-        <IconButton icon="download" label="Download the System file" onClick={() => void downloadSystem()} />
-        <span className="divider" />
+        <IconButton icon="download" label="Download the System file" className="wide-only" onClick={() => void downloadSystem()} />
+        <span className="divider wide-only" />
         <IconButton icon="undo" label="Undo your last edit" shortcut="Ctrl+Z" onClick={() => void w.undo()} />
         <IconButton icon="redo" label="Redo" shortcut="Ctrl+Shift+Z" onClick={() => void w.redo()} />
-        <button className="palette-button" onClick={() => setPalette(true)}>
-          <Icon name="search" size={14} /> Go to anything or run a command… <kbd>Ctrl K</kbd>
+        <button className="palette-button" onClick={() => setPalette(true)} aria-label="Go to anything or run a command">
+          <Icon name="search" size={14} /> <span className="palette-text">Go to anything or run a command…</span> <kbd>Ctrl K</kbd>
         </button>
         <span className="spacer" />
-        <button className="small" onClick={() => props.onDialog("catalog")}>
-          <Icon name="catalog" /> Catalog
+        <button className="small" onClick={() => props.onDialog("catalog")} aria-label="Catalog">
+          <Icon name="catalog" /> <span className="label-text">Catalog</span>
         </button>
         <button className="small primary" disabled={w.structural > 0} title={w.structural > 0 ? "Solve the structural errors first" : "Verify against the System's rules"} onClick={() => void w.verify()}>
-          <Icon name="play" /> Verify
+          <Icon name="play" /> <span className="label-text">Verify</span>
         </button>
       </header>
 
@@ -272,6 +276,7 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
         <aside className="sidebar">
           <Explorer />
         </aside>
+        <div className="drawer-backdrop" onClick={() => setDrawer(false)} />
         <Splitter axis="x" size={sidebar} grows="with" min={180} max={560} initial={270} onResize={resizeSidebar} onResized={keepSidebar} label="Resize the Explorer" />
         <main className="main">
           <nav className="tabstrip" role="tablist">
