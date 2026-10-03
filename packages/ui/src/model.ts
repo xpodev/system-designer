@@ -3,7 +3,8 @@
  * it; they change it only through the editors' operations on the host, and read it again.
  */
 
-export interface EndJson { id: string; name: string; entity: string; min: number; max: number | "N" }
+/** An end; `name` is null when it is unnamed, and cannot be navigated to. */
+export interface EndJson { id: string; name: string | null; entity: string; min: number; max: number | "N" }
 export interface RelationshipJson { id: string; ends: EndJson[] }
 export interface FormulaJson { id: string; text: string; constrains?: string }
 export interface EntityJson { id: string; name: string }
@@ -114,9 +115,9 @@ export class Model {
       case "Entity":
         return at.entity.name;
       case "Relationship":
-        return at.relationship.ends.map((end) => `${this.name(end.entity)}.${end.name}`).join(" ⟷ ");
+        return relationshipLabel(at.relationship, (entity) => this.name(entity));
       case "End":
-        return `${this.name(at.end.entity)}.${at.end.name}`;
+        return navigationLabel(at.relationship, at.end, (entity) => this.name(entity));
       case "Formula":
         return at.formula.text;
       case "Interaction":
@@ -214,6 +215,29 @@ export type Tab =
   | { kind: "script" };
 
 export const tabKey = (tab: Tab): string => ("id" in tab ? `${tab.kind}:${tab.id}` : tab.kind === "view" ? `view:${tab.perspective}` : tab.kind);
+
+/** How an unnamed end reads where its name would be. */
+export const UNNAMED = "(unnamed)";
+
+/** The end across the Relationship from `end`. */
+export const otherEnd = (relationship: RelationshipJson, end: EndJson): EndJson | undefined => relationship.ends.find((e) => e !== end);
+
+/**
+ * The navigation that reaches `end`: `From.name`, where From is the other end's Entity. An end
+ * is named from the other side — from a Player, `prey` reaches Monsters.
+ */
+export function navigationLabel(relationship: RelationshipJson, end: EndJson, name: (entity: string) => string): string {
+  const from = otherEnd(relationship, end);
+  return `${from ? name(from.entity) : "?"}.${end.name ?? UNNAMED}`;
+}
+
+/** Both ways through a Relationship: `Player.prey ⟷ Monster.hunters`. */
+export function relationshipLabel(relationship: RelationshipJson, name: (entity: string) => string): string {
+  return [...relationship.ends]
+    .reverse()
+    .map((end) => navigationLabel(relationship, end, name))
+    .join(" ⟷ ");
+}
 
 export const ranges = ["0..1", "1..1", "0..N", "1..N"] as const;
 export const rangeOf = (end: EndJson) => `${end.min}..${end.max}`;

@@ -118,6 +118,29 @@ describe("the UI", () => {
     expect(ends).toEqual(["monster", "players"]);
   });
 
+  it("reads a Relationship as navigation, and leaves an end unnamed when its name is cleared", async () => {
+    const id = await openGame();
+    fireEvent.click(explorerRow("Core"));
+    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Core"));
+    // core.pack: leader (at Monster) and followers (at Monster). From a Monster, `.followers` reaches its followers.
+    const row = await waitFor(() => {
+      const found = [...document.querySelectorAll<HTMLElement>(".relationship")].find((r) => r.textContent?.includes("followers"));
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    const sides = [...row.querySelectorAll<HTMLElement>(".navigation")].map((n) => n.textContent);
+    expect(sides).toEqual([".followers", ".leader"]);
+    fireEvent.click(within(row).getByText("followers"));
+    const input = row.querySelector<HTMLInputElement>(".inline-input")!;
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(async () => {
+      const pack = (await host.system(id)).design.languages[0]!.relationships.find((r) => r.id === "core.pack")!;
+      expect(pack.ends.map((e) => e.name)).toEqual(["leader", null]);
+    });
+    await waitFor(() => expect(row.querySelector(".navigation.unnamed")?.textContent).toBe(".(unnamed)"));
+  });
+
   it("shows a problem where it is, and undoes it", async () => {
     const id = await openGame();
     const session = (await host.startSession(id, "mcp")).session;

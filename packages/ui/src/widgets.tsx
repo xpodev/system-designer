@@ -77,6 +77,8 @@ export function InlineText(props: {
   editing?: boolean;
   onEditingChange?(editing: boolean): void;
   validate?(value: string): string | undefined;
+  /** Whether clearing the text is a choice, committed as "": an end left unnamed. */
+  clearable?: boolean;
 }) {
   const [editing, setEditing] = useState(props.editing ?? false);
   const [draft, setDraft] = useState(props.value);
@@ -99,7 +101,8 @@ export function InlineText(props: {
     setEditing(false);
     props.onEditingChange?.(false);
     const value = draft.trim();
-    if (keep && value !== "" && value !== props.value && !props.validate?.(value)) props.onCommit(value);
+    if (keep && value === "" && props.clearable && props.value !== "") props.onCommit("");
+    else if (keep && value !== "" && value !== props.value && !props.validate?.(value)) props.onCommit(value);
   };
   const problem = editing ? props.validate?.(draft.trim()) : undefined;
   if (!editing) {

@@ -2164,3 +2164,19 @@ body.resizing-y * {
   gap: 10px;
   margin-bottom: 10px;
 }
+
+.navigation {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: var(--mono);
+  font-size: 13px;
+  min-width: 0;
+}
+.navigation .dot-step {
+  color: var(--muted);
+}
+.navigation.unnamed .inline-text {
+  color: var(--faint);
+  font-style: italic;
+}

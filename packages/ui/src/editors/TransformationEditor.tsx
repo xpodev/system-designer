@@ -3,7 +3,7 @@
  * with in the target — mapped, deliberately deferred, or missing — and the Transformation's
  * kind: a projection, or a mediation with a reverse and its context.
  */
-import type { LanguageJson, TransformationJson } from "../model";
+import { relationshipLabel, type LanguageJson, type TransformationJson } from "../model";
 import { Badge, Chips, Icon, IconButton, Menu, Section, type Choice } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
 import { EditorHeader, Problems } from "./common";
@@ -195,7 +195,7 @@ function itemsOf(language: LanguageJson, kind: ItemKind): Choice[] {
   if (kind === "entity") return language.entities.map((e) => ({ id: e.id, label: e.name }));
   if (kind === "interaction") return language.interactions.map((i) => ({ id: i.id, label: `${i.name}()` }));
   const name = (id: string) => language.entities.find((e) => e.id === id)?.name ?? "?";
-  return language.relationships.map((r) => ({ id: r.id, label: r.ends.map((end) => `${name(end.entity)}.${end.name}`).join(" ⟷ ") }));
+  return language.relationships.map((r) => ({ id: r.id, label: relationshipLabel(r, name) }));
 }
 
 function mappingOf(t: TransformationJson, source: string) {

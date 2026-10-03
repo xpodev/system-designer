@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { api, type View } from "../api";
 import { Graph } from "../Graph";
-import { rangeOf, type InteractionJson, type LanguageJson, type RelationshipJson } from "../model";
+import { rangeOf, UNNAMED, type EndJson, type InteractionJson, type LanguageJson, type RelationshipJson } from "../model";
 import { AddInline, Badge, Icon, IconButton, InlineText, Marks, Menu, Picker, RangePicker, Section, type Choice } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
 import { EditorHeader, Problems } from "./common";
@@ -96,16 +96,16 @@ export function LanguageEditor({ id }: { id: string }) {
           <AddInline label="Entity" placeholder="Name, then Enter — e.g. Order" onAdd={addEntity} />
         </Section>
 
-        <Section title="Relationships" icon="Relationship" count={language.relationships.length} hint="each end: its Entity, its name, and how many">
+        <Section title="Relationships" icon="Relationship" count={language.relationships.length} hint="read each side as a navigation: from its Entity, by a name, to how many">
           {language.relationships.length > 0 && (
             <div className="relationship-head">
-              <span>Entity</span>
-              <span>end</span>
-              <span>how many</span>
+              <span>from</span>
+              <span>navigates by</span>
+              <span>to how many</span>
               <span />
-              <span>how many</span>
-              <span>end</span>
-              <span>Entity</span>
+              <span>from</span>
+              <span>navigates by</span>
+              <span>to how many</span>
             </div>
           )}
           {language.relationships.map((r) => (
@@ -195,38 +195,46 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
   );
 }
 
+/**
+ * A Relationship, read the way it is navigated: each side is `Entity.name how-many`, where the
+ * name and range are the far end's — from a Player, `prey` reaches 0..N Monsters. Clearing a
+ * name leaves that end unnamed: the Relationship can then not be navigated that way.
+ */
 function RelationshipRow({ relationship, entities }: { relationship: RelationshipJson; entities: Choice[] }) {
   const w = useWorkspace();
+  const model = useModel();
   const ref = useFocusRow(relationship.id);
   const [a, b] = relationship.ends;
   const problems = w.about(relationship.id);
-  const endPart = (end: typeof a, side: "left" | "right") => {
-    if (!end) return null;
-    const invalid = w.about(end.id).length > 0;
-    const entity = <Picker value={end.entity} choices={entities} invalid={invalid} onChange={(entity) => entity && void w.act("RelationshipEditor", "setEntity", { end: end.id, entity })} />;
-    const name = <InlineText value={end.name} className={invalid ? "invalid-value" : ""} onCommit={(name) => void w.act("RelationshipEditor", "renameEnd", { end: end.id, name })} />;
-    const range = <RangePicker value={rangeOf(end)} invalid={invalid} onChange={(range) => void w.act("RelationshipEditor", "setRange", { end: end.id, range })} />;
-    return side === "left" ? (
+  /** The side of `at`'s Entity: its picker, then the far end, reached from it. */
+  const side = (at: EndJson | undefined, far: EndJson | undefined) => {
+    if (!at || !far) return null;
+    const invalid = w.about(at.id).length > 0 || w.about(far.id).length > 0;
+    const from = model.name(at.entity);
+    return (
       <>
-        {entity}
-        {name}
-        {range}
-      </>
-    ) : (
-      <>
-        {range}
-        {name}
-        {entity}
+        <Picker value={at.entity} choices={entities} invalid={w.about(at.id).length > 0} onChange={(entity) => entity && void w.act("RelationshipEditor", "setEntity", { end: at.id, entity })} />
+        <span className={`navigation ${far.name === null ? "unnamed" : ""}`} title={far.name === null ? `No ${from} reaches its ${model.name(far.entity)} this way: name it to make it navigable` : `From a ${from}, .${far.name} reaches ${model.name(far.entity)}`}>
+          <span className="dot-step">.</span>
+          <InlineText
+            value={far.name ?? ""}
+            placeholder={UNNAMED}
+            clearable
+            className={invalid ? "invalid-value" : ""}
+            onCommit={(name) => void w.act("RelationshipEditor", "renameEnd", name === "" ? { end: far.id } : { end: far.id, name }, { message: name === "" ? `${from} no longer reaches ${model.name(far.entity)} this way` : undefined })}
+          />
+        </span>
+        <RangePicker value={rangeOf(far)} invalid={w.about(far.id).length > 0} onChange={(range) => void w.act("RelationshipEditor", "setRange", { end: far.id, range })} />
       </>
     );
   };
   return (
     <div ref={ref} className={`relationship row ${problems.length ? "has-problems" : ""}`}>
-      {endPart(a, "left")}
-      <span className="relationship-link" title="Each end says how many of its Entity each instance at the other end is linked to">
+      {side(a, b)}
+      <span className="relationship-link" title="Each side: from its Entity, the name it navigates by, and how many it reaches">
         ⟷
       </span>
-      {endPart(b, "right")}
+      {side(b, a)}
       <span className="row-tail">
         <Marks diagnostics={[...problems, ...relationship.ends.flatMap((e) => w.about(e.id))]} />
         <IconButton icon="trash" label="Delete Relationship" onClick={() => void w.act("RelationshipEditor", "remove", { relationship: relationship.id }, { message: "Deleted Relationship" })} />
