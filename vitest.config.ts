@@ -11,6 +11,7 @@ export default defineConfig({
       "@systemathic/tool-json": source("tool-json"),
       "@systemathic/editing": source("editing"),
       "@systemathic/editors": source("editors"),
+      "@systemathic/documentation": source("documentation"),
       "@systemathic/diagnoser": source("diagnoser"),
       "@systemathic/verifier": source("verifier"),
       "@systemathic/python-host": source("python-host"),

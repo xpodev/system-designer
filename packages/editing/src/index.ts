@@ -2,8 +2,10 @@
  * Editing (docs/tool-design.md): the shared base of every editor. A Target is a system context
  * seen from editing; any number of EditSessions, one per client, edit it at once. Every change
  * is an Edit on the Target's one History, applied in one order and told to every session. It
- * knows nothing of any concept of the core: an Edit is a change to the graph, and the Elements
- * it touched.
+ * knows nothing of what an Edit changes: an Edit holds an Effect, which knows how to revert
+ * itself, and the Elements it touched. A change to the design's graph is the Effect editing
+ * makes itself; whatever else a tool context changes in a system context — its documentation,
+ * say — it brings as an Effect of its own, and it is undone like any other.
  *
  * Editing never refuses: whatever an Edit leaves behind, however ill-formed, is kept. Undo is
  * a new Edit that reverts one of the session's own earlier Edits; history only grows.
@@ -13,6 +15,17 @@ import type { SystemContext } from "@systemathic/tool";
 
 export type EditKind = "addition" | "change" | "removal";
 
+/**
+ * What an Edit did, to whatever it changed. Reverting it undoes it as far as it still applies,
+ * keeping whatever was changed since, and gives the Effect that reverting made, which can be
+ * reverted in turn: that is all undo and redo need.
+ */
+export interface Effect {
+  /** The Elements it touched, besides the ones the Edit names. */
+  readonly touched: readonly string[];
+  revert(): Effect;
+}
+
 export interface Edit {
   /** Position in the History, from 1. */
   readonly id: number;
@@ -21,9 +34,9 @@ export interface Edit {
   readonly author: string;
   /** What it is, in a few words: `addEntity Monster`. */
   readonly summary: string;
-  /** The Elements it touched: what it names, and every instance it added, removed or linked. */
+  /** The Elements it touched: what it names, and whatever its Effect touched. */
   readonly elements: readonly string[];
-  readonly delta: Delta;
+  readonly effect: Effect;
   /** The Edit it undid, if it is an undo. */
   readonly reverts?: number;
 }
@@ -84,9 +97,14 @@ export class EditSession {
     return () => this.listeners.delete(listener);
   }
 
-  /** Applies a change as an Edit of this session. */
+  /** Changes the design's graph, as an Edit of this session. */
   edit(kind: EditKind, summary: string, named: readonly string[], change: (graph: Graph) => void): Edit {
     return this.target.apply(this, kind, summary, named, change);
+  }
+
+  /** Makes any other change to the Target, as an Edit of this session: `make` changes it, and says how to revert that. */
+  record(kind: EditKind, summary: string, named: readonly string[], make: () => Effect): Edit {
+    return this.target.record(this, kind, summary, named, make);
   }
 
   /** @internal */
@@ -149,9 +167,14 @@ export class Target {
 
   /** @internal Use `EditSession.edit`. */
   apply(session: EditSession, kind: EditKind, summary: string, named: readonly string[], change: (graph: Graph) => void): Edit {
+    return this.record(session, kind, summary, named, () => new GraphEffect(this.graph, this.graph.record(change)));
+  }
+
+  /** @internal Use `EditSession.record`. */
+  record(session: EditSession, kind: EditKind, summary: string, named: readonly string[], make: () => Effect): Edit {
     this.own(session);
-    const delta = this.graph.record(change);
-    return this.commit({ kind, author: session.id, summary, elements: elements(this.graph, named, delta), delta });
+    const effect = make();
+    return this.commit({ kind, author: session.id, summary, elements: [...new Set([...named, ...effect.touched])], effect });
   }
 
   /**
@@ -202,13 +225,13 @@ export class Target {
   }
 
   private revert(session: EditSession, edit: Edit, summary: string): Edit {
-    const delta = this.graph.apply(invert(edit.delta));
+    const effect = edit.effect.revert();
     return this.commit({
       kind: opposite(edit.kind),
       author: session.id,
       summary,
-      elements: elements(this.graph, edit.elements.filter((id) => this.graph.has(id)), delta),
-      delta,
+      elements: [...new Set([...edit.elements.filter((id) => this.graph.has(id)), ...effect.touched])],
+      effect,
       reverts: edit.id,
     });
   }
@@ -244,15 +267,30 @@ function opposite(kind: EditKind): EditKind {
   return kind === "addition" ? "removal" : kind === "removal" ? "addition" : "change";
 }
 
-/** What `named` and `delta` touch, without values (names, bounds), which are not Elements. */
-function elements(graph: Graph, named: readonly string[], delta: Delta): string[] {
-  const entities = new Map<string, string>();
-  for (const change of delta) if (change.op === "add" || change.op === "remove") entities.set(change.id, change.entity);
-  const entity = (id: string) => entities.get(id) ?? (graph.has(id) ? graph.get(id).entity : undefined);
-  const touched = new Set(named);
-  for (const change of delta) {
-    const ids = "id" in change ? [change.id] : [change.a, change.b];
-    for (const id of ids) if (!VALUES.has(entity(id) ?? "")) touched.add(id);
+/**
+ * A change to the design's graph: the Delta it made. Reverting applies the inverse Delta as far as
+ * it still applies, so a revert never refuses and puts links back in their place.
+ */
+export class GraphEffect implements Effect {
+  constructor(
+    private readonly graph: Graph,
+    readonly delta: Delta,
+  ) {}
+
+  /** Every instance it added, removed or linked, without values (names, bounds), which are not Elements. */
+  get touched(): string[] {
+    const entities = new Map<string, string>();
+    for (const change of this.delta) if (change.op === "add" || change.op === "remove") entities.set(change.id, change.entity);
+    const entity = (id: string) => entities.get(id) ?? (this.graph.has(id) ? this.graph.get(id).entity : undefined);
+    const touched = new Set<string>();
+    for (const change of this.delta) {
+      const ids = "id" in change ? [change.id] : [change.a, change.b];
+      for (const id of ids) if (!VALUES.has(entity(id) ?? "")) touched.add(id);
+    }
+    return [...touched];
   }
-  return [...touched];
+
+  revert(): GraphEffect {
+    return new GraphEffect(this.graph, this.graph.apply(invert(this.delta)));
+  }
 }

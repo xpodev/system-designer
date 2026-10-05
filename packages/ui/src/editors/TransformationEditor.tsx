@@ -6,6 +6,7 @@
 import { relationshipLabel, type LanguageJson, type TransformationJson } from "../model";
 import { Badge, Chips, Icon, IconButton, Menu, Section, type Choice } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
+import { Description } from "../prose";
 import { EditorHeader, Problems } from "./common";
 
 type ItemKind = "entity" | "relationship" | "interaction";
@@ -69,6 +70,7 @@ export function TransformationEditor({ id }: { id: string }) {
         }
       />
       <div className="editor-body">
+        <Description id={id} className="about" invite="Describe this Transformation: what it says about how one Language is seen in another" />
         <Problems ids={[id]} />
         {ownProblems.length > 0 && (
           <p className="inline-problem error">

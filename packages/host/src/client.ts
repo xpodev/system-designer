@@ -1,6 +1,6 @@
 /** HostApi over HTTP: a client of a Host running in another process. */
 import type { Diagnostic } from "@systemathic/diagnoser";
-import type { Specification } from "@systemathic/exporter";
+import type { Documentation, Specification } from "@systemathic/exporter";
 import type { PerspectiveInfo, View } from "@systemathic/perspectives";
 import type { SystemFile } from "@systemathic/tool-json";
 import type { ScriptCheck, ScriptSymbol } from "@systemathic/verifier";
@@ -74,6 +74,7 @@ export class HostClient implements HostApi {
     this.call<View>("GET", `${this.c(context)}/views/${enc(perspective)}${language === undefined ? "" : `?language=${enc(language)}`}`);
   verify = (context: string, script?: string, profile?: string) => this.call<RunInfo>("POST", `${this.c(context)}/verify`, { script, profile });
   specification = (context: string) => this.call<{ specification: Specification; markdown: string }>("GET", `${this.c(context)}/specification`);
+  documentation = (context: string) => this.call<{ documentation: Documentation; markdown: string }>("GET", `${this.c(context)}/documentation`);
   exportSelection = (context: string, ids: readonly string[], name: string, path?: string) =>
     this.call<{ path?: string; file: SystemFile }>("POST", `${this.c(context)}/export`, { ids, name, path });
   setAttachment = (context: string, owner: string, data: unknown) => this.call<void>("PUT", `${this.c(context)}/attachments/${enc(owner)}`, { data });

@@ -130,6 +130,10 @@ describe("the UI", () => {
     });
     const sides = [...row.querySelectorAll<HTMLElement>(".navigation")].map((n) => n.textContent);
     expect(sides).toEqual([".followers", ".leader"]);
+    // Each line reads as what each Monster has: any number of followers, at most one leader.
+    const ways = [...row.querySelectorAll<HTMLElement>(".way")];
+    expect(ways.map((way) => way.querySelector(".way-target")?.textContent)).toEqual(["Monsters", "Monster"]);
+    expect(ways.map((way) => way.querySelector<HTMLSelectElement>(".range-select")!.selectedOptions[0]!.textContent)).toEqual(["any number of (0..N)", "at most one (0..1)"]);
     fireEvent.click(within(row).getByText("followers"));
     const input = row.querySelector<HTMLInputElement>(".inline-input")!;
     fireEvent.change(input, { target: { value: "" } });
@@ -139,6 +143,44 @@ describe("the UI", () => {
       expect(pack.ends.map((e) => e.name)).toEqual(["leader", null]);
     });
     await waitFor(() => expect(row.querySelector(".navigation.unnamed")?.textContent).toBe(".(unnamed)"));
+  });
+
+  it("describes things where they are edited, and reads them all in the Documentation", async () => {
+    const id = await openGame();
+    fireEvent.click(explorerRow("Core"));
+    const editor = await waitFor(() => {
+      const h1 = document.querySelector(".editor-header h1");
+      expect(h1?.textContent).toBe("Core");
+      return h1!.closest(".editor") as HTMLElement;
+    });
+    const monster = [...editor.querySelectorAll<HTMLElement>(".grid tr")].find((row) => row.querySelector(".cell-main")?.textContent?.includes("Monster"))!;
+    fireEvent.click(within(monster).getByText("Add a description"));
+    const area = monster.querySelector<HTMLTextAreaElement>(".prose-input")!;
+    fireEvent.change(area, { target: { value: "Something to fight.\n\nIt has **hit points**." } });
+    fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
+    // Kept by the Documentation, beside the design, and on the History like any Edit.
+    const described = async () => ((await host.attachment(id, "documentation")) as { descriptions: Record<string, string> } | null)?.descriptions ?? {};
+    await waitFor(async () => expect((await described())["core.monster"]).toBe("Something to fight.\n\nIt has **hit points**."));
+    expect((await host.history(id)).at(-1)).toMatchObject({ summary: "describe Entity", elements: ["core.monster"] });
+    // Shown as prose, under its name.
+    await waitFor(() => expect(monster.querySelector(".description strong")?.textContent).toBe("hit points"));
+
+    fireEvent.click(explorerRow("Documentation"));
+    const doc = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>(".documentation");
+      expect(found?.textContent).toContain("Each Player has any number of Monsters, as prey.");
+      return found!;
+    });
+    expect(within(doc).getByText("Something to fight.")).toBeTruthy();
+    // The System is described from the document itself.
+    fireEvent.click(within(doc).getByText("Describe this System: what it is, and what it is for"));
+    const lead = doc.querySelector<HTMLTextAreaElement>(".prose-input")!;
+    fireEvent.change(lead, { target: { value: "A small game." } });
+    fireEvent.blur(lead);
+    await waitFor(async () => expect((await described()).game).toBe("A small game."));
+    const markdown = (await host.documentation(id)).markdown;
+    expect(markdown).toContain("# Game\n\nA small game.\n");
+    expect(markdown).toContain("- **Monster** — Something to fight.\n\n  It has **hit points**.\n");
   });
 
   it("on a narrow screen, keeps the Explorer in a drawer that closes once something is opened", async () => {
@@ -222,6 +264,15 @@ describe("the UI", () => {
     await waitFor(() => expect(document.querySelector(".cm-editor")).not.toBeNull(), { timeout: 10_000 });
     expect(document.querySelector(".cm-content")?.textContent).toContain("every_domain_uses_a_language");
     await screen.findByText("every_domain_uses_a_language", { selector: ".rule-list code" }, { timeout: 10_000 });
+    // A standard rule of the profile says what it checks, and, folded, what it is for.
+    const opacity = await waitFor(() => {
+      const found = [...document.querySelectorAll<HTMLDetailsElement>(".profile-rules details")].find((d) => d.querySelector("summary")?.textContent?.includes("opacity"));
+      expect(found).toBeTruthy();
+      return found!;
+    }, { timeout: 10_000 });
+    expect(opacity.open).toBe(false);
+    expect(opacity.querySelector(".rule-about")?.textContent).toMatch(/^Every Mediation is opaque/);
+    expect(opacity.querySelector(".prose")?.textContent).toContain("This is what makes a");
     fireEvent.click(screen.getByText("Save", { selector: ".editor-actions button, .editor-actions button *" }));
     await waitFor(async () => expect(await host.attachment((await host.contexts())[0]!.id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" }));
   }, 20_000);

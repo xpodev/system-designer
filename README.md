@@ -42,6 +42,10 @@ node packages/cli/dist/index.js verify examples/tool-design.systemathic.json exa
 node packages/cli/dist/index.js export examples/game.systemathic.json md
 ```
 
+```bash
+node packages/cli/dist/index.js export examples/game.systemathic.json docs
+```
+
 The visual UI: start the host, then open http://127.0.0.1:4747.
 
 ```bash
@@ -51,7 +55,8 @@ pnpm serve examples/game.systemathic.json
 The Explorer on the left holds the whole System; a click opens what it is in its editor — a
 Language's Entities, Relationships, Interactions and Axioms (or its diagram: drag between
 Entities to relate them), a Domain's scope and Transformations, a Transformation's mappings,
-a Mediation and its witness. Everything is edited in place. `Ctrl K` goes anywhere or runs
+a Mediation and its witness. Everything is edited in place, including each thing's description;
+the Documentation view reads the whole System as one document, and downloads it as Markdown. `Ctrl K` goes anywhere or runs
 any command; `Ctrl Z` / `Ctrl Shift Z` undo and redo your own edits; `Ctrl S` saves;
 `Ctrl J` shows the Problems, History and Verification. The verification script is edited in
 the UI too — Python, with problems as you type, completion and documentation — or in any

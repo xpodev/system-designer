@@ -1,0 +1,23 @@
+{
+  "name": "@systemathic/documentation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Documentation: what a System and the things in it are for, kept with the System and edited on its History.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/editing": "workspace:*",
+    "@systemathic/editors": "workspace:*",
+    "@systemathic/tool": "workspace:*"
+  },
+  "devDependencies": {
+    "@systemathic/tool-json": "workspace:*"
+  }
+}

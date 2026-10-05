@@ -142,6 +142,18 @@ class Standard(unittest.TestCase):
         profile = Profile(*standard.rules, nothing, nothing)
         self.assertEqual(len(profile.rules), len(standard.rules) + 1)
         self.assertEqual(nothing.about, "Finds nothing.")
+
+        @rule(severity=ERROR)
+        def explained(system):
+            """Checks one thing,
+            in two lines.
+
+            Because it matters.
+            """
+            return []
+
+        self.assertEqual(explained.about, "Checks one thing, in two lines.")
+        self.assertEqual(explained.doc, "Checks one thing,\nin two lines.\n\nBecause it matters.")
         self.assertEqual(Violation(read(GAME), "x").elements[0].name, "Game")
 
 
@@ -207,6 +219,9 @@ class RuleHost(unittest.TestCase):
         result = host.describe("std")
         self.assertEqual([p["name"] for p in result["profiles"]], ["standard"])
         self.assertEqual(len(result["rules"]), 9)
+        opacity = result["rules"][0]
+        self.assertEqual(opacity["about"], "Every Mediation is opaque: the what does not know how it is carried out, and the how does not know what it carries.")
+        self.assertIn("This is what makes a \"how\" swappable", opacity["doc"])
 
     def test_reports_an_unusable_script(self):
         result = self.run_host("run", "std", str(EXAMPLES / "game.systemathic.json"), "nope")

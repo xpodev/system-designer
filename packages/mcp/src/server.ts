@@ -155,6 +155,14 @@ export async function createServer(host: HostApi): Promise<McpServer> {
     { description: "The System's specification, in Markdown: the contract an implementation must satisfy.", inputSchema: { context: CONTEXT } },
     ({ context }) => guarded(async () => (await host.specification(context)).markdown),
   );
+  server.registerTool(
+    "export_documentation",
+    {
+      description: "The System's documentation, in Markdown: every Language, Domain and Mediation with its description, and the verification rules with theirs.",
+      inputSchema: { context: CONTEXT },
+    },
+    ({ context }) => guarded(async () => (await host.documentation(context)).markdown),
+  );
 
   // The catalog.
   server.registerTool(

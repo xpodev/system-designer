@@ -57,6 +57,9 @@ describe("perspectives", () => {
       ["combat.attack", "combat.targetable", "target"],
     ]);
     expect(() => view(game, "language")).toThrow("needs a Language");
+    // Each end of a Relationship reads beside its own Entity: from a Monster, `followers` reaches 0..N Monsters, `leader` at most one.
+    const pack = view(game, "language", { language: "core" }).links.find((link) => link.subject === "core.pack")!;
+    expect(pack.ends).toEqual({ source: { name: "leader", range: "0..1" }, target: { name: "followers", range: "0..N" } });
   });
 
   it("domain map: what Domains use and reference, and the Transformations between Languages", () => {

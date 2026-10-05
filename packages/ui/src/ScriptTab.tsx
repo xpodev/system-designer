@@ -13,6 +13,8 @@ import { EditorView, highlightActiveLine, highlightActiveLineGutter, hoverToolti
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
 import { api, type ScriptCheck as Check, type ScriptSymbol } from "./api";
+import { RuleDoc } from "./DocumentationTab";
+import { Prose } from "./prose";
 import { Badge, download, Icon, InlineText, Splitter } from "./widgets";
 import { useModel, useSize, useWorkspace } from "./workspace";
 
@@ -326,13 +328,25 @@ export function ScriptTab() {
             <ul className="profile-rules">
               {profile.rules.map((name) => {
                 const rule = rulesByName.get(name);
+                const more = rule?.doc?.split(/\n\s*\n/).slice(1).join("\n\n").trim();
                 return (
-                  <li key={name} title={rule?.about}>
-                    <button onClick={() => rule?.line && goTo(rule.line)} disabled={!rule?.line}>
-                      <span className={`severity-dot ${rule?.severity ?? "error"}`} />
-                      <code>{name}</code>
-                    </button>
-                    {rule?.script === "std" && <span className="muted">std</span>}
+                  <li key={name}>
+                    <details>
+                      <summary title="What it checks, and what it is for">
+                        <span className={`severity-dot ${rule?.severity ?? "error"}`} />
+                        <code>{name}</code>
+                        {rule?.script === "std" && <span className="muted">std</span>}
+                      </summary>
+                      <div className="rule-detail">
+                        {rule?.about ? <p className="rule-about">{rule.about}</p> : <p className="muted">No docstring: say what it checks in one.</p>}
+                        {more && <Prose text={more} />}
+                        {rule?.line && (
+                          <button className="link-button" onClick={() => goTo(rule.line!)}>
+                            Go to line {rule.line}
+                          </button>
+                        )}
+                      </div>
+                    </details>
                   </li>
                 );
               })}
@@ -346,10 +360,7 @@ export function ScriptTab() {
           <ul className="rule-list">
             {ownRules.map((r) => (
               <li key={r.name}>
-                <button onClick={() => r.line && goTo(r.line)}>
-                  <Badge severity={r.severity === "error" ? "error" : "warning"}>{r.severity}</Badge> <code>{r.name}</code>
-                </button>
-                <p>{r.about || <span className="muted">no docstring</span>}</p>
+                <RuleDoc rule={r} onName={r.line ? () => goTo(r.line!) : undefined} />
               </li>
             ))}
             {ownRules.length === 0 && <li className="muted">None yet.</li>}

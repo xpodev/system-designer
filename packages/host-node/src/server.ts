@@ -31,6 +31,7 @@ function routes(host: HostApi): [method: string, pattern: string, handler: Handl
     ["GET", `${C}/views/:perspective`, (p, _, q) => host.view(p.context!, p.perspective!, q.get("language") ?? undefined)],
     ["POST", `${C}/verify`, (p, b) => host.verify(p.context!, b.script, b.profile)],
     ["GET", `${C}/specification`, (p) => host.specification(p.context!)],
+    ["GET", `${C}/documentation`, (p) => host.documentation(p.context!)],
     ["GET", `${C}/script`, (p) => host.script(p.context!)],
     ["PUT", `${C}/script`, (p, b) => host.saveScript(p.context!, String(b.path), String(b.source ?? ""))],
     ["POST", "/api/scripts/check", (_, b) => host.checkScript(String(b.source ?? ""))],

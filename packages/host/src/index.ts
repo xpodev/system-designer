@@ -1,4 +1,4 @@
-export { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
+export { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RuleInfo, type RunInfo } from "./api.js";
 export { Host, type Files, type HostOptions } from "./host.js";
 export { HostClient } from "./client.js";
 

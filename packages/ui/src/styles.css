@@ -763,6 +763,9 @@ textarea.inline-input {
   align-items: center;
   gap: 8px;
 }
+td > .row-description {
+  font-weight: 400;
+}
 .cell-muted {
   color: var(--muted);
   font-size: 13px;
@@ -777,30 +780,43 @@ textarea.inline-input {
   align-items: center;
   gap: 4px;
 }
-.relationship-head {
-  display: grid;
-  grid-template-columns: 1fr 1fr 70px 28px 70px 1fr 1fr 60px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--faint);
-  padding: 0 8px;
-}
+/* A Relationship: one line per way through it, its columns lined up, its description below. */
 .relationship {
   display: grid;
-  grid-template-columns: 1fr 1fr 70px 28px 70px 1fr 1fr 60px;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: 8px 8px 6px;
   border-bottom: 1px solid var(--line);
 }
 .relationship:hover {
   background: var(--hover);
 }
-.relationship-link {
-  text-align: center;
-  color: var(--k-relationship);
-  font-size: 16px;
+.relationship .ways {
+  display: grid;
+  grid-template-columns: auto minmax(0, max-content) auto minmax(0, max-content) minmax(0, max-content) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 4px;
+}
+.relationship .way {
+  display: contents;
+}
+.way-word {
+  color: var(--muted);
+  font-size: 13px;
+}
+.way-target {
+  font-weight: 600;
+  color: var(--k-entity);
+  white-space: nowrap;
+}
+.relationship .row-description {
+  grid-column: 1 / -1;
+}
+.range-select.words {
+  font-size: 13px;
 }
 .has-problems {
   box-shadow: inset 3px 0 0 var(--error);
@@ -2143,13 +2159,6 @@ body.resizing-y * {
   .two-columns {
     grid-template-columns: 1fr;
   }
-  .relationship,
-  .relationship-head {
-    grid-template-columns: 1fr 1fr 64px;
-  }
-  .relationship-head {
-    display: none;
-  }
 }
 
 .browser-note {
@@ -2181,10 +2190,6 @@ body.resizing-y * {
   font-style: italic;
 }
 
-/* Each side of a Relationship row lays out in the row's grid, until a narrow screen stacks them. */
-.relationship .side {
-  display: contents;
-}
 .drawer-button,
 .drawer-backdrop {
   display: none;
@@ -2306,28 +2311,18 @@ body.resizing-y * {
   .editor-body {
     padding: 10px 14px 40px;
   }
-  .relationship {
+  .relationship .ways {
+    display: block;
+  }
+  .relationship .way {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px;
-  }
-  .relationship .side {
-    display: flex;
     align-items: center;
-    gap: 4px;
-    width: 100%;
-    min-width: 0;
+    gap: 4px 6px;
+    padding: 2px 0;
   }
-  .relationship .side .picker {
+  .relationship .way .picker {
     max-width: 45%;
-  }
-  .relationship-link {
-    display: none;
-  }
-  .relationship .row-tail {
-    width: 100%;
-    justify-content: flex-end;
   }
   .mapping-head {
     display: none;
@@ -2404,5 +2399,444 @@ body.resizing-y * {
   .new-mediation .picker,
   .new-row .picker {
     flex: 1 1 40%;
+  }
+}
+
+/* Descriptions: prose, written in place. */
+.prose p {
+  margin: 0 0 0.5em;
+}
+.prose p:last-child,
+.prose ul:last-child,
+.prose ol:last-child {
+  margin-bottom: 0;
+}
+.prose ul,
+.prose ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.3em;
+}
+.document .prose ul {
+  list-style: disc;
+  padding-left: 1.3em;
+}
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--hover);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.prose a {
+  color: var(--accent);
+}
+.description {
+  cursor: text;
+  border-radius: 6px;
+  margin: 0 -6px;
+  padding: 2px 6px;
+}
+.description:hover,
+.description:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+.row:hover .description:hover,
+.relationship:hover .description:hover {
+  background: var(--panel);
+}
+.add-description {
+  border: none;
+  background: none;
+  padding: 2px 0;
+  color: var(--faint);
+  font-size: 13px;
+  font-style: italic;
+  cursor: text;
+  text-align: left;
+}
+.add-description:hover,
+.add-description:focus-visible {
+  color: var(--accent);
+  background: none;
+}
+.row-description {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.row-description.description {
+  color: var(--muted);
+}
+/* In lists, the invitation shows where the pointer is, so a dense list stays quiet. */
+.row .add-description.row-description,
+.relationship .add-description.row-description,
+tr .add-description.row-description {
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: block;
+  transition: opacity 0.12s;
+}
+.row:hover .add-description.row-description,
+.row:focus-within .add-description.row-description,
+.relationship:hover .add-description.row-description,
+tr:hover .add-description.row-description,
+.add-description.row-description:focus-visible {
+  opacity: 1;
+  height: auto;
+  padding: 2px 0;
+}
+.about {
+  max-width: 760px;
+  font-size: 14.5px;
+  margin: 2px -6px 12px;
+}
+.about.add-description {
+  margin: 0 0 12px;
+}
+.prose-editing {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0;
+  max-width: 760px;
+}
+.prose-input {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+.prose-hint {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.prose-hint code,
+.prose-hint kbd {
+  font-size: 11px;
+}
+
+/* A Relationship in a diagram: how many of each end's Entity, and by what name, beside it. */
+.graph .link path.hit,
+.graph .link.Relationship path.hit {
+  stroke: transparent;
+  stroke-width: 14;
+}
+.graph .link.selectable {
+  cursor: pointer;
+}
+.graph .link.selectable:hover path:not(.hit),
+.graph .link.selected path:not(.hit) {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.graph .link text.end-label {
+  font-size: 11.5px;
+  fill: var(--muted);
+  stroke: var(--panel);
+}
+.graph .end-range {
+  font-family: var(--mono);
+  font-weight: 700;
+  fill: var(--ink);
+}
+.graph .end-name {
+  fill: var(--muted);
+}
+.graph .end-name.unnamed {
+  font-style: italic;
+  fill: var(--faint);
+}
+
+/* Documentation */
+.documentation .lead {
+  font-size: 16px;
+  margin-bottom: 18px;
+}
+.documentation .lead.add-description {
+  font-size: 15px;
+}
+.doc-contents {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 6px 24px;
+  border: 1px solid var(--line);
+  background: var(--sidebar);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 8px 0 12px;
+}
+.doc-contents h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.doc-contents ul {
+  margin: 0;
+}
+.doc-contents li {
+  padding: 1px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.doc-contents a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.doc-contents a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.undescribed {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  opacity: 0.55;
+  flex: none;
+}
+.doc-section {
+  scroll-margin-top: 90px;
+}
+.doc-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.doc-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.icon.k-language {
+  color: var(--k-language);
+}
+.icon.k-domain {
+  color: var(--k-domain);
+}
+.icon.k-mediation {
+  color: var(--k-mediation);
+}
+.doc-name {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.doc-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  background: none;
+}
+.doc-name.mono {
+  font-family: var(--mono);
+  font-size: 13.5px;
+}
+.doc-name.entity-name {
+  color: var(--k-entity);
+}
+.doc-meta {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+p.doc-meta {
+  margin: 4px 0 8px;
+}
+.doc-list {
+  margin: 0;
+}
+.doc-list > div {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.doc-list dt {
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.doc-list dd {
+  margin: 2px 0 0;
+}
+.doc-relationship {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.document .readings {
+  margin: 6px 0 4px;
+}
+.document .readings li {
+  padding: 2px 0;
+}
+.readings li.unnamed {
+  color: var(--muted);
+}
+.range-chip {
+  font-size: 11px;
+  background: var(--hover);
+  color: var(--ink);
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  min-width: 34px;
+  text-align: center;
+}
+.doc-transformation {
+  margin: 12px 0 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+}
+.document .mappings li {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 1px 0;
+}
+.document .mappings li.deferred {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Rules, with their documentation folded away until wanted. */
+.rule-docs {
+  display: grid;
+}
+.rule-doc {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rule-docs .rule-doc:last-child {
+  border-bottom: none;
+}
+.rule-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+button.rule-name {
+  border: none;
+  background: none;
+  padding: 0;
+}
+button.rule-name:hover code {
+  color: var(--accent);
+}
+.rule-about {
+  margin: 4px 0 0;
+}
+.rule-list .rule-doc {
+  padding: 0;
+  border: none;
+}
+.rule-list .rule-about {
+  color: var(--muted);
+}
+details.rule-more > summary,
+details.rules-run > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+  margin-top: 4px;
+  width: fit-content;
+}
+.rule-more .prose,
+.rule-detail .prose {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--hover);
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+details.rules-run {
+  margin-top: 12px;
+}
+details.rules-run .rule-docs {
+  margin-top: 6px;
+  max-width: 820px;
+}
+.profile-rules details > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 4px;
+  list-style: none;
+  border-radius: 6px;
+}
+.profile-rules details > summary::-webkit-details-marker {
+  display: none;
+}
+.profile-rules details > summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--faint);
+  border-bottom: 1.5px solid var(--faint);
+  transform: rotate(-45deg);
+  margin-right: 2px;
+  transition: transform 0.12s;
+}
+.profile-rules details[open] > summary::before {
+  transform: rotate(45deg);
+}
+.profile-rules details > summary:hover {
+  background: var(--hover);
+}
+.profile-rules li {
+  display: block;
+}
+.rule-detail {
+  padding: 2px 4px 10px 22px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.rule-detail .rule-about {
+  color: var(--ink);
+}
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 12px;
+}
+.link-button:hover {
+  text-decoration: underline;
+  background: none;
+}
+
+@media (pointer: coarse) {
+  .row .add-description.row-description,
+  .relationship .add-description.row-description,
+  tr .add-description.row-description {
+    opacity: 0.8;
+    height: auto;
+    padding: 2px 0;
   }
 }

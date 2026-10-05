@@ -3,6 +3,7 @@ import { useState } from "react";
 import { uniqueName } from "../Explorer";
 import { Badge, Icon, Picker, Section } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
+import { Description } from "../prose";
 import { EditorHeader } from "./common";
 
 export function SystemEditor(props: { onCatalog(): void }) {
@@ -35,6 +36,7 @@ export function SystemEditor(props: { onCatalog(): void }) {
         }
       />
       <div className="editor-body">
+        <Description id={system.id} className="about" invite="Describe this System: what it is, and what it is for" />
         <div className="health">
           <div className={`health-card ${w.structural ? "bad" : "good"}`}>
             <Icon name={w.structural ? "error" : "check"} size={22} />

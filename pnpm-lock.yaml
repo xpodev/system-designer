@@ -80,6 +80,22 @@ importers:
         specifier: workspace:*
         version: link:../verifier
 
+  packages/documentation:
+    dependencies:
+      '@systemathic/editing':
+        specifier: workspace:*
+        version: link:../editing
+      '@systemathic/editors':
+        specifier: workspace:*
+        version: link:../editors
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+    devDependencies:
+      '@systemathic/tool-json':
+        specifier: workspace:*
+        version: link:../tool-json
+
   packages/editing:
     dependencies:
       '@systemathic/core':
@@ -103,6 +119,9 @@ importers:
       '@systemathic/core':
         specifier: workspace:*
         version: link:../core
+      '@systemathic/documentation':
+        specifier: workspace:*
+        version: link:../documentation
       '@systemathic/tool':
         specifier: workspace:*
         version: link:../tool
@@ -121,6 +140,9 @@ importers:
       '@systemathic/diagnoser':
         specifier: workspace:*
         version: link:../diagnoser
+      '@systemathic/documentation':
+        specifier: workspace:*
+        version: link:../documentation
       '@systemathic/editing':
         specifier: workspace:*
         version: link:../editing

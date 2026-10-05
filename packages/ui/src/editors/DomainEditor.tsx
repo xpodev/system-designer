@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Badge, Chips, Icon, IconButton, Menu, Picker, Section } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
+import { Description } from "../prose";
 import { EditorHeader, Problems } from "./common";
 
 export function DomainEditor({ id }: { id: string }) {
@@ -33,6 +34,7 @@ export function DomainEditor({ id }: { id: string }) {
         }
       />
       <div className="editor-body">
+        <Description id={id} className="about" invite="Describe this Domain: what concern it holds, and why it is separate" />
         <Problems ids={[id]} />
         <div className="two-columns">
           <Section title="Uses" icon="Language" hint="its own Languages">

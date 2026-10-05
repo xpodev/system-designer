@@ -6,9 +6,9 @@
 import { coreEntities, describe as describeElement, effectiveLanguages, nameOf, parameters, stdSpec, witnessed, type Graph } from "@systemathic/core";
 import { diagnose, metrics, type Diagnostic } from "@systemathic/diagnoser";
 import type { SystemContext } from "@systemathic/tool";
-import { ViewBuilder, type Perspective, type View } from "./view.js";
+import { ViewBuilder, type LinkEnd, type Perspective, type View } from "./view.js";
 
-export { ViewBuilder, type Item, type Link, type Mark, type Perspective, type View } from "./view.js";
+export { ViewBuilder, type Item, type Link, type LinkEnd, type Mark, type Perspective, type View } from "./view.js";
 
 export interface PerspectiveInfo {
   readonly perspective: Perspective;
@@ -54,11 +54,22 @@ const name = (graph: Graph, id: string) =>
 const UNNAMED = "(unnamed)";
 const first = (graph: Graph, id: string, end: string) => graph.navigate(id, end)[0];
 
-/** An end, as `name min..max`. */
-function endLabel(graph: Graph, end: string): string {
+/** An end's range, as `min..max`. */
+function rangeText(graph: Graph, end: string): string {
   const [min] = graph.navigate(end, "min");
   const [max] = graph.navigate(end, "max");
-  return `${name(graph, end)} ${min === undefined ? "?" : graph.get(min).value}..${max === undefined ? "N" : graph.get(max).value}`;
+  return `${min === undefined ? "?" : graph.get(min).value}..${max === undefined ? "N" : graph.get(max).value}`;
+}
+
+/** An end, as `name min..max`. */
+function endLabel(graph: Graph, end: string): string {
+  return `${name(graph, end)} ${rangeText(graph, end)}`;
+}
+
+/** An end as a Link shows it beside its Entity: its name, if it has one, and its range. */
+function linkEnd(graph: Graph, end: string): LinkEnd {
+  const named = nameOf(graph, end);
+  return named === undefined ? { range: rangeText(graph, end) } : { name: named, range: rangeText(graph, end) };
 }
 
 /** The other end of an end's Relationship. */
@@ -174,8 +185,8 @@ const builders: Readonly<Record<Perspective, Builder>> = {
       const [a, b] = graph.navigate(relationship, "ends").map((end) => first(graph, end, "entity"));
       const [ea, eb] = graph.navigate(relationship, "ends");
       if (a !== undefined && b !== undefined && ea !== undefined && eb !== undefined) {
-        // From a, the end at b is reached; from b, the end at a.
-        view.link(a, b, "Relationship", `${endLabel(graph, eb)} ⟷ ${endLabel(graph, ea)}`);
+        // From a, the end at b is reached; from b, the end at a. Each end reads beside its own Entity: how many of it, by what name.
+        view.link(a, b, "Relationship", `${endLabel(graph, eb)} ⟷ ${endLabel(graph, ea)}`, { ends: { source: linkEnd(graph, ea), target: linkEnd(graph, eb) }, subject: relationship });
       }
     }
     for (const interaction of graph.navigate(language, "interactions")) {

@@ -5,7 +5,7 @@
  * know where the system context lives.
  */
 import type { Diagnostic } from "@systemathic/diagnoser";
-import type { Specification } from "@systemathic/exporter";
+import type { Documentation, Specification } from "@systemathic/exporter";
 import type { ParameterSpec } from "@systemathic/editors";
 import type { PerspectiveInfo, View } from "@systemathic/perspectives";
 import type { SystemFile } from "@systemathic/tool-json";
@@ -51,9 +51,20 @@ export interface PackageSummary {
   readonly origin: "standard" | "file";
 }
 
+/** A rule of a profile, with its documentation. */
+export interface RuleInfo {
+  readonly name: string;
+  readonly severity: "error" | "warning";
+  readonly about: string;
+  readonly doc?: string;
+  readonly script: string;
+}
+
 export interface RunInfo {
   readonly profile: string;
   readonly script: string;
+  /** The profile's rules; an older host leaves them out. */
+  readonly profileRules?: readonly RuleInfo[];
   /** How many Edits the History had when the Snapshot was taken. */
   readonly atEdit: number;
   readonly rules: number;
@@ -101,6 +112,8 @@ export interface HostApi {
   view(context: string, perspective: string, language?: string): Promise<View>;
   verify(context: string, script?: string, profile?: string): Promise<RunInfo>;
   specification(context: string): Promise<{ specification: Specification; markdown: string }>;
+  /** The System written up for people, with every Description, and the rules it was last verified against. */
+  documentation(context: string): Promise<{ documentation: Documentation; markdown: string }>;
 
   /** The System's verification script: its own, or a new one to start from, with where it is (or would be) saved. */
   script(context: string): Promise<{ path: string; profile: string; source: string; exists: boolean }>;

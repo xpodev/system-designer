@@ -73,7 +73,7 @@ def check(path: str) -> dict[str, Any]:
         if name not in in_profiles:
             problems.append(_problem(line, column, f"The rule {name} is in no profile, so it never runs.", "warning", end_column=column + 4 + len(name)))
         if not value.function.__doc__:
-            problems.append(_problem(line, column, f"Say what {name} checks in a docstring: it is how the rule reads in a specification.", "info", end_column=column + 4 + len(name)))
+            problems.append(_problem(line, column, f"Say what {name} checks in a docstring: its first paragraph is how the rule reads in a specification, and the rest can say why it matters.", "info", end_column=column + 4 + len(name)))
     if not described["profiles"]:
         problems.append(_problem(1, 1, "There is no profile to verify with: add one, as in `profile = Profile(*standard_rules, my_rule)`.", "warning"))
     for rule in described["rules"]:
@@ -107,7 +107,7 @@ def symbols() -> list[dict[str, Any]]:
     for name in std.__all__:
         value = getattr(std, name)
         if isinstance(value, Rule):
-            add(name, "rule", f"standard rule, {value.severity}", value.about, "systemathic.std")
+            add(name, "rule", f"standard rule, {value.severity}", value.doc, "systemathic.std")
         elif isinstance(value, Profile):
             add(name, "constant", f"Profile of {len(value.rules)} rules", "Every standard rule, at its default severity.", "systemathic.std")
         elif inspect.isclass(value):

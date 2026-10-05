@@ -224,6 +224,12 @@ export function Explorer() {
           </div>
         </li>
         <li>
+          <div className={`tree-row ${activeKey === "documentation" ? "selected" : ""}`} style={{ paddingLeft: 20 }} onClick={() => w.open({ kind: "documentation" })}>
+            <Icon name="book" size={15} />
+            <span className="tree-label">Documentation</span>
+          </div>
+        </li>
+        <li>
           <div className={`tree-row ${activeKey === "specification" ? "selected" : ""}`} style={{ paddingLeft: 20 }} onClick={() => w.open({ kind: "specification" })}>
             <Icon name="specification" size={15} />
             <span className="tree-label">Specification</span>

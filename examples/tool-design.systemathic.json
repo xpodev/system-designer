@@ -2054,6 +2054,10 @@
           {
             "id": "ent:Editing.Selection",
             "name": "Selection"
+          },
+          {
+            "id": "ent:Editing.Effect",
+            "name": "Effect"
           }
         ],
         "relationships": [
@@ -2301,6 +2305,25 @@
                 "entity": "ent:Editing.Element",
                 "min": 0,
                 "max": "N"
+              }
+            ]
+          },
+          {
+            "id": "rel:Editing#13",
+            "ends": [
+              {
+                "id": "rel:Editing#13.edit",
+                "name": "edit",
+                "entity": "ent:Editing.Edit",
+                "min": 1,
+                "max": 1
+              },
+              {
+                "id": "rel:Editing#13.effect",
+                "name": "effect",
+                "entity": "ent:Editing.Effect",
+                "min": 1,
+                "max": 1
               }
             ]
           }
@@ -3215,6 +3238,156 @@
           }
         ],
         "interactions": []
+      },
+      {
+        "id": "lang:Documentation",
+        "name": "Documentation",
+        "entities": [
+          {
+            "id": "ent:Documentation.EditSession",
+            "name": "EditSession"
+          },
+          {
+            "id": "ent:Documentation.Edit",
+            "name": "Edit"
+          },
+          {
+            "id": "ent:Documentation.Description",
+            "name": "Description"
+          },
+          {
+            "id": "ent:Documentation.Subject",
+            "name": "Subject"
+          },
+          {
+            "id": "ent:Documentation.Text",
+            "name": "Text"
+          }
+        ],
+        "relationships": [
+          {
+            "id": "rel:Documentation#0",
+            "ends": [
+              {
+                "id": "rel:Documentation#0.previous",
+                "name": "previous",
+                "entity": "ent:Documentation.Edit",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "rel:Documentation#0.following",
+                "name": "following",
+                "entity": "ent:Documentation.Edit",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "rel:Documentation#1",
+            "ends": [
+              {
+                "id": "rel:Documentation#1.revertedBy",
+                "name": "revertedBy",
+                "entity": "ent:Documentation.Edit",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "rel:Documentation#1.reverts",
+                "name": "reverts",
+                "entity": "ent:Documentation.Edit",
+                "min": 0,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "rel:Documentation#2",
+            "ends": [
+              {
+                "id": "rel:Documentation#2.edits",
+                "name": "edits",
+                "entity": "ent:Documentation.Edit",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "rel:Documentation#2.author",
+                "name": "author",
+                "entity": "ent:Documentation.EditSession",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "rel:Documentation#3",
+            "ends": [
+              {
+                "id": "rel:Documentation#3.description",
+                "name": "description",
+                "entity": "ent:Documentation.Description",
+                "min": 0,
+                "max": 1
+              },
+              {
+                "id": "rel:Documentation#3.subject",
+                "name": "subject",
+                "entity": "ent:Documentation.Subject",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          },
+          {
+            "id": "rel:Documentation#4",
+            "ends": [
+              {
+                "id": "rel:Documentation#4.descriptions",
+                "name": "descriptions",
+                "entity": "ent:Documentation.Description",
+                "min": 0,
+                "max": "N"
+              },
+              {
+                "id": "rel:Documentation#4.text",
+                "name": "text",
+                "entity": "ent:Documentation.Text",
+                "min": 1,
+                "max": 1
+              }
+            ]
+          }
+        ],
+        "formulas": [],
+        "interactions": [
+          {
+            "id": "i:Documentation.describe",
+            "name": "describe",
+            "parameters": [
+              {
+                "id": "p:Documentation.describe.0",
+                "name": "editSession",
+                "type": "ent:Documentation.EditSession"
+              },
+              {
+                "id": "p:Documentation.describe.1",
+                "name": "subject",
+                "type": "ent:Documentation.Subject"
+              },
+              {
+                "id": "p:Documentation.describe.2",
+                "name": "text",
+                "type": "ent:Documentation.Text"
+              }
+            ],
+            "output": "ent:Documentation.Edit",
+            "primary": null,
+            "compares": []
+          }
+        ]
       },
       {
         "id": "lang:Catalog",
@@ -9124,6 +9297,152 @@
         ]
       },
       {
+        "id": "dom:Documentation",
+        "name": "Documentation",
+        "languages": [
+          "lang:Documentation"
+        ],
+        "references": [
+          "dom:Tool",
+          "dom:Editing"
+        ],
+        "transformations": [
+          {
+            "id": "t:Documentation:Editing->Documentation",
+            "name": "inclusion of Editing",
+            "source": "lang:Editing",
+            "target": "lang:Documentation",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "ent:Editing.EditSession",
+                "targets": [
+                  "ent:Documentation.EditSession"
+                ]
+              },
+              {
+                "source": "ent:Editing.Edit",
+                "targets": [
+                  "ent:Documentation.Edit"
+                ]
+              }
+            ],
+            "relationshipMappings": [
+              {
+                "source": "rel:Editing#4",
+                "targets": [
+                  "rel:Documentation#0"
+                ]
+              },
+              {
+                "source": "rel:Editing#5",
+                "targets": [
+                  "rel:Documentation#1"
+                ]
+              },
+              {
+                "source": "rel:Editing#6",
+                "targets": [
+                  "rel:Documentation#2"
+                ]
+              }
+            ],
+            "interactionMappings": [],
+            "deferred": []
+          },
+          {
+            "id": "t:Documentation:Kernel->Documentation",
+            "name": "Kernel as seen by Documentation",
+            "source": "lang:Kernel",
+            "target": "lang:Documentation",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "ent:Kernel.Language",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              },
+              {
+                "source": "ent:Kernel.Entity",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              },
+              {
+                "source": "ent:Kernel.Relationship",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              },
+              {
+                "source": "ent:Kernel.Formula",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": [],
+            "deferred": []
+          },
+          {
+            "id": "t:Documentation:Contexts->Documentation",
+            "name": "Contexts as seen by Documentation",
+            "source": "lang:Contexts",
+            "target": "lang:Documentation",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "ent:Contexts.System",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              },
+              {
+                "source": "ent:Contexts.Domain",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              },
+              {
+                "source": "ent:Contexts.Transformation",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              },
+              {
+                "source": "ent:Contexts.Mediation",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": [],
+            "deferred": []
+          },
+          {
+            "id": "t:Documentation:Operations->Documentation",
+            "name": "Operations as seen by Documentation",
+            "source": "lang:Operations",
+            "target": "lang:Documentation",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "ent:Operations.Interaction",
+                "targets": [
+                  "ent:Documentation.Subject"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": [],
+            "deferred": []
+          }
+        ]
+      },
+      {
         "id": "dom:Exporter",
         "name": "Exporter",
         "languages": [
@@ -9131,7 +9450,8 @@
         ],
         "references": [
           "dom:Tool",
-          "dom:Verifier"
+          "dom:Verifier",
+          "dom:Documentation"
         ],
         "transformations": [
           {
@@ -9284,6 +9604,30 @@
                 "source": "ent:Verification.Rule",
                 "targets": [
                   "ent:Specification.Requirement"
+                ]
+              }
+            ],
+            "relationshipMappings": [],
+            "interactionMappings": [],
+            "deferred": []
+          },
+          {
+            "id": "t:Exporter:Documentation->Specification",
+            "name": "Documentation to Specification",
+            "source": "lang:Documentation",
+            "target": "lang:Specification",
+            "reverse": null,
+            "entityMappings": [
+              {
+                "source": "ent:Documentation.Description",
+                "targets": [
+                  "ent:Specification.Statement"
+                ]
+              },
+              {
+                "source": "ent:Documentation.Subject",
+                "targets": [
+                  "ent:Specification.Subject"
                 ]
               }
             ],
@@ -10391,6 +10735,54 @@
             "deferred": []
           }
         ]
+      },
+      {
+        "id": "dom:DocumentationPanel",
+        "name": "DocumentationPanel",
+        "languages": [
+          "lang:Documentation",
+          "lang:UI"
+        ],
+        "references": [],
+        "transformations": [
+          {
+            "id": "t:DocumentationPanel:Documentation->UI",
+            "name": "Documentation over UI",
+            "source": "lang:Documentation",
+            "target": "lang:UI",
+            "reverse": {
+              "context": []
+            },
+            "entityMappings": [],
+            "relationshipMappings": [],
+            "interactionMappings": [],
+            "deferred": []
+          }
+        ]
+      },
+      {
+        "id": "dom:DocumentationTools",
+        "name": "DocumentationTools",
+        "languages": [
+          "lang:Documentation",
+          "lang:MCP"
+        ],
+        "references": [],
+        "transformations": [
+          {
+            "id": "t:DocumentationTools:Documentation->MCP",
+            "name": "Documentation over MCP",
+            "source": "lang:Documentation",
+            "target": "lang:MCP",
+            "reverse": {
+              "context": []
+            },
+            "entityMappings": [],
+            "relationshipMappings": [],
+            "interactionMappings": [],
+            "deferred": []
+          }
+        ]
       }
     ],
     "mediations": [
@@ -10639,6 +11031,18 @@
         "what": "dom:Tool",
         "how": "dom:Host",
         "mediator": "dom:Hosting"
+      },
+      {
+        "id": "med:Documentation/UI:DocumentationPanel",
+        "what": "dom:Documentation",
+        "how": "dom:UI",
+        "mediator": "dom:DocumentationPanel"
+      },
+      {
+        "id": "med:Documentation/MCP:DocumentationTools",
+        "what": "dom:Documentation",
+        "how": "dom:MCP",
+        "mediator": "dom:DocumentationTools"
       }
     ]
   },

@@ -1,6 +1,6 @@
 /** Small building blocks the editors share. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ranges } from "./model";
+import { quantity, ranges } from "./model";
 
 const PATHS: Record<string, string> = {
   System: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-9 9h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z",
@@ -16,6 +16,7 @@ const PATHS: Record<string, string> = {
   Mediation: "M4 7h16M4 12h16M4 17h16",
   view: "M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Zm9-2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z",
   specification: "M6 3h9l3 3v15H6zM9 9h6M9 13h6M9 17h4",
+  book: "M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5zM12 6v13.5",
   plus: "M12 5v14M5 12h14",
   trash: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13",
   undo: "M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3",
@@ -186,8 +187,14 @@ export function AddInline(props: { label: string; placeholder: string; onAdd(nam
   );
 }
 
-/** A range: the usual ones at a click, any other typed. */
-export function RangePicker(props: { value: string; onChange(value: string): void; invalid?: boolean }) {
+/** How a range reads among words: `any number of (0..N)`. */
+const rangeWords = (range: string) => {
+  const [min, max] = range.split("..");
+  return `${quantity(Number(min), max === "N" ? "N" : Number(max))} (${range})`;
+};
+
+/** A range: the usual ones at a click, any other typed; with `words`, each says how many in words too. */
+export function RangePicker(props: { value: string; onChange(value: string): void; invalid?: boolean; words?: boolean }) {
   const [custom, setCustom] = useState(false);
   if (custom || !(ranges as readonly string[]).includes(props.value)) {
     return (
@@ -204,15 +211,16 @@ export function RangePicker(props: { value: string; onChange(value: string): voi
   }
   return (
     <select
-      className={`range-select mono ${props.invalid ? "invalid-value" : ""}`}
+      className={`range-select ${props.words ? "words" : "mono"} ${props.invalid ? "invalid-value" : ""}`}
       value={props.value}
       onChange={(e) => (e.target.value === "custom" ? setCustom(true) : props.onChange(e.target.value))}
       onClick={(e) => e.stopPropagation()}
       title="How many: min..max"
+      aria-label="How many"
     >
       {ranges.map((r) => (
         <option key={r} value={r}>
-          {r}
+          {props.words ? rangeWords(r) : r}
         </option>
       ))}
       <option value="custom">other…</option>

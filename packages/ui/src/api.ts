@@ -7,6 +7,9 @@ import { HostClient, HostError, type ContextInfo, type EditInfo, type HostApi, t
 import type { SystemFile } from "./model";
 
 export type { ContextInfo, EditInfo, HostEvent, OperationInfo, PackageSummary, RunInfo };
+
+/** The System written up as one document, as the host gives it. */
+export type Documentation = Awaited<ReturnType<HostApi["documentation"]>>["documentation"];
 export { HostError as ApiError };
 
 /** Where the host is: a process the page talks to, or the page itself. */
@@ -57,6 +60,15 @@ export interface Link {
   target: string;
   kind: string;
   label?: string;
+  /** What reads beside each end's Item: a Relationship's end there, by name and range. */
+  ends?: { source: LinkEnd; target: LinkEnd };
+  /** The thing of the System the Link is: a Relationship. */
+  subject?: string;
+}
+
+export interface LinkEnd {
+  name?: string;
+  range: string;
 }
 
 export interface View {
@@ -92,7 +104,7 @@ export interface ScriptSymbol {
 
 export interface ScriptCheck {
   problems: { line: number; column: number; endLine: number; endColumn: number; message: string; severity: "error" | "warning" | "info" }[];
-  rules: { name: string; severity: string; about: string; script: string; line?: number }[];
+  rules: { name: string; severity: string; about: string; doc?: string; script: string; line?: number }[];
   profiles: { name: string; rules: string[] }[];
 }
 
@@ -127,6 +139,7 @@ export const api = {
   view: (context: string, perspective: string, language?: string) => host.view(context, perspective, language) as unknown as Promise<View>,
   verify: (context: string) => host.verify(context),
   specification: (context: string) => host.specification(context),
+  documentation: (context: string) => host.documentation(context),
   exportSelection: (context: string, ids: string[], name: string, path?: string) => host.exportSelection(context, ids, name, path),
   script: (context: string) => host.script(context),
   saveScript: (context: string, path: string, source: string) => host.saveScript(context, path, source),

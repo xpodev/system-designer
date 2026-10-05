@@ -1,7 +1,7 @@
 import { nameOf, remove, setName } from "@systemathic/core";
 import { newSystem } from "@systemathic/tool";
 import { describe, expect, it } from "vitest";
-import { redo, Target, undo, type Edit } from "../src/index.js";
+import { redo, Target, undo, type Effect, type Edit } from "../src/index.js";
 
 function setup() {
   const target = new Target(newSystem("Game"));
@@ -112,5 +112,30 @@ describe("editing", () => {
     const { ui } = setup();
     const other = new Target(newSystem());
     expect(() => other.apply(ui, "change", "x", [], () => {})).toThrow("does not edit this Target");
+  });
+
+  it("undoes and redoes any Effect that can revert itself, not only the graph's, on the one History", () => {
+    const { target, ui, addLanguage } = setup();
+    // A setting kept beside the design: its Effect is a value, and the value it replaced.
+    let note = "";
+    const set = (value: string): Effect => {
+      const before = note;
+      note = value;
+      return { touched: ["system"], revert: () => set(before) };
+    };
+    addLanguage();
+    ui.record("change", "note", [], () => set("first"));
+    ui.record("change", "note", [], () => set("second"));
+    expect(target.history.edits.at(-1)!.elements).toEqual(["system"]);
+    undo(ui);
+    expect(note).toBe("first");
+    undo(ui);
+    expect(note).toBe("");
+    undo(ui);
+    expect(target.graph.has("core")).toBe(false);
+    redo(ui);
+    redo(ui);
+    expect([target.graph.has("core"), note]).toEqual([true, "first"]);
+    expect(target.history.edits.map((edit) => target.role(edit))).toEqual(["do", "do", "do", "undo", "undo", "undo", "redo", "redo"]);
   });
 });

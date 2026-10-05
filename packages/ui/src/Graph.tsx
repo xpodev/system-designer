@@ -4,7 +4,7 @@
  * and whatever the person drags is kept, by the caller, as a UI attachment.
  */
 import { useMemo, useRef, useState, type PointerEvent } from "react";
-import type { Item, View } from "./api";
+import type { Item, Link, LinkEnd, View } from "./api";
 
 export type Positions = Record<string, [number, number]>;
 
@@ -73,6 +73,7 @@ export function Graph(props: {
     return [event.clientX - box.left, event.clientY - box.top];
   };
   const base = useMemo(() => layout(view), [view]);
+  const siblings = useMemo(() => parallels(view), [view]);
   const [moved, setMoved] = useState<Positions>({});
   const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean } | undefined>(undefined);
   const at = (id: string): [number, number] => moved[id] ?? saved[id] ?? base[id] ?? [0, 0];
@@ -132,22 +133,28 @@ export function Graph(props: {
       })()}
       {view.links.map((link) => {
         if (!base[link.source] || !base[link.target]) return null;
-        const [x1, y1] = at(link.source);
-        const [x2, y2] = at(link.target);
-        const self = link.source === link.target;
-        const from = [x1 + WIDTH / 2, y1 + HEIGHT / 2];
-        const to = [x2 + WIDTH / 2, y2 + HEIGHT / 2];
-        const path = self
-          ? `M ${x1 + WIDTH - 20} ${y1} C ${x1 + WIDTH + 30} ${y1 - 40}, ${x1 + WIDTH + 30} ${y1 + HEIGHT + 40}, ${x1 + WIDTH - 20} ${y1 + HEIGHT}`
-          : clip(from, to);
-        const mid = self ? [x1 + WIDTH + 34, y1 + HEIGHT / 2] : [(from[0]! + to[0]!) / 2, (from[1]! + to[1]!) / 2];
+        const shape = route(link, at(link.source), at(link.target), siblings.get(link.id) ?? [0, 1]);
+        const select = link.subject ? () => onSelect(link.subject!) : undefined;
         return (
-          <g key={link.id} className={`link ${link.kind.replace(/\s+/g, "-")}`}>
-            <path d={path} markerEnd="url(#arrow)" fill="none" />
-            {link.label && (
-              <text x={mid[0]} y={mid[1]! - 4} textAnchor="middle">
-                {link.label}
-              </text>
+          <g
+            key={link.id}
+            className={`link ${link.kind.replace(/\s+/g, "-")} ${link.subject && selected === link.subject ? "selected" : ""} ${select ? "selectable" : ""}`}
+            onClick={select}
+          >
+            {select && <path className="hit" d={shape.path} fill="none" />}
+            <path d={shape.path} markerEnd={link.ends ? undefined : "url(#arrow)"} fill="none" />
+            {link.ends ? (
+              <>
+                <EndLabel end={link.ends.source} at={shape.start} />
+                <EndLabel end={link.ends.target} at={shape.end} />
+                <title>{link.label}</title>
+              </>
+            ) : (
+              link.label && (
+                <text x={shape.mid[0]} y={shape.mid[1] - 4} textAnchor="middle">
+                  {link.label}
+                </text>
+              )
             )}
           </g>
         );
@@ -194,14 +201,112 @@ export function Graph(props: {
   );
 }
 
-/** A straight line between two box centres, cut at the edges of the boxes. */
-function clip([x1, y1]: number[], [x2, y2]: number[]): string {
-  const cut = (dx: number, dy: number) => {
-    const t = Math.min(Math.abs(WIDTH / 2 / (dx || 1e-9)), Math.abs(HEIGHT / 2 / (dy || 1e-9)));
-    return [dx * t, dy * t];
+type Point = [number, number];
+
+/**
+ * Each Link's place among the Links between the same two Items, and how many there are, so
+ * that two Relationships between Player and Monster bow apart instead of lying on each other.
+ */
+function parallels(view: View): Map<string, [number, number]> {
+  const groups = new Map<string, string[]>();
+  for (const link of view.links) {
+    if (link.source === link.target) continue;
+    const key = JSON.stringify([link.source, link.target].sort());
+    groups.set(key, [...(groups.get(key) ?? []), link.id]);
+  }
+  const found = new Map<string, [number, number]>();
+  for (const ids of groups.values()) ids.forEach((id, index) => found.set(id, [index, ids.length]));
+  return found;
+}
+
+/** Where a box's edge is, from its centre towards `towards`. */
+function edge([cx, cy]: Point, [tx, ty]: Point): Point {
+  const dx = tx - cx;
+  const dy = ty - cy;
+  const t = Math.min(Math.abs(WIDTH / 2 / (dx || 1e-9)), Math.abs(HEIGHT / 2 / (dy || 1e-9)));
+  return [cx + dx * t, cy + dy * t];
+}
+
+/**
+ * A Link's path between two boxes, and where it leaves each: a straight line between their
+ * centres cut at their edges, bowed when it has parallels, and a loop beside a box that
+ * relates to itself. Each end comes with the way the path heads from it, to set a label by.
+ */
+function route(link: Link, [x1, y1]: Point, [x2, y2]: Point, [index, count]: [number, number]): { path: string; start: Anchor; end: Anchor; mid: Point } {
+  if (link.source === link.target) {
+    const top: Point = [x1 + WIDTH - 20, y1];
+    const bottom: Point = [x1 + WIDTH - 20, y1 + HEIGHT];
+    return {
+      path: `M ${top[0]} ${top[1]} C ${x1 + WIDTH + 30} ${y1 - 40}, ${x1 + WIDTH + 30} ${y1 + HEIGHT + 40}, ${bottom[0]} ${bottom[1]}`,
+      // A loop's ends read to its right, above and below it, clear of other Links leaving the box.
+      start: { at: top, towards: [1, -1], label: [x1 + WIDTH + 14, y1 - 12] },
+      end: { at: bottom, towards: [1, 1], label: [x1 + WIDTH + 14, y1 + HEIGHT + 20] },
+      mid: [x1 + WIDTH + 34, y1 + HEIGHT / 2],
+    };
+  }
+  const a: Point = [x1 + WIDTH / 2, y1 + HEIGHT / 2];
+  const b: Point = [x2 + WIDTH / 2, y2 + HEIGHT / 2];
+  // Bow by the Link's place among its parallels, the same way whichever Item it starts from.
+  const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+  const length = Math.hypot(dx, dy) || 1;
+  const flip = link.source < link.target ? 1 : -1;
+  const bow = (index - (count - 1) / 2) * 46 * flip;
+  const control: Point = [(a[0] + b[0]) / 2 - (dy / length) * bow, (a[1] + b[1]) / 2 + (dx / length) * bow];
+  const from = edge(a, control);
+  const to = edge(b, control);
+  const unit = ([px, py]: Point, [qx, qy]: Point): Point => {
+    const d = Math.hypot(qx - px, qy - py) || 1;
+    return [(qx - px) / d, (qy - py) / d];
   };
-  const dx = x2! - x1!;
-  const dy = y2! - y1!;
-  const [ax, ay] = cut(dx, dy);
-  return `M ${x1! + ax!} ${y1! + ay!} L ${x2! - ax!} ${y2! - ay!}`;
+  return {
+    path: bow === 0 ? `M ${from[0]} ${from[1]} L ${to[0]} ${to[1]}` : `M ${from[0]} ${from[1]} Q ${control[0]} ${control[1]} ${to[0]} ${to[1]}`,
+    start: { at: from, towards: unit(from, control) },
+    end: { at: to, towards: unit(to, control) },
+    mid: [(from[0] + 2 * control[0] + to[0]) / 4, (from[1] + 2 * control[1] + to[1]) / 4],
+  };
+}
+
+/** Where a Link leaves a box, and which way it heads from there. */
+interface Anchor {
+  at: Point;
+  towards: Point;
+  /** Where its label goes, when not beside the line: a loop's. */
+  label?: Point;
+}
+
+/**
+ * What reads at one end of a Relationship, beside the box of that end's Entity: how many of it
+ * there are, and the name it is reached by — a little way along the line, to one side of it.
+ */
+function EndLabel({ end, at: { at, towards, label } }: { end: LinkEnd; at: Anchor }) {
+  if (label) {
+    return (
+      <text className="end-label" x={label[0]} y={label[1]} textAnchor="start">
+        <EndText end={end} />
+      </text>
+    );
+  }
+  const [ux, uy] = towards;
+  const length = Math.hypot(ux, uy) || 1;
+  const [dx, dy] = [ux / length, uy / length];
+  // Along the line, then off it to the side that faces away from the box.
+  const side = Math.abs(dx) > Math.abs(dy) ? [0, -1] : [dx < 0 || (dx === 0 && dy > 0) ? 1 : -1, 0];
+  const x = at[0] + dx * 18 + side[0]! * 9;
+  const y = at[1] + dy * 18 + side[1]! * 9 + (side[1]! < 0 ? -2 : 4);
+  const anchor = side[0] === 1 ? "start" : side[0] === -1 ? "end" : dx < -0.2 ? "end" : dx > 0.2 ? "start" : "middle";
+  return (
+    <text className="end-label" x={x} y={y} textAnchor={anchor}>
+      <EndText end={end} />
+    </text>
+  );
+}
+
+/** An end, as it reads: `0..N prey`. */
+function EndText({ end }: { end: LinkEnd }) {
+  return (
+    <>
+      <tspan className="end-range">{end.range}</tspan>
+      {end.name !== undefined ? <tspan className="end-name"> {end.name}</tspan> : <tspan className="end-name unnamed"> (unnamed)</tspan>}
+    </>
+  );
 }

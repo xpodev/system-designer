@@ -113,7 +113,9 @@ detach(SystemContext, Attachment) → SystemContext
 - An `Attachment` is data the tool carries with a System without interpreting it,
   identified by its `Owner`: a client's layouts, a default verification profile, where
   imported content came from. The tool never knows what is inside. Attachments change
-  through `attach` and `detach`, not through editing: they are not part of the design.
+  through `attach` and `detach`, not through the concept editors: they are not part of the
+  design. A tool context that keeps its data in an attachment — Documentation — may still
+  change it in an Edit, with an Effect of its own, so it is undone with everything else.
 - A `SystemContext` is a System open in the tool. It is the unit everything else works
   on: editing, verification, diagnosis, points of view, export.
 
@@ -121,10 +123,11 @@ detach(SystemContext, Attachment) → SystemContext
 
 The shared base of every editor: sessions, and the History of changes to a System, by
 any number of clients at once. It knows nothing of any concept of the core; the concept
-editors below do.
+editors below do. Nor does it know what an Edit changes: only that its Effect can be
+reverted.
 
 Entities: `Target`, `EditSession`, `History`, `Edit`, `Addition`, `Change`, `Removal`,
-`Element`, `Selection`.
+`Effect`, `Element`, `Selection`.
 
 ```
 Target      <——> Element      ends: target 1..1,     elements 0..N
@@ -138,6 +141,7 @@ Edit        <——> Element      ends: edits 0..N,      elements 1..N
 Edit        <——> Addition     ends: edit 0..1,       addition 0..1
 Edit        <——> Change       ends: edit 0..1,       change 0..1
 Edit        <——> Removal      ends: edit 0..1,       removal 0..1
+Edit        <——> Effect       ends: edit 1..1,       effect 1..1
 EditSession <——> Selection    ends: session 1..1,    selection 1..1
 Selection   <——> Element      ends: selections 0..N, elements 0..N
 ```
@@ -165,8 +169,13 @@ undo(EditSession) → Edit
   same chain.
 - Every Edit is exactly one of `Addition`, `Change` or `Removal`. A Removal of a Language
   or a Domain carries its whole cascade, as the foundation defines it.
-- **Undo** is a new Edit that `reverts` one of the session's own earlier Edits. A session
-  undoes its own work, never another client's, and history only grows.
+- An Edit's `Effect` is what it did, to whatever it changed, and the one thing Editing asks
+  of it: that it can be reverted, as far as it still applies, giving the Effect of the
+  revert. A change to the design is the Effect Editing makes itself; a tool context that
+  changes something else of a system context brings its own.
+- **Undo** is a new Edit that `reverts` one of the session's own earlier Edits, by
+  reverting its Effect. A session undoes its own work, never another client's, and history
+  only grows.
 
 ### Concept editors
 
@@ -320,6 +329,34 @@ axiom: all s in Section. not s in s.^parent
 - An `Obligation` is what an implementation must satisfy that no design check can: the
   foundation's validity, round-trip and preservation obligations, for specific Subjects.
 
+### Documentation
+
+What a System and the things in it are for, in prose. It is a tool context: nothing in a
+design depends on it, and the core knows nothing of it.
+
+Entities: `Description`, `Subject`.
+
+```
+Description <——> Subject   ends: description 0..1, subject 1..1
+```
+
+```
+describe(EditSession, Subject, Text) → Edit
+```
+
+- A `Subject` is a thing of the System that can be described: the System itself, a
+  Language, Entity, Relationship, Formula, Interaction, Domain, Transformation or
+  Mediation. Ends and Parameters are described by what owns them.
+- Descriptions are kept with the System, as Documentation's attachment, by their Subject's
+  id. A Description outlives its Subject's removal, so undoing the removal brings it back.
+- `describe` is an Edit on the Target's History, with an Effect of Documentation's own: it
+  is told to every session, and undone and redone like any other. Its operation is
+  described as data, as the concept editors' are, so every client is built from it.
+- The Exporter writes the design up for people with it: every Language, Domain and
+  Mediation with its Description, each Relationship read both ways ("each Player has any
+  number of Monsters, as prey"), and the Requirements with their rules' documentation. It is
+  not a contract, and does not read back.
+
 ### Catalog
 
 Content available to import.
@@ -375,7 +412,8 @@ by referencing their Domains.
 | **Perspectives** | Perspectives | Tool, Diagnoser |
 | **Diagnoser** | Diagnostics | Tool, Verifier |
 | **Verifier** | Verification | Tool, Std |
-| **Exporter** | Specification | Tool, Verifier |
+| **Documentation** | Documentation | Tool, Editing |
+| **Exporter** | Specification | Tool, Verifier, Documentation |
 | **Catalog** | Catalog | SystemEditor |
 | **UI**, **MCP**, **CLI** | UI, MCP, CLI | — |
 | **Python**, **JSON**, **Markdown**, **Host** | Python, JSON, Markdown, Host | — |
@@ -400,6 +438,7 @@ listed.
 | Perspectives | Diagnostics → Perspectives | `Diagnostic ↦ Mark` |
 | Exporter | core → Specification | `Contexts::System ↦ Specification`; `Transformation ↦ {Subject, Obligation}`; every other Entity of the core `↦ Subject` |
 | Exporter | Verification → Specification | `Rule ↦ Requirement` |
+| Documentation | core → Documentation | `Contexts::System`, Language, Entity, Relationship, Formula, Interaction, Domain, Transformation, Mediation `↦ Subject` |
 | Catalog | Tool → Catalog | `Tool::System ↦ Content` |
 | Catalog | Catalog → SystemEditor | `Import ↦` an `addLanguage`, `addDomain` or `addMediation` for each item of the content |
 
@@ -484,10 +523,11 @@ What the implementation must satisfy that the model does not express:
 
 ## Decided in the implementation
 
-- **What an Edit records.** The change it made to the System, as a delta: instances added
-  and removed, with their values, and links added and removed, with where each link stood.
-  Undo applies the inverse delta as far as it still applies, so a revert never refuses and
-  puts links back in their place.
+- **What an Edit records.** Its Effect. A change to the design records it as a delta:
+  instances added and removed, with their values, and links added and removed, with where
+  each link stood; reverting applies the inverse delta as far as it still applies, so a
+  revert never refuses and puts links back in their place. Documentation's Effect is a
+  Description and the one it replaced.
 - **The text of a Formula** is the Formula's value; which Entities and ends it mentions is
   derived from the text against its Language, after every change to that Language.
 - **Who creates a Transformation and an Interaction.** The DomainEditor, which holds

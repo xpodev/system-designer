@@ -23,6 +23,8 @@ export interface Rule {
   readonly severity: Severity;
   /** What it checks, in a sentence. */
   readonly about: string;
+  /** Its documentation, as the script writes it: what it checks, then what it is for. */
+  readonly doc?: string;
   /** The script the rule is written in: the profile's own, or the standard one. */
   readonly script: string;
 }

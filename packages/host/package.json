@@ -18,6 +18,7 @@
     "@systemathic/tool-json": "workspace:*",
     "@systemathic/editing": "workspace:*",
     "@systemathic/editors": "workspace:*",
+    "@systemathic/documentation": "workspace:*",
     "@systemathic/diagnoser": "workspace:*",
     "@systemathic/verifier": "workspace:*",
     "@systemathic/perspectives": "workspace:*",

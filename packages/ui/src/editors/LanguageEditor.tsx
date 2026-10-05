@@ -7,7 +7,8 @@
 import { useEffect, useState } from "react";
 import { api, type View } from "../api";
 import { Graph } from "../Graph";
-import { rangeOf, UNNAMED, type EndJson, type InteractionJson, type LanguageJson, type RelationshipJson } from "../model";
+import { counted, rangeOf, UNNAMED, type EndJson, type InteractionJson, type LanguageJson, type RelationshipJson } from "../model";
+import { Description } from "../prose";
 import { AddInline, Badge, Icon, IconButton, InlineText, Marks, Menu, Picker, RangePicker, Section, type Choice } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
 import { EditorHeader, Problems } from "./common";
@@ -81,6 +82,7 @@ export function LanguageEditor({ id }: { id: string }) {
             </>
           )}
         </p>
+        <Description id={id} className="about" invite="Describe this Language: what it is the vocabulary of, and what it is for" />
         <Problems ids={[id]} />
 
         {mode === "diagram" && <LanguageDiagram language={language} onAddEntity={addEntity} />}
@@ -96,18 +98,7 @@ export function LanguageEditor({ id }: { id: string }) {
           <AddInline label="Entity" placeholder="Name, then Enter — e.g. Order" onAdd={addEntity} />
         </Section>
 
-        <Section title="Relationships" icon="Relationship" count={language.relationships.length} hint="read each side as a navigation: from its Entity, by a name, to how many">
-          {language.relationships.length > 0 && (
-            <div className="relationship-head">
-              <span>from</span>
-              <span>navigates by</span>
-              <span>to how many</span>
-              <span />
-              <span>from</span>
-              <span>navigates by</span>
-              <span>to how many</span>
-            </div>
-          )}
+        <Section title="Relationships" icon="Relationship" count={language.relationships.length} hint="each line reads one way: what each of an Entity has of the other, and the name it reaches them by">
           {language.relationships.map((r) => (
             <RelationshipRow key={r.id} relationship={r} entities={entities} />
           ))}
@@ -170,9 +161,12 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
       <td className="cell-icon">
         <Icon name="Entity" />
       </td>
-      <td className="cell-main">
-        <InlineText value={entity.name} onCommit={(name) => void w.act("EntityEditor", "rename", { entity: id, name })} />
-        <Marks diagnostics={w.about(id)} />
+      <td>
+        <div className="cell-main">
+          <InlineText value={entity.name} onCommit={(name) => void w.act("EntityEditor", "rename", { entity: id, name })} />
+          <Marks diagnostics={w.about(id)} />
+        </div>
+        <Description id={id} className="row-description" />
       </td>
       <td className="cell-muted">{uses === 0 ? "unused" : `${uses} use${uses === 1 ? "" : "s"}`}</td>
       <td className="cell-muted">
@@ -196,9 +190,10 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
 }
 
 /**
- * A Relationship, read the way it is navigated: each side is `Entity.name how-many`, where the
- * name and range are the far end's — from a Player, `prey` reaches 0..N Monsters. Clearing a
- * name leaves that end unnamed: the Relationship can then not be navigated that way.
+ * A Relationship, read one line per way through it: `Each Player has any number of Monsters,
+ * as .prey`. A line is the Entity at one end, then the far end's range — how many of the far
+ * end's Entity each has — and the far end's name, which is how it navigates to them. Clearing
+ * a name leaves that end unnamed: the Relationship can then not be navigated that way.
  */
 function RelationshipRow({ relationship, entities }: { relationship: RelationshipJson; entities: Choice[] }) {
   const w = useWorkspace();
@@ -206,39 +201,46 @@ function RelationshipRow({ relationship, entities }: { relationship: Relationshi
   const ref = useFocusRow(relationship.id);
   const [a, b] = relationship.ends;
   const problems = w.about(relationship.id);
-  /** The side of `at`'s Entity: its picker, then the far end, reached from it. */
-  const side = (at: EndJson | undefined, far: EndJson | undefined) => {
+  /** The way from `at`'s Entity to `far`'s. */
+  const way = (at: EndJson | undefined, far: EndJson | undefined) => {
     if (!at || !far) return null;
-    const invalid = w.about(at.id).length > 0 || w.about(far.id).length > 0;
     const from = model.name(at.entity);
+    const to = model.name(far.entity);
     return (
-      <span className="side">
+      <div className="way">
+        <span className="way-word">Each</span>
         <Picker value={at.entity} choices={entities} invalid={w.about(at.id).length > 0} onChange={(entity) => entity && void w.act("RelationshipEditor", "setEntity", { end: at.id, entity })} />
-        <span className={`navigation ${far.name === null ? "unnamed" : ""}`} title={far.name === null ? `No ${from} reaches its ${model.name(far.entity)} this way: name it to make it navigable` : `From a ${from}, .${far.name} reaches ${model.name(far.entity)}`}>
+        <span className="way-word">has</span>
+        <RangePicker words value={rangeOf(far)} invalid={w.about(far.id).length > 0} onChange={(range) => void w.act("RelationshipEditor", "setRange", { end: far.id, range })} />
+        <span className="way-target">{counted(to, far.max)}</span>
+        <span className="way-word">as</span>
+        <span
+          className={`navigation ${far.name === null ? "unnamed" : ""}`}
+          title={far.name === null ? `No ${from} reaches its ${to} this way: name it to make it navigable` : `From a ${from}, .${far.name} reaches its ${counted(to, far.max)}`}
+        >
           <span className="dot-step">.</span>
           <InlineText
             value={far.name ?? ""}
             placeholder={UNNAMED}
             clearable
-            className={invalid ? "invalid-value" : ""}
-            onCommit={(name) => void w.act("RelationshipEditor", "renameEnd", name === "" ? { end: far.id } : { end: far.id, name }, { message: name === "" ? `${from} no longer reaches ${model.name(far.entity)} this way` : undefined })}
+            className={w.about(far.id).length > 0 ? "invalid-value" : ""}
+            onCommit={(name) => void w.act("RelationshipEditor", "renameEnd", name === "" ? { end: far.id } : { end: far.id, name }, { message: name === "" ? `${from} no longer reaches ${to} this way` : undefined })}
           />
         </span>
-        <RangePicker value={rangeOf(far)} invalid={w.about(far.id).length > 0} onChange={(range) => void w.act("RelationshipEditor", "setRange", { end: far.id, range })} />
-      </span>
+      </div>
     );
   };
   return (
     <div ref={ref} className={`relationship row ${problems.length ? "has-problems" : ""}`}>
-      {side(a, b)}
-      <span className="relationship-link" title="Each side: from its Entity, the name it navigates by, and how many it reaches">
-        ⟷
-      </span>
-      {side(b, a)}
+      <div className="ways">
+        {way(a, b)}
+        {way(b, a)}
+      </div>
       <span className="row-tail">
         <Marks diagnostics={[...problems, ...relationship.ends.flatMap((e) => w.about(e.id))]} />
         <IconButton icon="trash" label="Delete Relationship" onClick={() => void w.act("RelationshipEditor", "remove", { relationship: relationship.id }, { message: "Deleted Relationship" })} />
       </span>
+      <Description id={relationship.id} className="row-description" />
     </div>
   );
 }
@@ -298,6 +300,7 @@ function InteractionCard({ interaction, entities }: { interaction: InteractionJs
           <IconButton icon="trash" label="Delete Interaction" onClick={() => void w.act("InteractionEditor", "remove", { interaction: i.id }, { message: `Deleted Interaction ${i.name}` })} />
         </span>
       </div>
+      <Description id={i.id} className="row-description" />
     </div>
   );
 }
@@ -318,6 +321,7 @@ function AxiomRow({ id, language }: { id: string; language: LanguageJson }) {
             {p.message}
           </p>
         ))}
+        <Description id={id} className="row-description" />
       </div>
       <label className="constrains" title="The Relationship this axiom is about, if one">
         on

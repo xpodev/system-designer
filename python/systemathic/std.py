@@ -16,6 +16,7 @@ the Violations it finds; a **profile** is the set of rules a System is verified 
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, Sequence
 
@@ -58,8 +59,14 @@ class Rule:
         return self.function.__name__
 
     @property
+    def doc(self) -> str:
+        """The rule's docstring, as written: what it checks, then why, at any length."""
+        return inspect.cleandoc(self.function.__doc__ or "")
+
+    @property
     def about(self) -> str:
-        return " ".join((self.function.__doc__ or "").split())
+        """What it checks, in a sentence: the docstring's first paragraph, on one line."""
+        return " ".join(self.doc.split("\n\n")[0].split())
 
     def __call__(self, system: System) -> list[Violation]:
         return list(self.function(system) or [])
@@ -211,7 +218,19 @@ def _names(elements: Iterable[Element]) -> str:
 
 @rule(severity=ERROR)
 def opacity(system: System) -> Iterator[Violation]:
-    """Every Mediation is opaque: the what does not know how it is carried out, and the how does not know what it carries."""
+    """Every Mediation is opaque: the what does not know how it is carried out, and the how does not know what it carries.
+
+    In `D1 / D2`, witnessed by `t: L1 -> L2`, the Language `L2` must not be in scope of
+    `D1`, and `L1` must not be in scope of `D2`. Only the mediator knows both sides.
+
+    This is what makes a "how" swappable: `Game / Unity` can become `Game / Godot` without
+    touching Game, because Game never learned Unity's vocabulary. A what that references its
+    how is coupled to one implementation; a how that references its what can only ever serve
+    that one what.
+
+    To fix it, remove the reference that lets one side see the other, and move whatever
+    needed both into the mediator.
+    """
     for mediation in system.mediations:
         for witness in witnesses(mediation):
             if witness.target in langs(mediation.what):
@@ -222,34 +241,74 @@ def opacity(system: System) -> Iterator[Violation]:
 
 @rule(severity=ERROR)
 def mediation_acyclic(system: System) -> Iterator[Violation]:
-    """No Domain is carried out, eventually, over itself."""
+    """No Domain is carried out, eventually, over itself.
+
+    Mediations go downward, from intent to implementation: `Game / Unity / Windows`. Following
+    them from a Domain's what to its how must never come back to where it started. A cycle
+    means some Domain is, eventually, its own implementation, and nothing in the cycle is
+    more concrete than anything else.
+
+    To fix it, find the Mediation in the cycle that points upward, and remove or reverse it.
+    """
     for cycle in _cycles(system.domains, lambda d: [m.how for m in d.asWhat if m.how is not None]):
         yield Violation(cycle, f"carried out over themselves: {_names(cycle)}")
 
 
 @rule(severity=ERROR)
 def projection_acyclic(system: System) -> Iterator[Violation]:
-    """No Language is projected, eventually, into itself."""
+    """No Language is projected, eventually, into itself.
+
+    A projection is a one-way, sideways view: the core is projected into its contexts (a
+    Monster, in Combat, is `Targetable`), and the context knows the core while the core knows
+    no context. If projections lead back to where they began, there is no core: each Language
+    is a view of another, and none is the identity the others are views of.
+
+    To fix it, decide which Language holds the identities, and keep projections out of it.
+    """
     for cycle in _cycles(system.languages, lambda l: [t.target for t in l.outgoing if is_projection(t) and t.target is not None]):
         yield Violation(cycle, f"projected into themselves: {_names(cycle)}")
 
 
 @rule(severity=ERROR)
 def domain_refs_acyclic(system: System) -> Iterator[Violation]:
-    """No Domain references itself, eventually."""
+    """No Domain references itself, eventually.
+
+    A Domain builds on the Domains it references, and may use their Languages. References
+    are layering: a Domain that references itself, through others, is layered on top of
+    itself, and none of the Domains in the cycle can be understood, or replaced, alone.
+
+    To fix it, split what the Domains in the cycle share into a Domain of its own, which they
+    all reference.
+    """
     for cycle in _cycles(system.domains, lambda d: d.references):
         yield Violation(cycle, f"reference themselves: {_names(cycle)}")
 
 
 @rule(severity=ERROR)
 def generic_level(system: System) -> Iterator[Violation]:
-    """All arguments of a generic instantiation belong to one Language. A System records no generic instantiations yet, so nothing can violate it."""
+    """All arguments of a generic instantiation belong to one Language.
+
+    `Optional<X>` or `Result<X, E>` lifts through a Transformation only if every argument is at
+    the same level of abstraction; mixing Languages in one instantiation crosses levels
+    inside a single Entity.
+
+    A System records no generic instantiations yet, so nothing can violate this rule; it is
+    in the standard profile so that it applies as soon as they are recorded.
+    """
     return iter(())
 
 
 @rule(severity=WARNING)
 def pure_domain_transformation(system: System) -> Iterator[Violation]:
-    """A pure Domain holds no Transformation."""
+    """A pure Domain holds no Transformation.
+
+    A pure Domain is defined entirely in terms of one Language. A Transformation crosses
+    between two Languages, so it needs a Domain that has both in scope; a pure Domain
+    holding one is a sign that its Transformation is out of scope, or that the Domain is
+    doing the job of a mediator or a context.
+
+    To fix it, move the Transformation into a Domain that references both of its Languages.
+    """
     for domain in system.domains:
         if pure(domain) and domain.transformations:
             yield Violation(domain, f"{domain.name} is pure, but holds {len(domain.transformations)} Transformation(s)")
@@ -257,7 +316,16 @@ def pure_domain_transformation(system: System) -> Iterator[Violation]:
 
 @rule(severity=WARNING)
 def wide_mediator(system: System) -> Iterator[Violation]:
-    """A mediator references at most two Languages."""
+    """A mediator references at most two Languages.
+
+    A mediator knows exactly two things: the what's Language and the how's Language, and
+    holds the reversible Transformation between them. A mediator with more Languages in
+    scope is doing more than one mediation, or knows things no mediation needs, and every
+    extra Language is one more reason it has to change.
+
+    To fix it, split it into one mediator per Mediation, each referencing only its two
+    Languages.
+    """
     for mediator in mediators(system):
         if len(langs(mediator)) > 2:
             yield Violation(mediator, f"{mediator.name} is a mediator with {len(langs(mediator))} Languages: {_names(langs(mediator))}")
@@ -265,7 +333,16 @@ def wide_mediator(system: System) -> Iterator[Violation]:
 
 @rule(severity=ERROR)
 def top_domains_abstract(system: System) -> Iterator[Violation]:
-    """Every top Domain is abstract."""
+    """Every top Domain is abstract.
+
+    The top Domains — neither the how nor the mediator of any Mediation — are the System's
+    stable contract: what it is, before how it is carried out. A top Domain that uses an
+    implementation Language (one that is the how of some Mediation) ties the System's
+    purpose to one way of carrying it out, and that way can then never be swapped.
+
+    To fix it, carry the top Domain out over the implementation through a Mediation, instead
+    of referencing the implementation Language directly.
+    """
     implementation = hows(system)
     for domain in top_domains(system):
         concrete = langs(domain) & implementation
@@ -275,7 +352,15 @@ def top_domains_abstract(system: System) -> Iterator[Violation]:
 
 @rule(severity=WARNING)
 def completeness(system: System) -> Iterator[Violation]:
-    """Every item of a mediation's source Language is mapped or deferred."""
+    """Every item of a mediation's source Language is mapped or deferred.
+
+    A mediation says how a what is carried out by a how. An Entity, Relationship or
+    Interaction of the source Language that is neither mapped nor deferred is a gap: the
+    implementation has nothing to say about it, and nobody has said that this is on purpose.
+
+    To fix it, map the item, or defer it on the Transformation if it is deliberately left
+    out; a deferral is kept in exported specifications.
+    """
     for domain in system.domains:
         for transformation in domain.transformations:
             if not is_mediation(transformation) or transformation.source is None:

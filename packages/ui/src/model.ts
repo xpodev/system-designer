@@ -57,6 +57,7 @@ export type Kind = Located["kind"];
 
 export class Model {
   readonly byId = new Map<string, Located>();
+  private readonly descriptions = new Map<string, string>();
 
   constructor(readonly file: SystemFile) {
     const d = file.design;
@@ -79,6 +80,8 @@ export class Model {
       for (const transformation of domain.transformations) this.byId.set(transformation.id, { kind: "Transformation", transformation, domain });
     }
     for (const mediation of d.mediations) this.byId.set(mediation.id, { kind: "Mediation", mediation });
+    const documentation = file.attachments.find((a) => a.owner === "documentation")?.data as { descriptions?: Record<string, unknown> } | undefined;
+    for (const [id, text] of Object.entries(documentation?.descriptions ?? {})) if (typeof text === "string" && this.byId.has(id)) this.descriptions.set(id, text);
   }
 
   get system() {
@@ -100,6 +103,11 @@ export class Model {
 
   kind(id: string): Kind | undefined {
     return this.byId.get(id)?.kind;
+  }
+
+  /** What something is for, in prose, if it is described: the Documentation's, kept in its attachment. */
+  description(id: string): string | undefined {
+    return this.descriptions.get(id);
   }
 
   /** A short name for anything: its name, or how it reads. */
@@ -212,6 +220,7 @@ export type Tab =
   | { kind: "mediation"; id: string }
   | { kind: "view"; perspective: string }
   | { kind: "specification" }
+  | { kind: "documentation" }
   | { kind: "script" };
 
 export const tabKey = (tab: Tab): string => ("id" in tab ? `${tab.kind}:${tab.id}` : tab.kind === "view" ? `view:${tab.perspective}` : tab.kind);
@@ -239,5 +248,25 @@ export function relationshipLabel(relationship: RelationshipJson, name: (entity:
     .join(" ⟷ ");
 }
 
-export const ranges = ["0..1", "1..1", "0..N", "1..N"] as const;
+export const ranges = ["1..1", "0..1", "1..N", "0..N"] as const;
+
+/** What the Documentation can describe: the System and the things in it, but not an end or a Parameter. */
+export const DESCRIBABLE: ReadonlySet<Kind> = new Set<Kind>(["System", "Language", "Entity", "Relationship", "Formula", "Interaction", "Domain", "Transformation", "Mediation"]);
+
+/** How many, in words: `exactly one`, `at most one`, `any number of`, `one or more`, `2 to 5`. */
+export function quantity(min: number, max: number | "N"): string {
+  const word = (n: number) => (n === 1 ? "one" : String(n));
+  if (max === "N") return min === 0 ? "any number of" : `${word(min)} or more`;
+  if (min === max) return `exactly ${word(min)}`;
+  if (min === 0) return `at most ${word(max)}`;
+  return `${word(min)} to ${word(max)}`;
+}
+
+/** An Entity's name for at most `max` of it: `Monster` for at most one, `Monsters` otherwise. */
+export function counted(entity: string, max: number | "N"): string {
+  if (max !== "N" && max <= 1) return entity;
+  if (/(s|x|z|ch|sh)$/.test(entity)) return `${entity}es`;
+  if (/[^aeiou]y$/.test(entity)) return `${entity.slice(0, -1)}ies`;
+  return `${entity}s`;
+}
 export const rangeOf = (end: EndJson) => `${end.min}..${end.max}`;

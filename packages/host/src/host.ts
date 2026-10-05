@@ -13,8 +13,9 @@ import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
-import { ArgumentError, editors, findOperation } from "@systemathic/editors";
-import { specify, toMarkdown } from "@systemathic/exporter";
+import { documentationEditor } from "@systemathic/documentation";
+import { ArgumentError, editors, type Operation } from "@systemathic/editors";
+import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
 import { perspectives, view, type Perspective, type View } from "@systemathic/perspectives";
 import { newSystem, open, save, type SystemContext } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type SystemFile } from "@systemathic/tool-json";
@@ -31,6 +32,9 @@ import {
   type ScriptSymbol,
 } from "@systemathic/verifier";
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
+
+/** Every operation a client may apply: the concept editors', and the tool contexts' that edit on the History too. */
+const OPERATIONS: readonly Operation[] = [...Object.values(editors).flat(), ...documentationEditor];
 
 /**
  * The files a Host reads and writes: Systems, scripts, packages. Paths are relative to the
@@ -78,9 +82,7 @@ export class Host implements HostApi {
   }
 
   async editors(): Promise<OperationInfo[]> {
-    return Object.values(editors).flatMap((operations) =>
-      operations.map(({ editor, name, about, kind, parameters }) => ({ editor, name, about, kind, parameters })),
-    );
+    return OPERATIONS.map(({ editor, name, about, kind, parameters }) => ({ editor, name, about, kind, parameters }));
   }
 
   async perspectives() {
@@ -142,7 +144,7 @@ export class Host implements HostApi {
 
   async apply(context: string, session: string, editor: string, name: string, args: Record<string, unknown>): Promise<EditInfo> {
     const target = this.get(context).target;
-    const operation = findOperation(editor, name);
+    const operation = OPERATIONS.find((o) => o.editor === editor && o.name === name);
     if (!operation) throw new HostError(404, `no operation ${editor}.${name}`);
     try {
       return this.edit(target, operation.run(this.session(target, session), args));
@@ -241,6 +243,7 @@ export class Host implements HostApi {
       warnings: run.violations.length - errorsFound,
       violations: run.violations.map((v) => ({ rule: v.rule.name, severity: v.rule.severity, message: v.message, subjects: v.subjects })),
       failures: run.failures,
+      profileRules: run.profile.rules.map(({ name, severity, about, doc, script }) => ({ name, severity, about, ...(doc ? { doc } : {}), script })),
     };
     hosted.run = { run, info };
     this.emit({ type: "verified", context, run: info });
@@ -281,6 +284,11 @@ export class Host implements HostApi {
     if (errors.length > 0) throw new HostError(409, `${errors.length} structural error(s) must be solved before exporting`);
     const specification = specify(hosted.target.context, hosted.run?.run.profile);
     return { specification, markdown: toMarkdown(specification) };
+  }
+
+  async documentation(context: string) {
+    const documentation = document(this.get(context).target.context, this.get(context).run?.run.profile);
+    return { documentation, markdown: documentationMarkdown(documentation) };
   }
 
   async exportSelection(context: string, ids: readonly string[], name: string, path?: string) {

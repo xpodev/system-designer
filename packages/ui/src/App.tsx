@@ -13,6 +13,7 @@ import { Explorer } from "./Explorer";
 import { tabKey, type Tab } from "./model";
 import { Palette, type Command } from "./Palette";
 import { Panel, type PanelTab } from "./Panel";
+import { DocumentationTab } from "./DocumentationTab";
 import { SpecificationTab, ViewTab } from "./ViewTab";
 import { download, Icon, IconButton, Splitter, UploadButton } from "./widgets";
 import { useModel, useSize, useWorkspace, WorkspaceProvider } from "./workspace";
@@ -196,6 +197,7 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
       { label: "Verify", icon: "play", hint: "command", run: () => void w.verify() },
       { label: "Edit the verification script", icon: "play", hint: "command", run: () => w.open({ kind: "script" }) },
       { label: "Specification", icon: "specification", hint: "command", run: () => w.open({ kind: "specification" }) },
+      { label: "Documentation", icon: "book", hint: "view", run: () => w.open({ kind: "documentation" }) },
       { label: "Save", icon: "save", hint: "command", shortcut: "Ctrl+S", run: save },
       { label: "Save as…", icon: "save", hint: "command", run: () => props.onDialog("save") },
       { label: "Download the System file", icon: "save", hint: "command", run: () => void downloadSystem() },
@@ -355,6 +357,8 @@ function Editor({ tab, onCatalog }: { tab: Tab; onCatalog(): void }) {
       return <ViewTab perspective={tab.perspective} />;
     case "specification":
       return <SpecificationTab />;
+    case "documentation":
+      return <DocumentationTab />;
     case "script":
       return (
         <Suspense fallback={<p className="empty">Loading the editor…</p>}>
@@ -372,6 +376,8 @@ function tabTitle(tab: Tab, model: ReturnType<typeof useModel>): { icon: string;
       return { icon: "diagram", label: { "domain-map": "Domain map", "mediation-stack": "Mediation stack", levels: "Levels", statistics: "Statistics" }[tab.perspective] ?? tab.perspective };
     case "specification":
       return { icon: "specification", label: "Specification" };
+    case "documentation":
+      return { icon: "book", label: "Documentation" };
     case "script":
       return { icon: "play", label: "Verification script" };
     default:

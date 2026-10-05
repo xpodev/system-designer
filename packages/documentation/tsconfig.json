@@ -9,16 +9,13 @@
   ],
   "references": [
     {
-      "path": "../core"
+      "path": "../editing"
+    },
+    {
+      "path": "../editors"
     },
     {
       "path": "../tool"
-    },
-    {
-      "path": "../documentation"
-    },
-    {
-      "path": "../verifier"
     }
   ]
 }

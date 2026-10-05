@@ -1,5 +1,6 @@
 /** The bottom panel: Problems, the shared History, and the last verification. */
 import { useState } from "react";
+import { RuleDoc } from "./DocumentationTab";
 import { Badge, Icon } from "./widgets";
 import { useModel, useWorkspace } from "./workspace";
 
@@ -88,7 +89,9 @@ export function Panel({ tab, onTab, onClose, height }: { tab: PanelTab; onTab(ta
                   <li key={i} className={v.severity} onClick={() => v.subjects[0] && model.get(v.subjects[0]) && w.reveal(v.subjects[0])}>
                     <Icon name={v.severity === "error" ? "error" : "warning"} size={15} />
                     <span className="problem-message">{v.message}</span>
-                    <span className="problem-check">{v.rule}</span>
+                    <span className="problem-check" title={w.run!.profileRules?.find((r) => r.name === v.rule)?.about}>
+                      {v.rule}
+                    </span>
                   </li>
                 ))}
                 {w.run.failures.map((f, i) => (
@@ -100,6 +103,16 @@ export function Panel({ tab, onTab, onClose, height }: { tab: PanelTab; onTab(ta
                   </li>
                 ))}
               </ul>
+              {w.run.profileRules && w.run.profileRules.length > 0 && (
+                <details className="rules-run">
+                  <summary>The {w.run.profileRules.length} rules it was verified against, and what each is for</summary>
+                  <div className="rule-docs">
+                    {w.run.profileRules.map((rule) => (
+                      <RuleDoc key={rule.name} rule={rule} />
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           ) : (
             <p className="muted">

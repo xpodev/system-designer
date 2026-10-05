@@ -17,6 +17,9 @@
       "path": "packages/editors"
     },
     {
+      "path": "packages/documentation"
+    },
+    {
       "path": "packages/verifier"
     },
     {

@@ -4,19 +4,21 @@
  *   systemathic check <file>                                report what is wrong with a System
  *   systemathic verify <file> [script] [profile]            verify a System against a profile of rules
  *   systemathic export <file> [md|json] [script] [profile]  print its specification
+ *   systemathic export <file> docs [script] [profile]       print its documentation, in Markdown
  *   systemathic new <file> [name]                           write an empty System
  *   systemathic serve [--port N] [file ...]                 host Systems for the UI and MCP, on this machine
  *
  * `verify` uses the System's own profile setting, if it has one, or the standard rules; so
  * does `export`, for the specification's Requirements, if a script or setting names one. A
- * System with structural errors is neither verified nor exported.
+ * System with structural errors is neither verified nor exported as a specification; its
+ * documentation can always be exported.
  *
  * Exit codes: 0 nothing wrong, 1 structural errors, load problems or rule errors, 2 unusable input.
  */
 import { fileURLToPath } from "node:url";
 import { describe } from "@systemathic/core";
 import { diagnose, structuralErrors } from "@systemathic/diagnoser";
-import { specify, toJson, toMarkdown } from "@systemathic/exporter";
+import { document, documentationMarkdown, specify, toJson, toMarkdown } from "@systemathic/exporter";
 import { nodeHost, serve } from "@systemathic/host-node";
 import { PythonHost } from "@systemathic/python-host";
 import { newSystem, open, save } from "@systemathic/tool";
@@ -34,7 +36,7 @@ export interface Io {
 }
 
 const USAGE =
-  "usage: systemathic check <file> | systemathic verify <file> [script] [profile] | systemathic export <file> [md|json] [script] [profile] | systemathic new <file> [name] | systemathic serve [--port N] [file ...]";
+  "usage: systemathic check <file> | systemathic verify <file> [script] [profile] | systemathic export <file> [md|json|docs] [script] [profile] | systemathic new <file> [name] | systemathic serve [--port N] [file ...]";
 
 /** The UI's built files, served by `serve`. */
 const UI = new URL("../../ui/dist/", import.meta.url);
@@ -43,8 +45,8 @@ export async function run(args: readonly string[], io: Io): Promise<number> {
   const [command, file, ...rest] = args;
   if (command === "check" && file !== undefined && rest.length === 0) return check(file, io);
   if (command === "verify" && file !== undefined && rest.length <= 2) return verify(file, rest[0], rest[1], io);
-  if (command === "export" && file !== undefined && rest.length <= 3 && (rest[0] ?? "md").match(/^(md|json)$/)) {
-    return exportSpecification(file, (rest[0] ?? "md") as "md" | "json", rest[1], rest[2], io);
+  if (command === "export" && file !== undefined && rest.length <= 3 && (rest[0] ?? "md").match(/^(md|json|docs)$/)) {
+    return exportSpecification(file, (rest[0] ?? "md") as "md" | "json" | "docs", rest[1], rest[2], io);
   }
   if (command === "new" && file !== undefined && rest.length <= 1) return create(file, rest[0], io);
   if (command === "serve") return host(args.slice(1), io);
@@ -118,12 +120,12 @@ async function verify(file: string, script: string | undefined, profileName: str
   return ruleErrors + run.failures.length > 0 ? 1 : 0;
 }
 
-async function exportSpecification(file: string, as: "md" | "json", script: string | undefined, profileName: string | undefined, io: Io): Promise<number> {
+async function exportSpecification(file: string, as: "md" | "json" | "docs", script: string | undefined, profileName: string | undefined, io: Io): Promise<number> {
   const result = load(file, io);
   if (result === undefined) return 2;
   const context = open(result.system);
   const errors = structuralErrors(diagnose(context)).length + result.problems.length;
-  if (errors > 0) {
+  if (errors > 0 && as !== "docs") {
     io.err(`${file}: ${count(errors, "structural error")}; run 'systemathic check ${file}', and solve them before exporting`);
     return 1;
   }
@@ -137,6 +139,10 @@ async function exportSpecification(file: string, as: "md" | "json", script: stri
       io.err(`${file}: cannot read the profile: ${(error as Error).message}`);
       return 2;
     }
+  }
+  if (as === "docs") {
+    io.out(documentationMarkdown(document(context, profile)));
+    return 0;
   }
   const specification = specify(context, profile);
   io.out(as === "json" ? JSON.stringify(toJson(specification), null, 2) : toMarkdown(specification));

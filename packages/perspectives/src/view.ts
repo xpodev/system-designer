@@ -37,6 +37,16 @@ export interface Link {
   readonly target: string;
   readonly kind: string;
   readonly label?: string;
+  /** What reads at each end, beside the Item there: a Relationship's end there, by its name and range. */
+  readonly ends?: { readonly source: LinkEnd; readonly target: LinkEnd };
+  /** What the Link is itself, when it is a thing of the System: a Relationship. */
+  readonly subject?: string;
+}
+
+/** One end of a Link: the end's name, if it has one, and how many of the Item there it reaches. */
+export interface LinkEnd {
+  readonly name?: string;
+  readonly range: string;
 }
 
 export interface View {
@@ -97,9 +107,9 @@ export class ViewBuilder {
     return this.items.has(id);
   }
 
-  link(source: string, target: string, kind: string, label?: string): void {
+  link(source: string, target: string, kind: string, label?: string, more: Pick<Link, "ends" | "subject"> = {}): void {
     if (!this.items.has(source) || !this.items.has(target)) return;
-    const link: Link = label === undefined ? { id: `l${this.links.length}`, source, target, kind } : { id: `l${this.links.length}`, source, target, kind, label };
+    const link: Link = label === undefined ? { id: `l${this.links.length}`, source, target, kind, ...more } : { id: `l${this.links.length}`, source, target, kind, label, ...more };
     this.links.push(link);
   }
 

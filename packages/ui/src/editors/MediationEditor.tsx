@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Icon, Menu, Picker } from "../widgets";
 import { useModel, useWorkspace } from "../workspace";
+import { Description } from "../prose";
 import { EditorHeader, Problems } from "./common";
 
 export function MediationEditor({ id }: { id: string }) {
@@ -34,6 +35,7 @@ export function MediationEditor({ id }: { id: string }) {
         }
       />
       <div className="editor-body">
+        <Description id={id} className="about" invite="Describe this Mediation: why the what is carried out over this how" />
         <Problems ids={[id]} />
         <div className="sentence">
           <Picker value={m.what} choices={domains} onChange={(d) => set("What", d)} />
