@@ -92,7 +92,7 @@ vocab(L) = (L.*extends).entities ∪ (L.*extends).relationships
 An extension stays at the level of what it extends: it refines the same concepts.
 
 **Closure.** Nothing in a Language references anything outside its vocabulary: both ends
-of every Relationship, the bases of every Entity, and every symbol of every axiom belong
+of every Relationship, what every Entity extends, and every symbol of every axiom belong
 to `vocab(L)`. Extension never changes the extended Language: what an extension adds is
 seen only where the extension is in use. The only structure that relates two Languages
 other than by extension is a Transformation (see *The Systemathic Languages*).
@@ -103,22 +103,22 @@ An **Entity** is a kind of thing, belonging to exactly one Language. It has no i
 attributes: everything that defines it is expressed through its Relationships. Two
 instances are equal iff they are the same instance.
 
-An Entity may have **bases**: Entities of the Languages its Language extends, written
-`E : B₁, …, Bₙ`. A Language that extends nothing has no bases to offer: its Entities are
-all new identities.
+An Entity may **extend** Entities of the Languages its Language extends, written
+`E : B₁, …, Bₙ`. In a Language that extends nothing, every Entity is new.
 
-- An Entity without bases is a **new identity**: each of its instances is a thing of its
-  own.
-- An Entity with bases is a **projection**: it keeps the identity of its bases. Every
+- An Entity that extends nothing is a **new identity**: each of its instances is a thing
+  of its own.
+- An Entity that extends others is a **projection**: it keeps their identity. Every
   instance of `E` *is* an instance of each `Bᵢ`, so it can be used wherever a `Bᵢ` is
-  expected, and it navigates every end its bases do. This is the one implicit direction,
-  from the concrete to the abstract.
+  expected, and it navigates every end they do. This is the one implicit direction, from
+  the concrete to the abstract.
 
-A base is a contract, not a container: an Entity may have any number of them, from any
-of the Languages it extends. The other direction is never implicit. Getting the
-projection from a base — the `CombatMonster` of a `Monster` — is an explicit design: a
-Transformation from the base's Language into the extension's, which has to be built. A
-design that needs the projection simply uses the projection.
+What an Entity extends is a contract, not a container: it may extend any number of
+Entities, from any of the Languages its own extends. The other direction is never
+implicit. Getting the projection from what it extends — the `CombatMonster` of a
+`Monster` — is an explicit design: a Transformation from the extended Language into the
+extension, which has to be built. A design that needs the projection simply uses the
+projection.
 
 ### Relationship
 
@@ -155,7 +155,8 @@ lines.
 - Any number of Relationships may join the same pair of Entities; they are told apart
   by their end names.
 - **End names are unique per Entity:** in every Language, from any Entity, the named ends
-  reachable across the Relationships of its vocabulary — its own and its bases' — have
+  reachable across the Relationships of its vocabulary — its own and those of what it
+  extends — have
   distinct names, so navigation is never ambiguous.
 
 ### The logic
@@ -213,7 +214,7 @@ Their full definitions, as data, are in [`schema/`](../schema/README.md).
 
 ```
 System ── root ──▶ Component ─┬─ languages ─────▶ Language ─┬─ extends ───────▶ Language
-                              │                             ├─ entities ──────▶ Entity ── bases ──▶ Entity
+                              │                             ├─ entities ──────▶ Entity ── extends ─▶ Entity
                               │                             ├─ relationships ─▶ Relationship ── ends ──▶ End ── entity ──▶ Entity
                               │                             └─ formulas ──────▶ Formula
                               ├─ uses ──────────▶ Language
@@ -252,14 +253,16 @@ System Game
    ├─ Fighting    core                      Targetable, Attacker, Damage
    ├─ Combat      extends Core, Fighting    CombatMonster : Monster, Targetable, Attacker;
    │                                        CombatPlayer : Player, Attacker
-   ├─ Network     core                      Message, EntityId
-   ├─ Transport   core                      Packet, Bytes
+   ├─ imports     NetStack and Link, from the library beside the root:
+   │                NetStack: Language Network (Message, EntityId),
+   │                          send(Message): Message, Medium Network (call send)
+   │                Link:     Language Transport (Packet, Bytes),
+   │                          transmit(Packet): Packet, Medium Wire (call transmit)
    │
-   ├─ imports     the Mediums Network (NetStack.send(Message): Message)
-   │              and Wire (Link.transmit(Packet): Packet), from the library
-   │
-   ├─ CombatOverNetwork    uses Combat, Network       down Combat → Network, up Network → Combat
-   ├─ NetworkOverWire      uses Network, Transport    down Network → Transport, up Transport → Network
+   ├─ CombatOverNetwork    imports NetStack; uses Combat, Network
+   │                       down Combat → Network, up Network → Combat
+   ├─ NetworkOverWire      imports NetStack, Link; uses Network, Transport
+   │                       down Network → Transport, up Transport → Network
    │
    ├─ Physics     uses Core                 step(Monster): Monster, over Core
    ├─ Server      uses Combat               attack(Attacker, Targetable): Damage, over Combat;
@@ -282,6 +285,11 @@ A System holds exactly one **root** Component, and is otherwise only what descri
 a whole. Everything the design says is inside the root: the System's own core Languages,
 extensions and Components are the root's.
 
+Beside the root are the **packages** the System brings in from outside, such as the
+library's: Components defined elsewhere and copied in, so the System stays closed. They
+are the root's siblings, so the root imports from them as from any sibling, and its
+children through the root's imports.
+
 ### Component *(Contexts)*
 
 A **Component** is a unit of the design that gives Languages an implementation. It owns:
@@ -298,17 +306,18 @@ It **uses** some Languages: the vocabulary it works in. Using a Language include
 vocabulary, extensions and all.
 
 **Scope.** A Component sees the Languages of its own and of every Component it is nested
-in, and nothing else:
+in, and those of the Components it imports (see *Import*), and nothing else:
 
 ```
-scope(C) = (C.*parent).languages
+scope(C) = (C.*parent).languages ∪ C.importedComponents.languages
 ```
 
 Interactions and Transformations follow the same rule, plus imports (see *Import*).
 
 A Component never sees inside another — neither its children's insides nor its siblings'.
-Two siblings have something in common only if their parent gives it to both: a Language
-in scope for both of them.
+Two siblings have something in common only if their parent gives it to both, or both
+import the Component that defines it. A Language is never imported on its own: one that a
+Component would want without the Component that owns it belongs in the parent instead.
 
 Nesting is a tree of Languages. Inside a Component, the Languages in its scope are what
 its own extensions build on, exactly as a System's extensions build on its core
@@ -379,8 +388,8 @@ imports `Server.attack`, so `Client`'s own `Input` may import it too. Without th
 import, `Server.attack` is inaccessible to `Input`. This is how a design names the actual
 users of an Interaction, not only a link between two top-level Components.
 
-**Importing a Component** gives access to everything it offers — its Interactions,
-Transformations and Mediums — and lets the importer place Instances of it in its own
+**Importing a Component** gives access to everything it offers — its Languages,
+Interactions, Transformations and Mediums — and lets the importer place Instances of it in its own
 Deployments (see *Deployment*). It never opens the imported Component's inside. This is
 how one Component is shared without being one shared thing: `Server` and `Client` both
 import `Physics`, and each runs a `physics` of its own. A library Component, brought into
@@ -471,7 +480,7 @@ failure is a property of the Transformation. It is not an Entity of either Langu
 A round trip stands on its own, too: a compiler lowers a program into its executable
 form, and a source map leads back to the same program. A Transformation that is not part
 of a round trip is one-way: a lowering that never needs to come back, or a projection from
-a base into an extension (see *Contracts and projections*).
+an extended Language into an extension (see *Contracts and projections*).
 
 ### Deployment *(Deployment)*
 
@@ -588,10 +597,10 @@ belongs to the layer whose vocabulary it is about.
 
 | #  | Condition | Layer |
 |----|-----------|-------|
-| W1 | **Closure.** Both ends of every Relationship and every symbol of every formula of `L` belong to `vocab(L)`; the bases of every Entity of `L` belong to the Languages `L` extends, `L.^extends`. | Kernel |
+| W1 | **Closure.** Both ends of every Relationship and every symbol of every formula of `L` belong to `vocab(L)`; what every Entity of `L` extends belongs to the Languages `L` extends, `L.^extends`. | Kernel |
 | W2 | **Ranges.** Every range is well-formed. | Kernel |
 | W3 | **End names.** In every Language, from every Entity, the named ends reachable across its vocabulary have distinct names. | Kernel |
-| W4 | **No cycles.** No Language extends itself, and no Entity is its own base, eventually. | Kernel |
+| W4 | **No cycles.** No Language and no Entity extends itself, eventually. | Kernel |
 | W5 | **Scope.** Every Language a Component uses, and every Language a Language defined in it extends, is in its scope. | Contexts |
 | W6 | **Transformation scope.** For `τ: L_src → L_tgt` held by `C`: `L_src, L_tgt ∈ C.uses`, and its context is of `L_tgt`. | Contexts |
 | W7 | **Definition before use.** Every mapping references only mapped things. | Contexts |
@@ -613,7 +622,7 @@ specifications for an implementer (human or LLM) to satisfy.
 | O1 | **Validity.** Every instance satisfies its Language's ranges and axioms, and those of every extension in use. |
 | O2 | **Round trip.** Every Mediation's realization satisfies the round-trip law. |
 | O3 | **Preservation.** Every Transformation preserves the axioms of `L_src`: each, translated through it, holds in `L_tgt`. |
-| O4 | **Identity.** An instance of a projection is the same instance as each of its bases. |
+| O4 | **Identity.** An instance of a projection is the same instance as each Entity it extends. |
 
 ## Deletion
 
@@ -621,7 +630,7 @@ Ownership lives with the owner — a Language owns its vocabulary, a Component e
 nested in it — so deletion cascades down ownership and removes whatever is left
 referencing what was deleted.
 
-- **Deleting a Language** removes its Entities, Relationships and axioms; every base,
+- **Deleting a Language** removes its Entities, Relationships and axioms; every extension of them,
   Relationship, axiom, Parameter or output, in any Language or Interaction, that names any
   of them; every mapping that names any of them; every Transformation from or to it; every
   Interaction over it; every `extends` and `uses` of it.
@@ -690,7 +699,7 @@ explicitly.
 
 ## Composition
 
-Composite Entities are built from Relationships and bases.
+Composite Entities are built from Relationships and extension.
 
 - **Attribute / product** (has-a): an Entity with `1..1` ends to each of its parts. "A
   Person has a Name" is a Relationship, not a field.
