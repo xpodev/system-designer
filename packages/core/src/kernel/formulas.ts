@@ -1,8 +1,9 @@
 /**
  * A Formula is kept as text. What the Kernel sees of it — the Entities and ends it mentions —
  * is derived by type-checking that text against the vocabulary of the Formula's own
- * Language. A Formula that does not parse, or mentions something outside its Language,
- * simply has no mentions; the diagnoser reports why.
+ * Language: its Entities and Relationships, and those of every Language it extends. A
+ * Formula that does not parse, or mentions something outside that vocabulary, simply has no
+ * mentions; the diagnoser reports why.
  */
 import type { Graph } from "./graph.js";
 import { FormulaError, parse } from "./logic/parse.js";
@@ -10,26 +11,56 @@ import { typecheck } from "./logic/typecheck.js";
 import { nameOf } from "./values.js";
 import { Vocabulary, type EndSpec, type RelationshipSpec } from "./vocabulary.js";
 
-/** A Language of a model, as a vocabulary: Entities and ends by name, Relationships by instance id. */
+/** `L.*extends`: a Language and every Language it extends, eventually, nearest first. */
+export function extendedLanguages(graph: Graph, language: string): string[] {
+  const found: string[] = [];
+  const pending = [language];
+  while (pending.length > 0) {
+    const current = pending.shift()!;
+    if (found.includes(current) || !graph.has(current)) continue;
+    found.push(current);
+    pending.push(...graph.navigate(current, "extends"));
+  }
+  return found;
+}
+
+/**
+ * A Language of a model, as a vocabulary: `vocab(L)`, its Entities and those of every
+ * Language it extends, by name, with what each extends; Relationships by instance id. Where
+ * two Entities of the vocabulary share a name, the nearer Language's wins.
+ */
 export function languageVocabulary(graph: Graph, language: string): { vocabulary: Vocabulary; entityIds: Map<string, string> } {
+  const languages = extendedLanguages(graph, language);
   const entityIds = new Map<string, string>();
-  for (const entity of graph.navigate(language, "entities")) {
-    const name = nameOf(graph, entity);
-    if (name !== undefined) entityIds.set(name, entity);
+  const names = new Map<string, string>();
+  for (const member of languages) {
+    for (const entity of graph.navigate(member, "entities")) {
+      const name = nameOf(graph, entity);
+      if (name === undefined || entityIds.has(name)) continue;
+      entityIds.set(name, entity);
+      names.set(entity, name);
+    }
+  }
+  const extended: Record<string, string[]> = {};
+  for (const [entity, name] of names) {
+    const bases = graph.navigate(entity, "extends").flatMap((base) => (names.has(base) ? [names.get(base)!] : []));
+    if (bases.length > 0) extended[name] = bases;
   }
   const relationships: RelationshipSpec[] = [];
-  for (const relationship of graph.navigate(language, "relationships")) {
-    const ends: EndSpec[] = [];
-    for (const end of graph.navigate(relationship, "ends")) {
-      const [entity] = graph.navigate(end, "entity");
-      const entityName = entity === undefined ? undefined : nameOf(graph, entity);
-      if (entityName === undefined) break;
-      // An unnamed end cannot be navigated to: it gets a name no formula can write.
-      ends.push({ name: nameOf(graph, end) ?? UNNAMED, entity: entityName, min: 0, max: null });
+  for (const member of languages) {
+    for (const relationship of graph.navigate(member, "relationships")) {
+      const ends: EndSpec[] = [];
+      for (const end of graph.navigate(relationship, "ends")) {
+        const [entity] = graph.navigate(end, "entity");
+        const entityName = entity === undefined ? undefined : names.get(entity);
+        if (entityName === undefined) break;
+        // An unnamed end cannot be navigated to: it gets a name no formula can write.
+        ends.push({ name: nameOf(graph, end) ?? UNNAMED, entity: entityName, min: 0, max: null });
+      }
+      if (ends.length === 2) relationships.push({ id: relationship, ends });
     }
-    if (ends.length === 2) relationships.push({ id: relationship, ends });
   }
-  const vocabulary = new Vocabulary({ entities: [...entityIds.keys()], relationships, axioms: [] });
+  const vocabulary = new Vocabulary({ entities: [...entityIds.keys()], relationships, axioms: [], extends: extended });
   return { vocabulary, entityIds };
 }
 

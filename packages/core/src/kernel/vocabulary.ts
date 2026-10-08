@@ -1,7 +1,9 @@
 /**
- * A Language's vocabulary, as the kernel sees it: Entities, and Relationships as pairs of
- * named ends with ranges. It answers one question — from an Entity, where does an end name
- * lead — which is all navigation, the logic and the diagnoser need.
+ * A Language's vocabulary, as the kernel sees it: Entities, what each extends, and
+ * Relationships as pairs of named ends with ranges. It answers two questions — from an
+ * Entity, where does an end name lead, and does one Entity extend another — which is all
+ * navigation, the logic and the diagnoser need. An Entity reaches the ends of every Entity
+ * it extends, since each of its instances is an instance of those too.
  */
 
 export interface EndSpec {
@@ -28,6 +30,8 @@ export interface VocabularySpec {
   readonly entities: readonly string[];
   readonly relationships: readonly RelationshipSpec[];
   readonly axioms: readonly AxiomSpec[];
+  /** Entity → the Entities it extends directly. */
+  readonly extends?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** Navigating from an Entity to the far end of a Relationship. */
@@ -42,6 +46,8 @@ export class Vocabulary {
   readonly entities: ReadonlySet<string>;
   private readonly steps = new Map<string, Map<string, Step[]>>();
   private readonly byId = new Map<string, RelationshipSpec>();
+  private readonly ancestors = new Map<string, Set<string>>();
+  private readonly inherited = new Map<string, Map<string, Step[]>>();
 
   constructor(readonly spec: VocabularySpec) {
     this.entities = new Set(spec.entities);
@@ -66,14 +72,43 @@ export class Vocabulary {
     return this.byId.get(id);
   }
 
+  /** `entity` and every Entity it extends, eventually: `entity.*extends`. */
+  conformsTo(entity: string): ReadonlySet<string> {
+    let known = this.ancestors.get(entity);
+    if (known) return known;
+    known = new Set();
+    const pending = [entity];
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      if (known.has(current)) continue;
+      known.add(current);
+      pending.push(...(this.spec.extends?.[current] ?? []));
+    }
+    this.ancestors.set(entity, known);
+    return known;
+  }
+
+  /** Whether every instance of `entity` is an instance of `other`. */
+  conforms(entity: string, other: string): boolean {
+    return this.conformsTo(entity).has(other);
+  }
+
   /** Where `endName` leads from `entity`, if it leads anywhere unambiguously. */
   step(entity: string, endName: string): Step | undefined {
-    const steps = this.steps.get(entity)?.get(endName);
+    const steps = this.reachable(entity).get(endName);
     return steps && steps.length === 1 ? steps[0] : undefined;
   }
 
-  /** Every end reachable from `entity`, by name; more than one step under a name is ambiguous. */
+  /** Every end reachable from `entity` or what it extends, by name; more than one step under a name is ambiguous. */
   reachable(entity: string): ReadonlyMap<string, readonly Step[]> {
-    return this.steps.get(entity) ?? new Map();
+    if (!this.spec.extends) return this.steps.get(entity) ?? new Map();
+    let merged = this.inherited.get(entity);
+    if (merged) return merged;
+    merged = new Map();
+    for (const ancestor of this.conformsTo(entity)) {
+      for (const [name, steps] of this.steps.get(ancestor) ?? []) merged.set(name, [...(merged.get(name) ?? []), ...steps]);
+    }
+    this.inherited.set(entity, merged);
+    return merged;
   }
 }

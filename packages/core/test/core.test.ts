@@ -27,10 +27,10 @@ group("generated schema", () => {
     expect(onDisk.replace(/\r\n/g, "\n")).toBe(generate());
   });
 
-  it("holds the union of Kernel, Contexts and Operations", () => {
-    expect(coreSpec.entities).toHaveLength(17);
-    expect(coreSpec.relationships).toHaveLength(47);
-    expect(coreSpec.axioms).toHaveLength(29);
+  it("holds the union of every core layer", () => {
+    expect(coreSpec.entities).toHaveLength(21);
+    expect(coreSpec.relationships).toHaveLength(73);
+    expect(coreSpec.axioms).toHaveLength(70);
   });
 });
 

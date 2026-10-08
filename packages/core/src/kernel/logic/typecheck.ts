@@ -1,7 +1,8 @@
 /**
  * Type-checking a formula against a vocabulary: every name bound, every step a reachable end,
- * both sides of a comparison of one Entity, closures that stay on their Entity. What the
- * check walks through is exactly what the formula mentions.
+ * both sides of a comparison of one Entity — or one extending the other — and closures that
+ * stay on their Entity or what it extends. What the check walks through is exactly what the
+ * formula mentions.
  */
 import type { Vocabulary } from "../vocabulary.js";
 import { FormulaError, type Formula, type Path } from "./parse.js";
@@ -27,7 +28,7 @@ export function typecheck(formula: Formula, vocabulary: Vocabulary): Mentions {
       if (!reachable || reachable.length === 0) throw new FormulaError(`${kind} has no end '${step.end}'`);
       if (reachable.length > 1) throw new FormulaError(`${kind}.${step.end} is ambiguous`);
       const target = reachable[0]!;
-      if (step.closure && target.end.entity !== kind) {
+      if (step.closure && !vocabulary.conforms(kind, target.end.entity)) {
         throw new FormulaError(`closure over ${kind}.${step.end} leaves ${kind}`);
       }
       ends.add(`${target.relationship.id}:${target.far}`);
@@ -58,7 +59,7 @@ export function typecheck(formula: Formula, vocabulary: Vocabulary): Mentions {
       case "compare": {
         const left = path(f.left, env);
         const right = path(f.right, env);
-        if (left !== right) throw new FormulaError(`compares ${left} with ${right}`);
+        if (!vocabulary.conforms(left, right) && !vocabulary.conforms(right, left)) throw new FormulaError(`compares ${left} with ${right}`);
         return;
       }
       case "nonempty":

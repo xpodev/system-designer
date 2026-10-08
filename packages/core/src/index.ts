@@ -2,13 +2,25 @@ export { coreEntities, coreSpec, stdEntities, stdSpec, type CoreEntity } from ".
 export { copy, coreGraph, coreVocabulary, remove, systemComposition, systemGraph, systemVocabulary } from "./core.js";
 export { Graph, invert, type Change, type Delta, type Instance } from "./kernel/graph.js";
 export { copyInto } from "./kernel/copy.js";
-export { cascade, compose, composition, type Composition } from "./kernel/removal.js";
+export { chain, setChain, type ChainEnds } from "./kernel/chain.js";
+export { cascade, compose, composition, removeAll, type Composition } from "./kernel/removal.js";
 export { Vocabulary, type AxiomSpec, type EndSpec, type RelationshipSpec, type Step, type VocabularySpec } from "./kernel/vocabulary.js";
 export { boundInstance, boundOf, nameInstance, nameOf, setName } from "./kernel/values.js";
-export { analyzeFormula, languageVocabulary, linkMentions, type FormulaAnalysis } from "./kernel/formulas.js";
+export { analyzeFormula, extendedLanguages, languageVocabulary, linkMentions, type FormulaAnalysis } from "./kernel/formulas.js";
 export { describe } from "./kernel/describe.js";
 export { FormulaError, parse, type Binding, type Formula, type Path } from "./kernel/logic/parse.js";
 export { typecheck, type Mentions } from "./kernel/logic/typecheck.js";
 export { counterexamples, evaluate, holds, type Environment } from "./kernel/logic/evaluate.js";
-export { effectiveLanguages, inScope, witnessed } from "./contexts/scope.js";
+export {
+  access,
+  accessibleTransformations,
+  ancestry,
+  importable,
+  importableComponents,
+  importableTransformations,
+  scope,
+  siblings,
+} from "./contexts/scope.js";
 export { parameters, setParameters } from "./operations/parameters.js";
+export { accessibleInteractions, importableInteractions } from "./operations/scope.js";
+export { accessibleMediums, importableMediums, mediationStack, setMediationStack } from "./mediation/scope.js";

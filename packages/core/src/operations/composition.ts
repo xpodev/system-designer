@@ -1,11 +1,11 @@
-/** What Operations owns: a Language its Interactions, an Interaction its Parameters, a Transformation its Interaction mappings. */
+/** What Operations owns: a Component its Interactions, an Interaction its Parameters. Each exists only while what it is typed by does. */
 import { composition } from "../kernel/removal.js";
 
 export const operationsComposition = composition(
   {
-    Language: ["interactions"],
+    Component: ["interactions"],
     Interaction: ["parameters"],
-    Transformation: ["interactionMappings"],
   },
-  ["InteractionMapping"],
+  [],
+  { Interaction: [["language"]], Parameter: [["type"]] },
 );
