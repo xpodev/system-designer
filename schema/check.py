@@ -2,12 +2,13 @@
 
     python schema/check.py [directory or file]      (default: this directory)
 
-A Language may include Entities of other Languages: an inclusion is the identity
-projection of those Entities, with every Relationship among them. Each Language is
-checked against its merged vocabulary: every included Entity exists, every end's Entity
-is known, every range is well-formed, end names are unique per Entity (W3), and every
+A Language may extend other Languages: its vocabulary is then its own together with
+theirs, transitively. Each Language is checked against its vocabulary: every extended
+Language exists, nothing it defines is already defined, every end's Entity is known, every range is well-formed, end names are unique per Entity (W3), and every
 axiom is a well-formed, well-typed formula — every variable bound, every navigation
-step a reachable end, and both sides of every comparison of the same Entity.
+step a reachable end, and both sides of every comparison of the same Entity. Then all the
+Languages together, as a System is a model of their union: every Entity is defined once,
+and end names are unique per Entity across all of them.
 """
 
 from __future__ import annotations
@@ -177,12 +178,11 @@ Relationships = dict[str, tuple[End, End]]
 
 def vocabulary(name: str, library: dict[str, dict], problems: list[str],
                seen: tuple[str, ...] = ()) -> tuple[set[str], Relationships]:
-    """A Language's merged vocabulary: its own Entities and Relationships, plus, for each
-    inclusion, the included Entities and every Relationship among them. Relationships
-    keep the identity of the Language that declared them, so one reached by two paths
-    is still one Relationship."""
+    """A Language's vocabulary: its own Entities and Relationships, and, transitively, those
+    of every Language it extends. Relationships keep the identity of the Language that
+    declared them, so one reached by two paths is still one Relationship."""
     if name in seen:
-        problems.append(f"inclusion cycle: {' -> '.join(seen + (name,))}")
+        problems.append(f"extension cycle: {' -> '.join(seen + (name,))}")
         return set(), {}
     language = library[name]
     entities = set(language["entities"])
@@ -193,22 +193,36 @@ def vocabulary(name: str, library: dict[str, dict], problems: list[str],
             problems.append(f"{name} relationship {index}: has {len(ends)} ends, not 2")
             continue
         relationships[f"{name}#{index}"] = (ends[0], ends[1])
-    for base, subset in language.get("includes", {}).items():
+    for base in language.get("extends", []):
         if base not in library:
-            problems.append(f"{name} includes unknown Language {base!r}")
+            problems.append(f"{name} extends unknown Language {base!r}")
             continue
-        base_entities, base_relationships = vocabulary(base, library, [], seen + (name,))
-        for entity in subset:
-            if entity not in base_entities:
-                problems.append(f"{name} includes {entity!r}, which {base} does not have")
-            if entity in language["entities"]:
-                problems.append(f"{name} both defines and includes {entity!r}")
-        included = set(subset)
-        entities |= included
-        for key, (a, b) in base_relationships.items():
-            if a.entity in included and b.entity in included:
-                relationships[key] = (a, b)
+        base_entities, base_relationships = vocabulary(base, library, problems if not seen else [], seen + (name,))
+        for entity in language["entities"]:
+            if entity in base_entities:
+                problems.append(f"{name} redefines {entity!r}, which {base} already has")
+        entities |= base_entities
+        relationships.update(base_relationships)
     return entities, relationships
+
+
+def check_union(library: dict[str, dict]) -> list[str]:
+    """The Languages together are what a System is a model of: across all of them, every
+    Entity is defined once, and end names stay unique per Entity (W3)."""
+    problems: list[str] = []
+    owners: dict[str, str] = {}
+    relationships: list[tuple[End, End]] = []
+    for name, language in library.items():
+        for entity in language["entities"]:
+            if entity in owners:
+                problems.append(f"{entity!r} is defined by both {owners[entity]} and {name}")
+            owners[entity] = name
+        relationships += [(End(**r["ends"][0]), End(**r["ends"][1])) for r in language["relationships"] if len(r["ends"]) == 2]
+    for entity, reachable in sorted(navigation(relationships).items()):
+        for end_name, ends in sorted(reachable.items()):
+            if len(ends) > 1:
+                problems.append(f"W3 across the Languages: {entity} reaches {len(ends)} ends named {end_name!r}")
+    return problems
 
 
 def check(language: dict, library: dict[str, dict] | None = None) -> list[str]:
@@ -258,8 +272,14 @@ def main() -> int:
         for problem in problems:
             print(f"  {problem}")
         counts = f"{len(language['entities'])} entities, {len(language['relationships'])} relationships, {len(language.get('axioms', []))} axioms"
-        includes = ", ".join(language.get("includes", {})) or "nothing"
-        print(f"{name}: {counts}, includes {includes} - {'well-formed' if not problems else f'{len(problems)} problem(s)'}")
+        extends = ", ".join(language.get("extends", [])) or "nothing"
+        print(f"{name}: {counts}, extends {extends} - {'well-formed' if not problems else f'{len(problems)} problem(s)'}")
+        failed = failed or bool(problems)
+    if len(library) > 1:
+        problems = check_union(library)
+        for problem in problems:
+            print(f"  {problem}")
+        print(f"all together: {'well-formed' if not problems else f'{len(problems)} problem(s)'}")
         failed = failed or bool(problems)
     return 1 if failed else 0
 

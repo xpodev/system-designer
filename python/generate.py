@@ -1,4 +1,4 @@
-"""Generate systemathic/_schema.py from schema/{kernel,contexts,operations,std}.json.
+"""Generate systemathic/_schema.py from schema/*.json.
 
     python python/generate.py            write it
     python python/generate.py --check    exit 1 if it is out of date
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LAYERS = ["kernel", "contexts", "operations", "std"]
+LAYERS = ["kernel", "contexts", "operations", "deployment", "mediation", "configuration", "std"]
 TARGET = Path(__file__).resolve().parent / "systemathic" / "_schema.py"
 
 

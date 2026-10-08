@@ -1,0 +1,30 @@
+{
+  "language": "Deployment",
+  "description": "Deployments: ways to put a Component together, each placing named Instances of its children and of the Components it imports, and Connections from an Instance to what offers the Interactions it uses. Optional: a Component with no Deployment is complete. Extends Kernel, Contexts and Operations.",
+  "extends": ["Kernel", "Contexts", "Operations"],
+  "entities": ["Deployment", "Instance", "Connection"],
+  "relationships": [
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": "deployment", "entity": "Deployment", "range": "0..N"}]},
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": "instance", "entity": "Instance", "range": "0..N"}]},
+    {"ends": [{"name": "deployed", "entity": "Component", "range": "1..1"}, {"name": "deployments", "entity": "Deployment", "range": "0..N"}]},
+    {"ends": [{"name": "deployment", "entity": "Deployment", "range": "1..1"}, {"name": "instances", "entity": "Instance", "range": "0..N"}]},
+    {"ends": [{"name": "of", "entity": "Component", "range": "1..1"}, {"name": "instances", "entity": "Instance", "range": "0..N"}]},
+    {"ends": [{"name": "deployment", "entity": "Deployment", "range": "1..1"}, {"name": "connections", "entity": "Connection", "range": "0..N"}]},
+    {"ends": [{"name": "from", "entity": "Instance", "range": "1..1"}, {"name": "outgoing", "entity": "Connection", "range": "0..N"}]},
+    {"ends": [{"name": "toInstance", "entity": "Instance", "range": "0..1"}, {"name": "incoming", "entity": "Connection", "range": "0..N"}]},
+    {"ends": [{"name": "toComponent", "entity": "Component", "range": "0..1"}, {"name": "incoming", "entity": "Connection", "range": "0..N"}]},
+    {"ends": [{"name": "what", "entity": "Interaction", "range": "1..N"}, {"name": "connections", "entity": "Connection", "range": "0..N"}]}
+  ],
+  "axioms": [
+    {"id": "W10", "about": "An Instance is of a child of the deployed Component, or of a Component it imports", "formula": "all i in Instance. i.of in i.deployment.deployed.components or i.of in i.deployment.deployed.importedComponents"},
+    {"id": "W10", "about": "No two Instances of a Deployment share a name", "formula": "all a in Instance, b in Instance. (a != b and a.deployment == b.deployment) => a.name != b.name"},
+    {"id": "W10", "about": "A Connection goes from an Instance of its own Deployment", "formula": "all c in Connection. c.from.deployment == c.deployment"},
+    {"id": "W10", "about": "A Connection goes to exactly one thing: an Instance, or the deployed Component", "formula": "all c in Connection. (some c.toInstance and no c.toComponent) or (no c.toInstance and some c.toComponent)"},
+    {"id": "W10", "about": "A Connection goes to an Instance of its own Deployment", "formula": "all c in Connection, t in c.toInstance. t.deployment == c.deployment"},
+    {"id": "W10", "about": "A Connection to a Component goes to the deployed Component", "formula": "all c in Connection, k in c.toComponent. k == c.deployment.deployed"},
+    {"id": "W10", "about": "The Instance a Connection goes to offers its What", "formula": "all c in Connection, i in c.what, t in c.toInstance. i.component == t.of"},
+    {"id": "W10", "about": "The deployed Component a Connection goes to offers or imports its What", "formula": "all c in Connection, i in c.what, k in c.toComponent. i.component == k or i in k.importedInteractions or i.component in k.importedComponents"},
+    {"id": "W10", "about": "A Connection's What is accessible to the Component it goes from", "formula": "all c in Connection, i in c.what. i.component in c.from.of.*parent or i in c.from.of.importedInteractions or i.component in c.from.of.importedComponents"},
+    {"id": "W10", "about": "A Connection's What is over one Language", "formula": "all c in Connection, a in c.what, b in c.what. a.language == b.language"}
+  ]
+}

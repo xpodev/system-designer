@@ -1,17 +1,18 @@
 /**
- * Generates packages/core/src/generated/schema.ts from schema/{kernel,contexts,operations,std}.json.
+ * Generates packages/core/src/generated/schema.ts from schema/*.json.
  *
  * A System is a model of the core Languages together, so the generated vocabulary is their
- * union: every Entity and Relationship each layer declares, and every axiom. An inclusion
- * names Entities of a lower layer, which are the same Entities, so it adds nothing to the
- * union; `python schema/check.py` is what verifies that inclusions resolve. Two unions are
- * generated: the core (Kernel, Contexts, Operations), and the core with Std on top.
+ * union: every Entity and Relationship each layer declares, and every axiom. A layer extends
+ * the ones below it, whose Entities are the same Entities, so extension adds nothing to the
+ * union; `python schema/check.py` is what verifies it. Two unions are generated: the core
+ * (Kernel, Contexts, Operations, Deployment, Mediation, Configuration), and the core with
+ * Std on top.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const CORE = ["kernel", "contexts", "operations"] as const;
+const CORE = ["kernel", "contexts", "operations", "deployment", "mediation", "configuration"] as const;
 const STD = "std";
 
 interface SchemaEnd { name: string; entity: string; range: string }

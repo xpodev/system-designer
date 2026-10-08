@@ -1,0 +1,40 @@
+{
+  "language": "Mediation",
+  "description": "Mediums, what a What can be passed over, and Mediations: the stack of Mediums a Connection is passed over, each optionally realized by a round trip of Transformations. Optional: a Connection with no Mediation leaves how it passes to the implementation. Extends Kernel, Contexts, Operations and Deployment.",
+  "extends": ["Kernel", "Contexts", "Operations", "Deployment"],
+  "entities": ["Medium", "Mediation"],
+  "relationships": [
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": "medium", "entity": "Medium", "range": "0..N"}]},
+    {"ends": [{"name": "definer", "entity": "Component", "range": "1..1"}, {"name": "mediums", "entity": "Medium", "range": "0..N"}]},
+    {"ends": [{"name": "language", "entity": "Language", "range": "1..1"}, {"name": "mediums", "entity": "Medium", "range": "0..N"}]},
+    {"ends": [{"name": "call", "entity": "Interaction", "range": "1..1"}, {"name": "callOf", "entity": "Medium", "range": "0..N"}]},
+    {"ends": [{"name": "importedMediums", "entity": "Medium", "range": "0..N"}, {"name": "importers", "entity": "Component", "range": "0..N"}]},
+    {"ends": [{"name": "connection", "entity": "Connection", "range": "1..1"}, {"name": "mediations", "entity": "Mediation", "range": "0..N"}]},
+    {"ends": [{"name": "firstOf", "entity": "Connection", "range": "0..1"}, {"name": "first", "entity": "Mediation", "range": "0..1"}]},
+    {"ends": [{"name": "prev", "entity": "Mediation", "range": "0..1"}, {"name": "next", "entity": "Mediation", "range": "0..1"}]},
+    {"ends": [{"name": "how", "entity": "Medium", "range": "1..1"}, {"name": "mediations", "entity": "Mediation", "range": "0..N"}]},
+    {"ends": [{"name": "down", "entity": "Transformation", "range": "0..1"}, {"name": "downOf", "entity": "Mediation", "range": "0..N"}]},
+    {"ends": [{"name": "up", "entity": "Transformation", "range": "0..1"}, {"name": "upOf", "entity": "Mediation", "range": "0..N"}]}
+  ],
+  "axioms": [
+    {"id": "W11", "about": "A Medium's call is an Interaction of the Component that defines it", "formula": "all m in Medium. m.call.component == m.definer"},
+    {"id": "W11", "about": "A Medium's call is over the Medium's Language", "formula": "all m in Medium. m.call.language == m.language"},
+    {"id": "W9", "about": "A Component imports a Medium only from its siblings, or from what a Component it is nested in imports", "formula": "all c in Component, m in c.importedMediums. m.definer != c and (m.definer in c.parent.components or m.definer in c.system.components or m in c.^parent.importedMediums or m.definer in c.*parent.importedComponents)"},
+    {"id": "W12", "about": "A Mediation is over a Medium the deployed Component has access to", "formula": "all m in Mediation, k in m.connection.deployment.deployed. m.how.definer in k.*parent or m.how in k.importedMediums or m.how.definer in k.importedComponents"},
+    {"id": "W12", "about": "A realization goes down into the Medium's Language", "formula": "all m in Mediation, d in m.down. d.target == m.how.language"},
+    {"id": "W12", "about": "A realization comes up from the Medium's Language", "formula": "all m in Mediation, u in m.up. u.source == m.how.language"},
+    {"id": "W12", "about": "The first Mediation's realization goes down from its Connection's What", "formula": "all m in Mediation, d in m.down, c in m.firstOf, i in c.what. d.source == i.language"},
+    {"id": "W12", "about": "The first Mediation's realization comes up to its Connection's What", "formula": "all m in Mediation, u in m.up, c in m.firstOf, i in c.what. u.target == i.language"},
+    {"id": "W12", "about": "A further Mediation's realization goes down from the call of the Medium below it", "formula": "all m in Mediation, p in m.prev, d in m.down. d.source == p.how.language"},
+    {"id": "W12", "about": "A further Mediation's realization comes up to the call of the Medium below it", "formula": "all m in Mediation, p in m.prev, u in m.up. u.target == p.how.language"},
+    {"id": "W12", "about": "A realization is accessible to the Component a Connection goes from", "formula": "all m in Mediation, t in m.down, k in m.connection.from.of. t.holder in k.*parent or t in k.importedTransformations or t.holder in k.importedComponents"},
+    {"id": "W12", "about": "A realization's way up is accessible to the Component a Connection goes from", "formula": "all m in Mediation, t in m.up, k in m.connection.from.of. t.holder in k.*parent or t in k.importedTransformations or t.holder in k.importedComponents"},
+    {"id": "W12", "about": "A realization is accessible to the Instance a Connection goes to", "formula": "all m in Mediation, t in m.down, k in m.connection.toInstance.of. t.holder in k.*parent or t in k.importedTransformations or t.holder in k.importedComponents"},
+    {"id": "W12", "about": "A realization's way up is accessible to the Instance a Connection goes to", "formula": "all m in Mediation, t in m.up, k in m.connection.toInstance.of. t.holder in k.*parent or t in k.importedTransformations or t.holder in k.importedComponents"},
+    {"id": "W12", "about": "A realization is accessible to the Component a Connection goes to", "formula": "all m in Mediation, t in m.down, k in m.connection.toComponent. t.holder in k.*parent or t in k.importedTransformations or t.holder in k.importedComponents"},
+    {"id": "W12", "about": "A realization's way up is accessible to the Component a Connection goes to", "formula": "all m in Mediation, t in m.up, k in m.connection.toComponent. t.holder in k.*parent or t in k.importedTransformations or t.holder in k.importedComponents"},
+    {"id": "order", "about": "Every Mediation of a Connection is on its first/next chain", "formula": "all c in Connection, m in c.mediations. m in c.first.*next"},
+    {"id": "order", "about": "The first/next chain holds only the Connection's Mediations", "formula": "all c in Connection, m in c.first.*next. m in c.mediations"},
+    {"id": "order", "about": "The Mediation chain has no cycles", "formula": "all m in Mediation. not m in m.^next"}
+  ]
+}
