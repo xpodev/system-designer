@@ -1,4 +1,4 @@
-/** LanguageEditor (Kernel): a Language, and which Entities, Relationships and Formulas it has. */
+/** LanguageEditor (Kernel): a Language — what it extends, and which Entities, Relationships and Formulas it has. */
 import { remove as removeFromModel, setName } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import {
@@ -57,6 +57,22 @@ export function addFormula(session: EditSession, language: string, formula: stri
   });
 }
 
+/** Makes a Language extend another: its vocabulary becomes its own and the other's. */
+export function extend(session: EditSession, language: string, extended: string): Edit {
+  return session.edit("change", "extend", [language, extended], (graph) => {
+    graph.connect(language, "extends", extended);
+    relinkFormulas(graph);
+  });
+}
+
+/** Stops a Language extending another. What its own vocabulary used of the other's stays, and is diagnosed. */
+export function unextend(session: EditSession, language: string, extended: string): Edit {
+  return session.edit("change", "unextend", [language, extended], (graph) => {
+    graph.disconnect(language, "extends", extended);
+    relinkFormulas(graph);
+  });
+}
+
 export function rename(session: EditSession, language: string, name: string): Edit {
   return session.edit("change", `rename Language ${name}`, [language], (graph) => setName(graph, language, name));
 }
@@ -105,6 +121,12 @@ export const languageEditor: readonly Operation[] = [
     [LANGUAGE, text("text", "the formula, in the ASCII syntax"), element("constrains", "Relationship", "the Relationship it constrains", true)],
     (s, a) => addFormula(s, str(a, "language"), str(a, "text"), maybe(a, "constrains")),
   ),
+  operation(EDITOR, "extend", "change", "Makes a Language extend another in its scope.", [LANGUAGE, element("extended", "Language", "the Language extended")], (s, a) =>
+    extend(s, str(a, "language"), str(a, "extended")),
+  ),
+  operation(EDITOR, "unextend", "change", "Stops a Language extending another.", [LANGUAGE, element("extended", "Language", "the Language extended")], (s, a) =>
+    unextend(s, str(a, "language"), str(a, "extended")),
+  ),
   operation(EDITOR, "rename", "change", "Renames a Language.", [LANGUAGE, text("name", "the new name")], (s, a) =>
     rename(s, str(a, "language"), str(a, "name")),
   ),
@@ -112,7 +134,7 @@ export const languageEditor: readonly Operation[] = [
     EDITOR,
     "remove",
     "removal",
-    "Removes a Language: its contents, every mapping naming them, every Transformation from or to it with the Mediations they witnessed, and every reference to it.",
+    "Removes a Language: its contents, every mapping naming them, every Interaction over it, every Transformation from or to it, and every reference to it.",
     [LANGUAGE],
     (s, a) => remove(s, str(a, "language")),
   ),

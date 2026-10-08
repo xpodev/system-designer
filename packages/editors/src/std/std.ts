@@ -5,7 +5,7 @@ import { element, freshId, maybe, operation, str, type Operation } from "../oper
 
 const EDITOR = "StdEditor";
 
-const ITEM_END: Record<string, string> = { Entity: "entity", Relationship: "relationship", Interaction: "interaction" };
+const ITEM_END: Record<string, string> = { Entity: "entity", Relationship: "relationship" };
 
 /** Makes a Parameter the primary one of its Interaction — an Action — or, without one, makes it no Action. */
 export function setPrimary(session: EditSession, interaction: string, parameter: string | undefined): Edit {
@@ -23,7 +23,7 @@ export function setComparison(session: EditSession, entity: string, interaction:
   });
 }
 
-/** Records that a Transformation deliberately leaves an Entity, Relationship or Interaction unmapped. */
+/** Records that a Transformation deliberately leaves an Entity or a Relationship unmapped. */
 export function defer(session: EditSession, transformation: string, item: string): Edit {
   const id = freshId(session.target.graph, transformation, "deferred");
   return session.edit("addition", "defer", [id, item], (graph) => {
@@ -43,7 +43,7 @@ export function undefer(session: EditSession, transformation: string, item: stri
 }
 
 const TRANSFORMATION = element("transformation", "Transformation", "the Transformation");
-const ITEM = element("item", ["Entity", "Relationship", "Interaction"], "the item left unmapped");
+const ITEM = element("item", ["Entity", "Relationship"], "the item left unmapped");
 
 export const stdEditor: readonly Operation[] = [
   operation(

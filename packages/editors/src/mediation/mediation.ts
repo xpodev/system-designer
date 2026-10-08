@@ -1,0 +1,157 @@
+/**
+ * MediationEditor (Mediation): a Connection's stack of Mediations — each over a Medium, and
+ * optionally realized by a round trip of Transformations. The first mediates the Connection's
+ * What; each next one, the call of the Medium above it.
+ */
+import { ancestry, mediationStack, nameOf, remove as removeFromModel, setMediationStack, type Graph } from "@systemathic/core";
+import type { Edit, EditSession } from "@systemathic/editing";
+import { addNamed, element, freshId, index, maybe, operation, str, text, type Operation } from "../operation.js";
+
+const EDITOR = "MediationEditor";
+
+/** Adds a Mediation over a Medium to a Connection's stack, at `position` or at the bottom. */
+export function addMediation(session: EditSession, connection: string, medium: string, position?: number): Edit {
+  const id = freshId(session.target.graph, connection, "mediation");
+  return session.edit("addition", "addMediation", [id], (graph) => {
+    graph.add("Mediation", id);
+    graph.connect(id, "how", medium);
+    const stack = mediationStack(graph, connection);
+    stack.splice(position ?? stack.length, 0, id);
+    setMediationStack(graph, connection, stack);
+  });
+}
+
+export function setHow(session: EditSession, mediation: string, medium: string): Edit {
+  return session.edit("change", "setHow", [mediation], (graph) => {
+    graph.disconnect(mediation, "how");
+    graph.connect(mediation, "how", medium);
+  });
+}
+
+/** Realizes a Mediation with existing Transformations, or, without them, leaves it unrealized. */
+export function realize(session: EditSession, mediation: string, down: string | undefined, up: string | undefined): Edit {
+  return session.edit("change", "realize", [mediation], (graph) => {
+    graph.disconnect(mediation, "down");
+    graph.disconnect(mediation, "up");
+    if (down !== undefined) graph.connect(mediation, "down", down);
+    if (up !== undefined) graph.connect(mediation, "up", up);
+  });
+}
+
+/** The Language a Mediation's What is over: the Connection's What's, or the call's of the Medium above it. */
+export function whatLanguage(graph: Graph, mediation: string): string | undefined {
+  const [connection] = graph.navigate(mediation, "connection");
+  if (connection === undefined) return undefined;
+  const stack = mediationStack(graph, connection);
+  const position = stack.indexOf(mediation);
+  if (position <= 0) {
+    const [first] = graph.navigate(connection, "what");
+    return first === undefined ? undefined : graph.navigate(first, "language")[0];
+  }
+  const [above] = graph.navigate(stack[position - 1]!, "how");
+  return above === undefined ? undefined : graph.navigate(above, "language")[0];
+}
+
+/**
+ * Creates a Mediation's realization: `down` and `up` between its What's Language and its
+ * Medium's, in a Component of their own beside the Connection's ends — which both import them
+ * — so the ends' own Components stay clean. A Connection to the deployed Component itself is
+ * realized in that Component, which both ends reach directly.
+ */
+export function createRealization(session: EditSession, mediation: string, name?: string): Edit {
+  const graph = session.target.graph;
+  const what = whatLanguage(graph, mediation);
+  const [medium] = graph.navigate(mediation, "how");
+  const how = medium === undefined ? undefined : graph.navigate(medium, "language")[0];
+  const [connection] = graph.navigate(mediation, "connection");
+  if (what === undefined || how === undefined || connection === undefined) {
+    throw new Error("a Mediation is realized between its What's Language and its Medium's: it has to have both");
+  }
+  const [deployment] = graph.navigate(connection, "deployment");
+  const [deployed] = deployment === undefined ? [] : graph.navigate(deployment, "deployed");
+  if (deployed === undefined) throw new Error("the Connection is in no Deployment");
+  const [toComponent] = graph.navigate(connection, "toComponent");
+  const title = name ?? `${nameOf(graph, what) ?? "What"}Over${nameOf(graph, how) ?? "How"}`;
+  const holder = toComponent ?? freshId(graph, deployed, title);
+  const down = freshId(graph, holder, `${title} down`);
+  const up = freshId(graph, holder, `${title} up`);
+  return session.edit("addition", `createRealization ${title}`, [holder, down, up], (graph) => {
+    if (toComponent === undefined) addNamed(graph, "Component", holder, title, deployed, "components");
+    const within = new Set(ancestry(graph, holder));
+    for (const language of [what, how]) {
+      graph.connect(holder, "uses", language);
+      const [owner] = graph.navigate(language, "component");
+      if (owner !== undefined && !within.has(owner)) graph.connect(holder, "importedComponents", owner);
+    }
+    addNamed(graph, "Transformation", down, `${title} down`, holder, "transformations");
+    graph.connect(down, "source", what);
+    graph.connect(down, "target", how);
+    addNamed(graph, "Transformation", up, `${title} up`, holder, "transformations");
+    graph.connect(up, "source", how);
+    graph.connect(up, "target", what);
+    graph.disconnect(mediation, "down");
+    graph.disconnect(mediation, "up");
+    graph.connect(mediation, "down", down);
+    graph.connect(mediation, "up", up);
+    if (toComponent !== undefined) return;
+    const ends = [...graph.navigate(connection, "from"), ...graph.navigate(connection, "toInstance")].flatMap((instance) => graph.navigate(instance, "of"));
+    for (const end of ends) for (const transformation of [down, up]) graph.connect(end, "importedTransformations", transformation);
+  });
+}
+
+/** Moves a Mediation to `position` in its stack. */
+export function move(session: EditSession, mediation: string, position: number): Edit {
+  return session.edit("change", "moveMediation", [mediation], (graph) => {
+    const [connection] = graph.navigate(mediation, "connection");
+    if (connection === undefined) return;
+    const stack = mediationStack(graph, connection).filter((id) => id !== mediation);
+    stack.splice(position, 0, mediation);
+    setMediationStack(graph, connection, stack);
+  });
+}
+
+/** Removes a Mediation from its stack; the ones below it close up. */
+export function remove(session: EditSession, mediation: string): Edit {
+  return session.edit("removal", "removeMediation", [mediation], (graph) => {
+    const [connection] = graph.navigate(mediation, "connection");
+    const rest = connection === undefined ? [] : mediationStack(graph, connection).filter((id) => id !== mediation);
+    removeFromModel(graph, mediation);
+    if (connection !== undefined) setMediationStack(graph, connection, rest);
+  });
+}
+
+const MEDIATION = element("mediation", "Mediation", "the Mediation");
+
+export const mediationEditor: readonly Operation[] = [
+  operation(
+    EDITOR,
+    "addMediation",
+    "addition",
+    "Adds a Mediation over a Medium to a Connection's stack, at a position or at the bottom.",
+    [element("connection", "Connection", "the Connection"), element("medium", "Medium", "the Medium"), index("position", "where in the stack, from 0", true)],
+    (s, a) => addMediation(s, str(a, "connection"), str(a, "medium"), a.position as number | undefined),
+  ),
+  operation(EDITOR, "setHow", "change", "Sets the Medium a Mediation is over.", [MEDIATION, element("medium", "Medium", "the Medium")], (s, a) =>
+    setHow(s, str(a, "mediation"), str(a, "medium")),
+  ),
+  operation(
+    EDITOR,
+    "realize",
+    "change",
+    "Realizes a Mediation with existing Transformations down into its Medium's Language and up from it; without them, leaves it unrealized.",
+    [MEDIATION, element("down", "Transformation", "the way down", true), element("up", "Transformation", "the way up", true)],
+    (s, a) => realize(s, str(a, "mediation"), maybe(a, "down"), maybe(a, "up")),
+  ),
+  operation(
+    EDITOR,
+    "createRealization",
+    "addition",
+    "Creates a Mediation's realization: a Component beside the Connection's ends holding the way down and the way up, imported by both ends.",
+    [MEDIATION, text("name", "the realization's name", true)],
+    (s, a) => createRealization(s, str(a, "mediation"), maybe(a, "name")),
+  ),
+  operation(EDITOR, "move", "change", "Moves a Mediation within its stack.", [MEDIATION, index("position", "where in the stack, from 0")], (s, a) =>
+    move(s, str(a, "mediation"), a.position as number),
+  ),
+  operation(EDITOR, "remove", "removal", "Removes a Mediation from its stack.", [MEDIATION], (s, a) => remove(s, str(a, "mediation"))),
+];

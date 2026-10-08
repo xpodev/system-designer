@@ -1,6 +1,7 @@
 /**
- * InteractionEditor (Operations): an Interaction and its Parameters. Adding an Interaction is
- * here, not in the LanguageEditor, because Kernel knows nothing of Interactions.
+ * InteractionEditor (Operations): an Interaction, its Language and its Parameters, and the
+ * Interactions a Component imports. Adding an Interaction is here, not in the
+ * ComponentEditor, because Contexts knows nothing of Interactions.
  */
 import { parameters, remove as removeFromModel, setName, setParameters } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
@@ -8,12 +9,31 @@ import { addNamed, element, freshId, index, operation, str, text, type Operation
 
 const EDITOR = "InteractionEditor";
 
-export function addInteraction(session: EditSession, language: string, name: string, output: string): Edit {
-  const id = freshId(session.target.graph, language, name);
+/** Adds an Interaction to a Component, over one of the Languages it uses, with its output Entity. */
+export function addInteraction(session: EditSession, component: string, language: string, name: string, output: string): Edit {
+  const id = freshId(session.target.graph, component, name);
   return session.edit("addition", `addInteraction ${name}`, [id], (graph) => {
-    addNamed(graph, "Interaction", id, name, language, "interactions");
+    addNamed(graph, "Interaction", id, name, component, "interactions");
+    graph.connect(id, "language", language);
     graph.connect(id, "output", output);
   });
+}
+
+export function setLanguage(session: EditSession, interaction: string, language: string): Edit {
+  return session.edit("change", "setLanguage", [interaction], (graph) => {
+    graph.disconnect(interaction, "language");
+    graph.connect(interaction, "language", language);
+  });
+}
+
+/** Makes a Component import an Interaction: one of a sibling's, or one a Component it is nested in imports. */
+export function importInteraction(session: EditSession, component: string, interaction: string): Edit {
+  return session.edit("change", "importInteraction", [component, interaction], (graph) => graph.connect(component, "importedInteractions", interaction));
+}
+
+/** Stops a Component importing an Interaction. Connections that used it stay, and are diagnosed. */
+export function unimportInteraction(session: EditSession, component: string, interaction: string): Edit {
+  return session.edit("change", "unimportInteraction", [component, interaction], (graph) => graph.disconnect(component, "importedInteractions", interaction));
 }
 
 /** Adds a Parameter, at `position` or last. */
@@ -80,9 +100,33 @@ export const interactionEditor: readonly Operation[] = [
     EDITOR,
     "addInteraction",
     "addition",
-    "Adds an Interaction to a Language, with its output Entity; Parameters are added one by one.",
-    [element("language", "Language", "the Language"), text("name", "the Interaction's name"), element("output", "Entity", "the output Entity")],
-    (s, a) => addInteraction(s, str(a, "language"), str(a, "name"), str(a, "output")),
+    "Adds an Interaction to a Component, over one of the Languages it uses, with its output Entity; Parameters are added one by one.",
+    [
+      element("component", "Component", "the Component offering it"),
+      element("language", "Language", "the Language it is over"),
+      text("name", "the Interaction's name"),
+      element("output", "Entity", "the output Entity"),
+    ],
+    (s, a) => addInteraction(s, str(a, "component"), str(a, "language"), str(a, "name"), str(a, "output")),
+  ),
+  operation(EDITOR, "setLanguage", "change", "Sets the Language an Interaction is over.", [INTERACTION, element("language", "Language", "the Language")], (s, a) =>
+    setLanguage(s, str(a, "interaction"), str(a, "language")),
+  ),
+  operation(
+    EDITOR,
+    "importInteraction",
+    "change",
+    "Makes a Component import an Interaction of a sibling, or one a Component it is nested in imports.",
+    [element("component", "Component", "the importing Component"), INTERACTION],
+    (s, a) => importInteraction(s, str(a, "component"), str(a, "interaction")),
+  ),
+  operation(
+    EDITOR,
+    "unimportInteraction",
+    "change",
+    "Stops a Component importing an Interaction.",
+    [element("component", "Component", "the importing Component"), INTERACTION],
+    (s, a) => unimportInteraction(s, str(a, "component"), str(a, "interaction")),
   ),
   operation(
     EDITOR,
@@ -110,5 +154,5 @@ export const interactionEditor: readonly Operation[] = [
     [element("item", ["Interaction", "Parameter"], "the Interaction or Parameter"), text("name", "the new name")],
     (s, a) => rename(s, str(a, "item"), str(a, "name")),
   ),
-  operation(EDITOR, "remove", "removal", "Removes an Interaction, its Parameters and its mappings.", [INTERACTION], (s, a) => remove(s, str(a, "interaction"))),
+  operation(EDITOR, "remove", "removal", "Removes an Interaction, its Parameters, every import of it, and every Connection left with no What.", [INTERACTION], (s, a) => remove(s, str(a, "interaction"))),
 ];

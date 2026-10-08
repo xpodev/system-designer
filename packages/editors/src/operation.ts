@@ -72,7 +72,7 @@ export const elements = (name: string, of: string | readonly string[], about: st
 export const text = (name: string, about: string, optional = false): ParameterSpec => ({ name, kind: "text", about, ...(optional ? { optional } : {}) });
 export const range = (name: string, about: string): ParameterSpec => ({ name, kind: "range", about });
 export const index = (name: string, about: string, optional = false): ParameterSpec => ({ name, kind: "index", about, ...(optional ? { optional } : {}) });
-export const flag = (name: string, about: string): ParameterSpec => ({ name, kind: "flag", about });
+export const flag = (name: string, about: string, optional = false): ParameterSpec => ({ name, kind: "flag", about, ...(optional ? { optional } : {}) });
 
 function check(graph: Graph, parameter: ParameterSpec, value: unknown): void {
   const fail = (expected: string) => {

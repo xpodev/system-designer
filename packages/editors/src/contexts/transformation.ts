@@ -1,7 +1,7 @@
-/** TransformationEditor (Contexts): a Transformation, its Entity and Relationship mappings, and its Reverse. */
+/** TransformationEditor (Contexts): a Transformation, its Entity and Relationship mappings, and its context. */
 import { remove as removeFromModel, setName, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
-import { element, elements, flag, freshId, ids, operation, str, text, type Operation } from "../operation.js";
+import { element, elements, freshId, ids, operation, str, text, type Operation } from "../operation.js";
 
 const EDITOR = "TransformationEditor";
 
@@ -45,31 +45,11 @@ export function unmap(session: EditSession, transformation: string, source: stri
   });
 }
 
-/** Gives a Transformation a reverse, making it a mediation, or takes it away, making it a projection. */
-export function setReverse(session: EditSession, transformation: string, reversible: boolean): Edit {
-  return session.edit("change", reversible ? "setReverse" : "unsetReverse", [transformation], (graph) => {
-    const [reverse] = graph.navigate(transformation, "reverse");
-    // A Mediation it witnessed is left unwitnessed, for the diagnoser to show.
-    if (!reversible && reverse !== undefined) graph.remove(reverse);
-    if (reversible && reverse === undefined) {
-      const id = `${transformation}#reverse`;
-      graph.add("Reverse", id);
-      graph.connect(transformation, "reverse", id);
-    }
-  });
-}
-
-/** Sets the Entities whose instances the holding Domain keeps for the reverse to work. Gives it a reverse if it has none. */
+/** Sets the Entities of its target whose instances must be kept for the Transformation to work: none, by value. */
 export function setContext(session: EditSession, transformation: string, context: readonly string[]): Edit {
   return session.edit("change", "setContext", [transformation], (graph) => {
-    let [reverse] = graph.navigate(transformation, "reverse");
-    if (reverse === undefined) {
-      reverse = `${transformation}#reverse`;
-      graph.add("Reverse", reverse);
-      graph.connect(transformation, "reverse", reverse);
-    }
-    graph.disconnect(reverse, "context");
-    for (const entity of context) graph.connect(reverse, "context", entity);
+    graph.disconnect(transformation, "context");
+    for (const entity of context) graph.connect(transformation, "context", entity);
   });
 }
 
@@ -110,24 +90,16 @@ export const transformationEditor: readonly Operation[] = [
   ),
   operation(
     EDITOR,
-    "setReverse",
-    "change",
-    "Gives a Transformation a reverse (a mediation), or takes it away (a projection).",
-    [TRANSFORMATION, flag("reversible", "whether it has a reverse")],
-    (s, a) => setReverse(s, str(a, "transformation"), a.reversible as boolean),
-  ),
-  operation(
-    EDITOR,
     "setContext",
     "change",
-    "Sets the Entities the holding Domain keeps for the reverse to work: none for a reverse by value.",
+    "Sets the Entities of the target whose instances must be kept for the Transformation to work: none for one by value.",
     [TRANSFORMATION, elements("context", "Entity", "the context Entities")],
     (s, a) => setContext(s, str(a, "transformation"), ids(a, "context")),
   ),
   operation(EDITOR, "rename", "change", "Renames a Transformation.", [TRANSFORMATION, text("name", "the new name")], (s, a) =>
     rename(s, str(a, "transformation"), str(a, "name")),
   ),
-  operation(EDITOR, "remove", "removal", "Removes a Transformation, and the Mediations it alone witnessed.", [TRANSFORMATION], (s, a) =>
+  operation(EDITOR, "remove", "removal", "Removes a Transformation; Mediations it realized stay, unrealized.", [TRANSFORMATION], (s, a) =>
     remove(s, str(a, "transformation")),
   ),
 ];

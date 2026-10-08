@@ -11,7 +11,7 @@ function setup() {
     session.edit("addition", `addLanguage ${name}`, [id], (graph) => {
       graph.add("Language", id);
       setName(graph, id, name);
-      graph.connect("system", "languages", id);
+      graph.connect("system.root", "languages", id);
     });
   return { target, ui, llm, addLanguage };
 }
@@ -39,7 +39,7 @@ describe("editing", () => {
 
   it("records the Elements an Edit touched, without names", () => {
     const { addLanguage } = setup();
-    expect(addLanguage().elements).toEqual(["core", "system"]);
+    expect(addLanguage().elements).toEqual(["core", "system.root"]);
   });
 
   it("undoes a session's own Edits only, newest first, and never shrinks the History", () => {
