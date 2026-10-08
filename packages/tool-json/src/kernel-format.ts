@@ -1,7 +1,8 @@
 /**
- * KernelFormat: a Language — its Entities, Relationships and Formulas — as JSON. Names are
- * text, bounds are numbers with "N" for unbounded, and a Formula is its text; its mentions are
- * derived from the text once the whole file is read.
+ * KernelFormat: a Language — what it extends, its Entities (each with what it extends),
+ * Relationships and Formulas — as JSON. Names are text, bounds are numbers with "N" for
+ * unbounded, and a Formula is its text; its mentions are derived from the text once the whole
+ * file is read.
  */
 import { boundInstance, boundOf, linkMentions, nameOf, setName, type Graph } from "@systemathic/core";
 import { array, FormatError, object, string, type Reader } from "./reader.js";
@@ -10,8 +11,11 @@ import { array, FormatError, object, string, type Reader } from "./reader.js";
 export interface EndJson { id: string; name: string | null; entity: string; min: number; max: number | "N" }
 export interface RelationshipJson { id: string; ends: EndJson[] }
 export interface FormulaJson { id: string; text: string; constrains?: string }
-export interface EntityJson { id: string; name: string }
-export interface KernelLanguageJson { id: string; name: string; entities: EntityJson[]; relationships: RelationshipJson[]; formulas: FormulaJson[] }
+export interface EntityJson { id: string; name: string; extends: string[] }
+export interface KernelLanguageJson {
+  id: string; name: string; extends: string[];
+  entities: EntityJson[]; relationships: RelationshipJson[]; formulas: FormulaJson[];
+}
 
 export function readLanguage(reader: Reader, value: unknown, at: string): string | undefined {
   const json = object(value, at);
@@ -19,6 +23,7 @@ export function readLanguage(reader: Reader, value: unknown, at: string): string
   if (language === undefined) return undefined;
   const graph = reader.graph;
   setName(graph, language, string(json.name, `${at}.name`));
+  array(json.extends, `${at}.extends`).forEach((ref, index) => reader.refer(language, "extends", ref, `${at}.extends[${index}]`));
 
   array(json.entities, `${at}.entities`).forEach((value, index) => {
     const where = `${at}.entities[${index}]`;
@@ -27,6 +32,7 @@ export function readLanguage(reader: Reader, value: unknown, at: string): string
     if (id === undefined) return;
     setName(graph, id, string(entity.name, `${where}.name`));
     graph.connect(language, "entities", id);
+    array(entity.extends, `${where}.extends`).forEach((ref, index) => reader.refer(id, "extends", ref, `${where}.extends[${index}]`));
   });
 
   array(json.relationships, `${at}.relationships`).forEach((value, index) => {
@@ -65,7 +71,8 @@ export function writeLanguage(graph: Graph, language: string): KernelLanguageJso
   return {
     id: language,
     name: nameOf(graph, language) ?? "",
-    entities: graph.navigate(language, "entities").map((id) => ({ id, name: nameOf(graph, id) ?? "" })),
+    extends: graph.navigate(language, "extends"),
+    entities: graph.navigate(language, "entities").map((id) => ({ id, name: nameOf(graph, id) ?? "", extends: graph.navigate(id, "extends") })),
     relationships: graph.navigate(language, "relationships").map((id) => ({
       id,
       ends: graph.navigate(id, "ends").map((end) => ({

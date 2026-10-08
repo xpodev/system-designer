@@ -6,6 +6,8 @@ describe("Tool", () => {
   it("creates a named System", () => {
     const context = newSystem("Game");
     expect(nameOf(context.design, context.system!)).toBe("Game");
+    expect(nameOf(context.design, context.root!)).toBe("Game");
+    expect(context.design.navigate(context.system!, "components")).toEqual([context.root]);
   });
 
   it("opens and saves independent copies", () => {

@@ -1,7 +1,9 @@
 /**
- * ContextsFormat: a System — its Languages, Domains and Mediations — as JSON. Languages are
- * read and written by KernelFormat. Layers above Contexts add their parts of a Language or a
- * Transformation through the extension hooks, so this module knows nothing of them.
+ * ContextsFormat: a System — its top-level Components, the root among them — as JSON. A
+ * Component nests what it owns: its Languages (read and written by KernelFormat), its
+ * Transformations and its children; it refers to the Languages it uses and the Components and
+ * Transformations it imports. Layers above Contexts add their parts of a System, a Component
+ * or a Transformation through the extension hooks, so this module knows nothing of them.
  */
 import { nameOf, setName, type Graph } from "@systemathic/core";
 import { readLanguage, writeLanguage, type KernelLanguageJson } from "./kernel-format.js";
@@ -9,18 +11,24 @@ import { array, object, string, type Reader } from "./reader.js";
 
 export interface MappingJson { source: string; targets: string[] }
 export interface TransformationJson {
-  id: string; name: string; source: string; target: string;
-  reverse: { context: string[] } | null;
+  id: string; name: string; source: string; target: string; context: string[];
   entityMappings: MappingJson[]; relationshipMappings: MappingJson[];
 }
-export interface DomainJson { id: string; name: string; languages: string[]; references: string[]; transformations: TransformationJson[] }
-export interface MediationJson { id: string; what: string; how: string; mediator: string }
-export interface DesignJson { id: string; name: string; languages: KernelLanguageJson[]; domains: DomainJson[]; mediations: MediationJson[] }
+export interface ImportsJson { components: string[]; transformations: string[] }
+export interface ComponentJson {
+  id: string; name: string; uses: string[]; imports: ImportsJson;
+  languages: KernelLanguageJson[]; transformations: TransformationJson[];
+  components: ComponentJson[];
+}
+export interface DesignJson { id: string; name: string; root: string; components: ComponentJson[] }
 
-/** What a layer above Contexts reads into, and writes from, a Language or a Transformation. */
+/** What a layer above Contexts reads into, and writes from, a System, a Component or a Transformation. */
 export interface Extension {
-  readLanguage?(reader: Reader, language: string, json: Record<string, unknown>, at: string): void;
-  writeLanguage?(graph: Graph, language: string): Record<string, unknown>;
+  readSystem?(reader: Reader, system: string, json: Record<string, unknown>, at: string): void;
+  writeSystem?(graph: Graph, system: string): Record<string, unknown>;
+  readComponent?(reader: Reader, component: string, json: Record<string, unknown>, at: string): void;
+  /** Its keys go after the Component's own and before its children; an `imports` object is merged into the Component's. */
+  writeComponent?(graph: Graph, component: string): Record<string, unknown>;
   readTransformation?(reader: Reader, transformation: string, json: Record<string, unknown>, at: string): void;
   writeTransformation?(graph: Graph, transformation: string): Record<string, unknown>;
 }
@@ -31,39 +39,40 @@ export function readDesign(reader: Reader, value: unknown, at: string, extension
   const system = reader.create("System", json.id, at);
   if (system === undefined) return undefined;
   setName(graph, system, string(json.name, `${at}.name`));
-
-  array(json.languages, `${at}.languages`).forEach((value, index) => {
-    const where = `${at}.languages[${index}]`;
-    const language = readLanguage(reader, value, where);
-    if (language === undefined) return;
-    graph.connect(system, "languages", language);
-    for (const extension of extensions) extension.readLanguage?.(reader, language, object(value, where), where);
+  array(json.components, `${at}.components`).forEach((value, index) => {
+    const component = readComponent(reader, value, `${at}.components[${index}]`, extensions);
+    if (component !== undefined) graph.connect(system, "components", component);
   });
-
-  array(json.domains, `${at}.domains`).forEach((value, index) => {
-    const where = `${at}.domains[${index}]`;
-    const domain = object(value, where);
-    const id = reader.create("Domain", domain.id, where);
-    if (id === undefined) return;
-    setName(graph, id, string(domain.name, `${where}.name`));
-    graph.connect(system, "domains", id);
-    array(domain.languages, `${where}.languages`).forEach((ref, i) => reader.refer(id, "languages", ref, `${where}.languages[${i}]`));
-    array(domain.references, `${where}.references`).forEach((ref, i) => reader.refer(id, "references", ref, `${where}.references[${i}]`));
-    array(domain.transformations, `${where}.transformations`).forEach((value, i) => {
-      readTransformation(reader, id, value, `${where}.transformations[${i}]`, extensions);
-    });
-  });
-
-  array(json.mediations, `${at}.mediations`).forEach((value, index) => {
-    const where = `${at}.mediations[${index}]`;
-    const mediation = object(value, where);
-    const id = reader.create("Mediation", mediation.id, where);
-    if (id === undefined) return;
-    graph.connect(system, "mediations", id);
-    for (const role of ["what", "how", "mediator"] as const) reader.refer(id, role, mediation[role], `${where}.${role}`);
-  });
-
+  reader.refer(system, "root", json.root, `${at}.root`);
+  for (const extension of extensions) extension.readSystem?.(reader, system, json, at);
   return system;
+}
+
+function readComponent(reader: Reader, value: unknown, at: string, extensions: readonly Extension[]): string | undefined {
+  const graph = reader.graph;
+  const json = object(value, at);
+  const id = reader.create("Component", json.id, at);
+  if (id === undefined) return undefined;
+  setName(graph, id, string(json.name, `${at}.name`));
+  array(json.uses, `${at}.uses`).forEach((ref, i) => reader.refer(id, "uses", ref, `${at}.uses[${i}]`));
+  const imports = object(json.imports, `${at}.imports`);
+  array(imports.components, `${at}.imports.components`).forEach((ref, i) => reader.refer(id, "importedComponents", ref, `${at}.imports.components[${i}]`));
+  array(imports.transformations, `${at}.imports.transformations`).forEach((ref, i) =>
+    reader.refer(id, "importedTransformations", ref, `${at}.imports.transformations[${i}]`),
+  );
+  array(json.languages, `${at}.languages`).forEach((value, index) => {
+    const language = readLanguage(reader, value, `${at}.languages[${index}]`);
+    if (language !== undefined) graph.connect(id, "languages", language);
+  });
+  array(json.transformations, `${at}.transformations`).forEach((value, index) => {
+    readTransformation(reader, id, value, `${at}.transformations[${index}]`, extensions);
+  });
+  for (const extension of extensions) extension.readComponent?.(reader, id, json, at);
+  array(json.components, `${at}.components`).forEach((value, index) => {
+    const child = readComponent(reader, value, `${at}.components[${index}]`, extensions);
+    if (child !== undefined) graph.connect(id, "components", child);
+  });
+  return id;
 }
 
 function readTransformation(reader: Reader, holder: string, value: unknown, at: string, extensions: readonly Extension[]): void {
@@ -75,14 +84,7 @@ function readTransformation(reader: Reader, holder: string, value: unknown, at: 
   graph.connect(holder, "transformations", id);
   reader.refer(id, "source", json.source, `${at}.source`);
   reader.refer(id, "target", json.target, `${at}.target`);
-  if (json.reverse !== null) {
-    const reverse = object(json.reverse, `${at}.reverse`);
-    const reverseId = reader.create("Reverse", `${id}#reverse`, `${at}.reverse`);
-    if (reverseId !== undefined) {
-      graph.connect(id, "reverse", reverseId);
-      array(reverse.context, `${at}.reverse.context`).forEach((ref, i) => reader.refer(reverseId, "context", ref, `${at}.reverse.context[${i}]`));
-    }
-  }
+  array(json.context, `${at}.context`).forEach((ref, i) => reader.refer(id, "context", ref, `${at}.context[${i}]`));
   for (const [kind, entity, prefix] of [["entityMappings", "EntityMapping", "em"], ["relationshipMappings", "RelationshipMapping", "rm"]] as const) {
     array(json[kind], `${at}.${kind}`).forEach((value, index) => {
       const where = `${at}.${kind}[${index}]`;
@@ -98,43 +100,54 @@ function readTransformation(reader: Reader, holder: string, value: unknown, at: 
 }
 
 export function writeDesign(graph: Graph, system: string, extensions: readonly Extension[] = []): DesignJson {
-  const mappings = (transformation: string, kind: "entityMappings" | "relationshipMappings") =>
+  return Object.assign(
+    {
+      id: system,
+      name: nameOf(graph, system) ?? "",
+      root: graph.navigate(system, "root")[0] ?? "",
+      components: graph.navigate(system, "components").map((component) => writeComponent(graph, component, extensions)),
+    },
+    ...extensions.map((extension) => extension.writeSystem?.(graph, system) ?? {}),
+  );
+}
+
+function writeComponent(graph: Graph, component: string, extensions: readonly Extension[]): ComponentJson {
+  const json: Record<string, unknown> & { imports: Record<string, unknown> } = {
+    id: component,
+    name: nameOf(graph, component) ?? "",
+    uses: graph.navigate(component, "uses"),
+    imports: {
+      components: graph.navigate(component, "importedComponents"),
+      transformations: graph.navigate(component, "importedTransformations"),
+    },
+    languages: graph.navigate(component, "languages").map((language) => writeLanguage(graph, language)),
+    transformations: graph.navigate(component, "transformations").map((transformation) => writeTransformation(graph, transformation, extensions)),
+  };
+  for (const extension of extensions) {
+    const { imports, ...rest } = extension.writeComponent?.(graph, component) ?? {};
+    if (imports !== undefined) Object.assign(json.imports, imports);
+    Object.assign(json, rest);
+  }
+  json.components = graph.navigate(component, "components").map((child) => writeComponent(graph, child, extensions));
+  return json as unknown as ComponentJson;
+}
+
+function writeTransformation(graph: Graph, transformation: string, extensions: readonly Extension[]): TransformationJson {
+  const mappings = (kind: "entityMappings" | "relationshipMappings") =>
     graph.navigate(transformation, kind).map((mapping) => ({
       source: graph.navigate(mapping, "source")[0] ?? "",
       targets: graph.navigate(mapping, "targets"),
     }));
-  return {
-    id: system,
-    name: nameOf(graph, system) ?? "",
-    languages: graph.navigate(system, "languages").map((language) =>
-      Object.assign(writeLanguage(graph, language), ...extensions.map((extension) => extension.writeLanguage?.(graph, language) ?? {})),
-    ),
-    domains: graph.navigate(system, "domains").map((domain) => ({
-      id: domain,
-      name: nameOf(graph, domain) ?? "",
-      languages: graph.navigate(domain, "languages"),
-      references: graph.navigate(domain, "references"),
-      transformations: graph.navigate(domain, "transformations").map((transformation) => {
-        const [reverse] = graph.navigate(transformation, "reverse");
-        return Object.assign(
-          {
-            id: transformation,
-            name: nameOf(graph, transformation) ?? "",
-            source: graph.navigate(transformation, "source")[0] ?? "",
-            target: graph.navigate(transformation, "target")[0] ?? "",
-            reverse: reverse === undefined ? null : { context: graph.navigate(reverse, "context") },
-            entityMappings: mappings(transformation, "entityMappings"),
-            relationshipMappings: mappings(transformation, "relationshipMappings"),
-          },
-          ...extensions.map((extension) => extension.writeTransformation?.(graph, transformation) ?? {}),
-        );
-      }),
-    })),
-    mediations: graph.navigate(system, "mediations").map((mediation) => ({
-      id: mediation,
-      what: graph.navigate(mediation, "what")[0] ?? "",
-      how: graph.navigate(mediation, "how")[0] ?? "",
-      mediator: graph.navigate(mediation, "mediator")[0] ?? "",
-    })),
-  };
+  return Object.assign(
+    {
+      id: transformation,
+      name: nameOf(graph, transformation) ?? "",
+      source: graph.navigate(transformation, "source")[0] ?? "",
+      target: graph.navigate(transformation, "target")[0] ?? "",
+      context: graph.navigate(transformation, "context"),
+      entityMappings: mappings("entityMappings"),
+      relationshipMappings: mappings("relationshipMappings"),
+    },
+    ...extensions.map((extension) => extension.writeTransformation?.(graph, transformation) ?? {}),
+  );
 }

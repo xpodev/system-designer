@@ -1,16 +1,16 @@
 /**
  * StdFormat: what Std adds, as JSON. An Interaction says which of its Parameters is `primary`
  * (or `null`) and which Entities it `compares`; a Transformation lists what it has `deferred`,
- * each deferral naming one `entity`, `relationship` or `interaction`.
+ * each deferral naming one `entity` or `relationship`.
  */
 import type { Graph } from "@systemathic/core";
 import type { Extension } from "./contexts-format.js";
 import type { InteractionExtension } from "./operations-format.js";
-import { array, FormatError, object, type Reader } from "./reader.js";
+import { array, FormatError, object } from "./reader.js";
 
-export interface DeferredJson { entity?: string; relationship?: string; interaction?: string }
+export interface DeferredJson { entity?: string; relationship?: string }
 
-const ITEMS = ["entity", "relationship", "interaction"] as const;
+const ITEMS = ["entity", "relationship"] as const;
 
 export const stdInteractions: InteractionExtension = {
   readInteraction(reader, interaction, json, at) {

@@ -34,6 +34,12 @@ export class SystemContext {
     return this.design.ofEntity("System")[0];
   }
 
+  /** The System's root Component, if it has one. */
+  get root(): string | undefined {
+    const system = this.system;
+    return system === undefined ? undefined : this.design.navigate(system, "root")[0];
+  }
+
   attach(attachment: Attachment): this {
     this.attached.push(attachment);
     return this;
@@ -46,11 +52,16 @@ export class SystemContext {
   }
 }
 
-/** `new() → SystemContext`: an empty, well-formed System. */
+/** `new() → SystemContext`: an empty, well-formed System: a System and its root Component, of one name. */
 export function newSystem(name = "Untitled", id = "system"): SystemContext {
   const design = systemGraph();
   design.add("System", id);
   setName(design, id, name);
+  const root = `${id}.root`;
+  design.add("Component", root);
+  setName(design, root, name);
+  design.connect(id, "components", root);
+  design.connect(id, "root", root);
   return new SystemContext(design);
 }
 
