@@ -515,6 +515,39 @@ What the implementation must satisfy that the model does not express:
 - **Editing never refuses.** Every Edit applies, however ill-formed its result; its
   Diagnostics appear with it.
 
+## Editing the redesigned model
+
+Agreed for the redesign of the foundation (Components, imports, Deployments, Mediations,
+Configurations); the rest of this document still describes the previous model.
+
+- **The order of design.** The UI follows it: core Languages, extensions, Components,
+  then Deployments and Configurations — at every level of nesting, the same way.
+- **Requirements** are not modelled. At most, they are a page of the documentation.
+- **Wiring adds imports.** Connecting an Instance to an Interaction its Component does not
+  import offers, in a small popup, to add the import ("Client imports Server.attack").
+- **Wiring adds Languages.** Connecting to an Interaction over a Language the caller does
+  not use offers to add the use. Both need confirming: the Connection may be a mistake.
+- **The connection inspector** shows a Connection's What, and its stack of Mediations,
+  each choosing a Medium, to any depth (usually one).
+- **A missing realization**, where the profile asks for one, is an error in the
+  inspector, with a button that creates a
+  Component in the current parent holding `down` and `up`, and imports both into the
+  caller and the callee. A separate Component keeps the user's own clean, and separates
+  the concern.
+- **A broken Mediation** stays in the stack, shown in red, until it is fixed or removed.
+- **A Medium** is defined by choosing its Language first; its call is then chosen from
+  its Component's Interactions over that Language, or created with a button.
+- **A Connection without Mediations** is shown as unstated — an implementation detail —
+  not as an error, unless the profile asks for more.
+- **This System's own profile** adds `mediation_primitives`, with In-process among the
+  primitives.
+
+Still to design:
+
+- Working with arbitrary nesting without losing the user.
+- A layered view: choose one Mediation level to cut a System at; everything above it is
+  Components talking, everything below it is how they talk.
+
 ## Open questions
 
 - The client and platform Languages need defining in `systemathic.lib`.

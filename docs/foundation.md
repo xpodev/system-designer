@@ -5,29 +5,51 @@ primitives are, how they relate, and what a well-formed model must satisfy. It i
 independent of any implementation — types, storage, UI and encodings are all just one
 way of realizing it.
 
-The model exists so that a design's **cross-domain coherence** can be checked:
+The model exists so that a design's **coherence** can be checked:
 
-1. **Self-containment.** Each Domain is self-contained in its context, including what
-   it references.
-2. **Direction.** Everything that crosses Domains does so explicitly, and in the
-   appropriate direction.
+1. **Self-containment.** Each Component is self-contained: it sees only the vocabulary
+   its scope gives it, and only the Interactions it imports, never the inside of another
+   Component.
+2. **Explicit crossings.** Everything that crosses a level of abstraction does so through
+   an explicit Transformation; everything that crosses between Components does so through
+   an explicit import, connected in a Deployment, and mediated as far as the design says.
 
 It is not a programming language, and it does not prove that anything is internally
-consistent or correctly implemented. It does not model how things are wired together:
-it is about decoupling, and mechanisms of coupling, such as dependency injection, are
-out of its scope.
+consistent or correctly implemented. It shows boundaries and dependencies: which
+Components exist, what they speak, what they depend on, and how they reach each other. It
+never says how an operation is carried out or used — that is code — nor how
+implementations are constructed and wired together, such as dependency injection.
 
 Systemathic is three parts, kept separate, each built only on the ones before it:
 
 | Part | Responsibility | Realized as |
 |------|----------------|-------------|
 | **Core** | The kernel — the only axioms — and the Systemathic Languages written in it: the vocabulary every System is made of. | `systemathic.core` |
-| **Standard concepts** | Terms defined on top of the core: purity, actions, projections, abstractness, stacks, standard rules, … | `systemathic.std` |
+| **Standard concepts** | Terms defined on top of the core: core Languages, contracts, actions, abstractness, stacks, standard rules, … | `systemathic.std` |
 | **Scripts** | Everything that checks anything: **verifying** a design against a chosen profile of rules, and **validating** an implementation against a verified design. Not a feature of the tool itself. | Python scripts |
 
 Separately from the tool, a **library** (`systemathic.lib`) provides ordinary Languages
-for common vocabularies: numbers, text, optional, … It is content, not part of the
-tool.
+and Mediations for common vocabularies and protocols: numbers, text, bytes, HTTP, TCP, …
+It is content, not part of the tool.
+
+## How a System is designed
+
+The model follows the order in which a system is thought through:
+
+1. **Core Languages** define the concepts: closed vocabularies with no dependencies, each
+   at one level of abstraction. Moving between levels is a Transformation.
+2. **Extensions** give them depth and refine them: Languages that build on others and add
+   vocabulary.
+3. **Components** give them implementation: each speaks some of those Languages, offers
+   Interactions, imports those it depends on, and is built, recursively, the same
+   way — its own core Languages, extensions and Components, private to it.
+4. **Deployments** say how a Component may be put together — it may have several
+   options: which of its children exist side by side, which of them each one's imports
+   reach, and over which Mediations. **Configurations** choose a Deployment for each
+   place in the System, putting the whole of it together.
+
+What the system is for — the client's requirements — is not modelled. It is what the
+design as a whole realizes.
 
 ## Levels
 
@@ -37,8 +59,8 @@ of the one above it.
 | Level | Contains | Example |
 |-------|----------|---------|
 | **Kernel** | Language, Entity, Relationship, and the logic | the axioms; they describe themselves |
-| **Systemathic Languages** | Entities `System`, `Domain`, `Entity`, `Interaction`, … and the Relationships between them, in layers | an Interaction has Parameters, each of some Entity |
-| **Model** | Instances of the Systemathic Languages: a user's design | `Attack` is an Interaction; its Parameters are of Entities `Attacker` and `Targetable` |
+| **Systemathic Languages** | Entities `System`, `Component`, `Language`, `Entity`, `Interaction`, … and the Relationships between them, in layers | an Interaction has Parameters, each of some Entity |
+| **Model** | Instances of the Systemathic Languages: a user's design | `attack` is an Interaction of the Server Component; its Parameters are of Entities `Attacker` and `Targetable` |
 
 A model never needs "entity types": `Attacker` *is* an instance of the Entity named
 `Entity`, one level up. Keeping the levels apart is what keeps self-description
@@ -55,18 +77,48 @@ The kernel is the only thing not defined in terms of anything else.
 
 ### Language
 
-A **Language** is a closed vocabulary at one level of abstraction: a set of Entities and
-the Relationships between them. `Level(x)` denotes the Language `x` belongs to.
+A **Language** is a closed vocabulary at one level of abstraction: a set of Entities, the
+Relationships between them, and axioms over them. `Level(x)` denotes the Language `x`
+belongs to.
 
-**Closure.** Nothing in a Language references anything outside it: both ends of every
-Relationship are Entities of the same Language. The only structure that touches two
-Languages is a Transformation (see *The Systemathic Languages*).
+A Language may **extend** other Languages. It then builds on their vocabulary without
+changing it: its **vocabulary** is its own Entities and Relationships together with those
+of every Language it extends, transitively:
+
+```
+vocab(L) = (L.*extends).entities ∪ (L.*extends).relationships
+```
+
+An extension stays at the level of what it extends: it refines the same concepts.
+
+**Closure.** Nothing in a Language references anything outside its vocabulary: both ends
+of every Relationship, the bases of every Entity, and every symbol of every axiom belong
+to `vocab(L)`. Extension never changes the extended Language: what an extension adds is
+seen only where the extension is in use. The only structure that relates two Languages
+other than by extension is a Transformation (see *The Systemathic Languages*).
 
 ### Entity
 
 An **Entity** is a kind of thing, belonging to exactly one Language. It has no intrinsic
-attributes: everything that defines it is expressed through its Relationships. There is
-no inheritance. Two instances are equal iff they are the same instance.
+attributes: everything that defines it is expressed through its Relationships. Two
+instances are equal iff they are the same instance.
+
+An Entity may have **bases**: Entities of the Languages its Language extends, written
+`E : B₁, …, Bₙ`. A Language that extends nothing has no bases to offer: its Entities are
+all new identities.
+
+- An Entity without bases is a **new identity**: each of its instances is a thing of its
+  own.
+- An Entity with bases is a **projection**: it keeps the identity of its bases. Every
+  instance of `E` *is* an instance of each `Bᵢ`, so it can be used wherever a `Bᵢ` is
+  expected, and it navigates every end its bases do. This is the one implicit direction,
+  from the concrete to the abstract.
+
+A base is a contract, not a container: an Entity may have any number of them, from any
+of the Languages it extends. The other direction is never implicit. Getting the
+projection from a base — the `CombatMonster` of a `Monster` — is an explicit design: a
+Transformation from the base's Language into the extension's, which has to be built. A
+design that needs the projection simply uses the projection.
 
 ### Relationship
 
@@ -89,6 +141,11 @@ From an instance, navigating by an end's name gives the linked instances at that
 `o.lines`, `l.order`. The same reading applies when both ends are the same Entity, and
 the names give the direction: `Parameter <——> Parameter` with ends `prev` and `next`.
 
+A Relationship is a **mapping**, not a field: given an Order, there are its lines. How
+they are obtained — stored, computed, looked up — is the implementation's concern. This is
+what lets an extension add Relationships to Entities it does not own: "a Monster now also
+has the Player it is chasing" says only that, from a Monster, its target can be reached.
+
 A name is read from the other side: `Order.lines` is the navigation from an Order, through
 the end named `lines`, which is at OrderLine. Leaving that end unnamed makes the
 Relationship one-way: every OrderLine still reaches its `order`, but no Order reaches its
@@ -97,8 +154,9 @@ lines.
 - A range is **well-formed** iff `max = N` or `min ≤ max`.
 - Any number of Relationships may join the same pair of Entities; they are told apart
   by their end names.
-- **End names are unique per Entity:** from any Entity, the named ends reachable across
-  its Relationships have distinct names, so navigation is never ambiguous.
+- **End names are unique per Entity:** in every Language, from any Entity, the named ends
+  reachable across the Relationships of its vocabulary — its own and its bases' — have
+  distinct names, so navigation is never ambiguous.
 
 ### The logic
 
@@ -122,9 +180,9 @@ single Language's vocabulary:
 | `∃ x.e` | `some x.e` | `x.e` is not empty                          |
 | `∄ x.e` | `no x.e`   | `x.e` is empty                              |
 
-Variables range over the instances of an Entity (`∀m ∈ Monster. …`). `=` is identity,
-always. A formula is **well-formed** in `L` iff every Entity and end it mentions belongs
-to `L`.
+Variables range over the instances of an Entity (`∀m ∈ Monster. …`), which include the
+instances of every projection of it. `=` is identity, always. A formula is
+**well-formed** in `L` iff every Entity and end it mentions belongs to `vocab(L)`.
 
 Formulas are evaluated on finite models — which is always possible, and always
 terminates. Whether a formula holds for every possible model is never the tool's
@@ -140,53 +198,137 @@ so no Language holds more than one concern.
 | Language | Adds | Extends |
 |---|---|---|
 | **Kernel** | Language, Entity, Relationship, End, Name, Bound, Formula | — |
-| **Contexts** | System, Domain, Transformation, Reverse, Entity and Relationship mappings, Mediation | Kernel |
-| **Operations** | Interaction, Parameter, Interaction mappings | Kernel, Contexts |
+| **Contexts** | System, Component, Transformation, Entity and Relationship mappings | Kernel |
+| **Operations** | Interaction, Parameter, imports | Kernel, Contexts |
+| **Deployment** | Deployment, Instance, Connection | Contexts, Operations |
+| **Mediation** | Medium, Mediation | Contexts, Operations, Deployment |
+| **Configuration** | Configuration, Choice | Contexts, Deployment |
 
-A layer reaches the Entities below it by **inclusion**: the identity projection of a
-chosen subset of a lower Language's Entities, together with every Relationship among
-them. Contexts includes Kernel's `Language`, `Entity`, `Relationship`, `End` and `Name`,
-so a Domain can reference Languages without Kernel knowing Domains exist. Operations is
-optional: a Language with no operations is complete without it.
+Every layer but Kernel and Contexts is optional: a Component with no Interactions is
+complete without them, and so is a Component with no Deployment, or a Connection with no
+Mediation. A layer adds its Relationships to the Entities below it without changing them:
+a Component does not know how it is deployed, nor a Connection how it is mediated.
 
 Their full definitions, as data, are in [`schema/`](../schema/README.md).
 
 ```
-System ─┬─ languages ──▶ Language ─┬─ entities ──────▶ Entity
-        │                          ├─ relationships ─▶ Relationship ── ends ──▶ End ── entity ──▶ Entity
-        │                          ├─ interactions ──▶ Interaction ─┬─ parameters ─▶ Parameter ── type ──▶ Entity
-        │                          │                                └─ output ─────▶ Entity
-        │                          └─ formulas ──────▶ Formula
-        ├─ domains ────▶ Domain ───┬─ languages ─────▶ Language
-        │                          ├─ references ────▶ Domain
-        │                          └─ transformations ▶ Transformation ─┬─ source, target ──▶ Language
-        │                                                              ├─ mappings ────────▶ Mapping
-        │                                                              └─ reverse ─────────▶ Reverse
-        └─ mediations ─▶ Mediation ── what, how, mediator ──▶ Domain
+System ── root ──▶ Component ─┬─ languages ─────▶ Language ─┬─ extends ───────▶ Language
+                              │                             ├─ entities ──────▶ Entity ── bases ──▶ Entity
+                              │                             ├─ relationships ─▶ Relationship ── ends ──▶ End ── entity ──▶ Entity
+                              │                             └─ formulas ──────▶ Formula
+                              ├─ uses ──────────▶ Language
+                              ├─ components ────▶ Component
+                              ├─ transformations ▶ Transformation ─┬─ source, target ─▶ Language
+                              │                                    ├─ mappings ───────▶ Mapping
+                              │                                    └─ context ────────▶ Entity
+                              ├─ interactions ──▶ Interaction ─┬─ language ───▶ Language
+                              │                                ├─ parameters ─▶ Parameter ── type ──▶ Entity
+                              │                                └─ output ─────▶ Entity
+                              ├─ imports ───────▶ Interaction, Transformation, Medium, Component
+                              ├─ mediums ───────▶ Medium ─┬─ language ─▶ Language
+                              │                           └─ call ─────▶ Interaction
+                              └─ deployments ───▶ Deployment ─┬─ instances ───▶ Instance ── of ──▶ Component
+                                                              └─ connections ─▶ Connection ─┬─ from ─────────▶ Instance
+                                                                                            ├─ to ───────────▶ Instance, or the Component
+                                                                                            ├─ interactions ─▶ Interaction          the What
+                                                                                            └─ mediations ───▶ Mediation ─┬─ how ──▶ Medium
+                                                                                                                          ├─ down ─▶ Transformation
+                                                                                                                          └─ up ───▶ Transformation
+System ── configurations ──▶ Configuration ── root ──▶ Choice ─┬─ deployment ─▶ Deployment
+                                                               └─ choices ────▶ Choice ── instance ──▶ Instance
 ```
 
 The Kernel Language contains its own `Language`, `Entity`, `Relationship` and `End`:
-this is the kernel describing itself. Names (of end, Entity, Language, Domain, …) are instances of its own
-`Name` Entity, and range bounds of its own `Bound` Entity; how they are spelled or
-encoded is a mediation, like any other representation.
+this is the kernel describing itself. Names (of end, Entity, Language, Component, …) are
+instances of its own `Name` Entity, and range bounds of its own `Bound` Entity; how they
+are spelled or encoded is a mediation, like any other representation.
+
+The running example is a small multiplayer game:
+
+```
+System Game
+└─ Game                                     the root Component
+   ├─ Core        core                      Monster, Player; hunts, pack
+   ├─ Fighting    core                      Targetable, Attacker, Damage
+   ├─ Combat      extends Core, Fighting    CombatMonster : Monster, Targetable, Attacker;
+   │                                        CombatPlayer : Player, Attacker
+   ├─ Network     core                      Message, EntityId
+   ├─ Transport   core                      Packet, Bytes
+   │
+   ├─ imports     the Mediums Network (NetStack.send(Message): Message)
+   │              and Wire (Link.transmit(Packet): Packet), from the library
+   │
+   ├─ CombatOverNetwork    uses Combat, Network       down Combat → Network, up Network → Combat
+   ├─ NetworkOverWire      uses Network, Transport    down Network → Transport, up Transport → Network
+   │
+   ├─ Physics     uses Core                 step(Monster): Monster, over Core
+   ├─ Server      uses Combat               attack(Attacker, Targetable): Damage, over Combat;
+   │                                        imports Physics, and runs its own
+   ├─ Client      uses Combat               imports Server.attack; imports Physics, and runs its own
+   │  └─ Input    uses Combat               imports Server.attack, through Client
+   │
+   ├─ Deployment Online   server, client₁, client₂
+   │                      client₁, client₂ ──attack──▶ server   over Network, then Wire
+   └─ Deployment Local    server, client
+                          client ──attack──▶ server             over In-process
+```
 
 ### System *(Contexts)*
 
-A **System** is the whole of what is being modelled: its Languages, its Domains and its
-Mediations. It is the only standalone unit — the thing that is opened and saved.
-Nothing references anything outside its System.
+A **System** is the whole of what is being modelled. It is the only standalone unit — the
+thing that is opened and saved — and nothing references anything outside its System.
 
-The System is not a Domain. It has no mediators; it is the ultimate goal that its
-Domains together describe.
+A System holds exactly one **root** Component, and is otherwise only what describes it as
+a whole. Everything the design says is inside the root: the System's own core Languages,
+extensions and Components are the root's.
+
+### Component *(Contexts)*
+
+A **Component** is a unit of the design that gives Languages an implementation. It owns:
+
+- **Languages**: its core Languages and extensions;
+- **Components**: its children, each an implementation detail of it;
+- **Transformations** between Languages it uses;
+- **Interactions**: its API (*Operations*).
+
+How a Component is put together is not part of it: that is its Deployments
+(*Deployment*).
+
+It **uses** some Languages: the vocabulary it works in. Using a Language includes its
+vocabulary, extensions and all.
+
+**Scope.** A Component sees the Languages of its own and of every Component it is nested
+in, and nothing else:
+
+```
+scope(C) = (C.*parent).languages
+```
+
+Interactions and Transformations follow the same rule, plus imports (see *Import*).
+
+A Component never sees inside another — neither its children's insides nor its siblings'.
+Two siblings have something in common only if their parent gives it to both: a Language
+in scope for both of them.
+
+Nesting is a tree of Languages. Inside a Component, the Languages in its scope are what
+its own extensions build on, exactly as a System's extensions build on its core
+Languages; and a child is built, recursively, the same way as the System. The root is not
+special: it is the Component every other is nested in.
 
 ### Interaction *(Operations)*
 
-An **Interaction** is an operation in one Language: an ordered list of **Parameters**,
-each of some Entity, and an **output** Entity, all in that Language. It is a signature
-only: the model records what an operation takes and gives, never what it does. Saying
-what it does would be a pre/postcondition, which is out of scope. Interactions are
-**always pure**: they happen at one level of abstraction. Anything that crosses levels
-is a Transformation.
+An **Interaction** is an operation a Component offers, over one **Language** it uses: an
+ordered list of **Parameters**, each of some Entity, and an **output** Entity, all of that
+Language's vocabulary. It is a signature only: the model records what an operation takes
+and gives, never what it does or how it is used. Saying what it does would be a
+pre/postcondition, and using it is code; both are out of scope.
+
+A Component's Interactions are its **API**, in the literal sense: the public interface
+through which it is used. Everything else about a Component stays inside it.
+
+Interactions are **always pure**: they happen at one level of abstraction, in one
+Language. Anything that crosses levels — between two Languages — is a Transformation.
+Nothing relates more than that.
 
 Order is expressed without an "ordered" primitive, by linking the Parameters:
 
@@ -198,10 +340,51 @@ Parameter   <——> Entity       ends: typedParameters 0..N, type 1..1
 Interaction <——> Entity       ends: producers 0..N,    output 1..1
 ```
 
-`Attack(Attacker, Targetable)` is an Interaction whose `first` Parameter has type
-`Attacker` and whose `next` has type `Targetable`. Realizations use their natural form:
-the Python library exposes `attack.parameters` as a plain list. That is a mediation
+`attack(Attacker, Targetable)` is an Interaction whose `first` Parameter has type
+`Attacker` and whose `next` has type `Targetable`. Since a `CombatMonster` is an
+`Attacker`, it can be passed as one. Realizations use their natural form: the Python
+library exposes `attack.parameters` as a plain list. That is a mediation
 `Operations / Python`, and its round trip holds.
+
+### Import *(Operations)*
+
+A Component has direct access to its own Interactions and Transformations, and to those
+of every Component it is nested in: a plug-in uses what the Component it plugs into
+offers, as code uses its SDK.
+
+Anything else, a Component **imports**: Interactions, Transformations, Mediums (see
+*Mediation*), and Components. Interactions and Transformations stay apart — an
+Interaction is at one level of abstraction, a Transformation is between two, and nothing
+treats them as one kind of thing, so levels never mix. Imports are what show
+a design's dependencies: not who calls what, which is code, but which Component needs
+what another offers. They also give every dependency its direction, from what imports to
+what offers.
+
+A Component may import from its **iscope**: what its siblings offer, and whatever each
+Component it is nested in imports. For Interactions:
+
+```
+iscope(C) = siblings(C).interactions ∪ (C.^parent).imports
+access(C) = C.interactions ∪ C.imports ∪ (C.^parent).interactions
+```
+
+and the same for Transformations.
+
+An imported Interaction must be over a Language the importer uses; an imported
+Transformation need not be, so a Component can use a realization (see *Mediation*)
+without speaking the Language it reaches.
+
+What a Component imports, its children may import in turn, and so on down: `Client`
+imports `Server.attack`, so `Client`'s own `Input` may import it too. Without that
+import, `Server.attack` is inaccessible to `Input`. This is how a design names the actual
+users of an Interaction, not only a link between two top-level Components.
+
+**Importing a Component** gives access to everything it offers — its Interactions,
+Transformations and Mediums — and lets the importer place Instances of it in its own
+Deployments (see *Deployment*). It never opens the imported Component's inside. This is
+how one Component is shared without being one shared thing: `Server` and `Client` both
+import `Physics`, and each runs a `physics` of its own. A library Component, brought into
+a System from outside, is imported the same way, and its Mediums with it.
 
 ### Axioms *(Kernel)*
 
@@ -210,8 +393,11 @@ that ranges alone cannot — facts about how instances are linked:
 
 ```
 ∀o ∈ Order, l ∈ o.lines.  l.product ∈ o.catalog.products     every line's product is in its order's catalog
-∀p ∈ Parameter.           p ∉ p.^next                        a parameter chain has no cycles
+∀m ∈ Monster.             m ∉ m.^leader                      leadership has no cycles
 ```
+
+An extension may state axioms over everything in its vocabulary, including what it
+extends; they hold wherever the extension is in use.
 
 Formulas navigate Relationships and compare identities; they do not apply Interactions.
 What an Interaction computes is not part of the model.
@@ -219,28 +405,13 @@ What an Interaction computes is not part of the model.
 Axioms are **assumed** to hold for every instance. The tool checks only that they are
 well-formed; holding them true is the implementer's obligation. Axioms describe what is
 always true, not sequences of changes. Where a lifecycle matters to the design, it is
-modelled as vocabulary: an `OrderLifecycle` Language with `Placed` and `Cancelled`,
-projected from the core.
+modelled as vocabulary: an `OrderLifecycle` extension with `Placed` and `Cancelled`.
 
-### Domain *(Contexts)*
+### Transformation *(Contexts)*
 
-A **Domain** is a bounded context — a "what". It references Languages and other
-Domains, and holds Transformations.
-
-Referencing a Domain brings in everything that Domain brings in. The **effective
-Languages** of `D` are its own plus, transitively, those of every Domain it references:
-
-```
-langs*(D) = (D.*references).languages
-```
-
-References are not ownership: two Domains referencing the same Language or Domain is
-expected. A Language needs no Domain to be valid.
-
-### Transformation *(Contexts; Interaction mappings in Operations)*
-
-A **Transformation** `τ: L_src → L_tgt`, held by Domain `D`, with
-`L_src, L_tgt ∈ langs*(D)`. It shows how the things of one Language appear in another.
+A **Transformation** `τ: L_src → L_tgt`, held by Component `C`, with
+`L_src, L_tgt ∈ C.uses`. It shows how the things of one Language appear in another. It is
+one-way; going back is another Transformation.
 
 A Transformation is a set of **mappings**. A mapping does not define how the
 representation is computed; it states **what the representation needs** in order to
@@ -249,36 +420,32 @@ work:
 - **Entity** `e ∈ L_src ↦` the Entities of `L_tgt` it is represented with (one to many).
 - **Relationship** `r ∈ L_src ↦` the Relationships of `L_tgt` it is represented with,
   joining Entities in the images of `r`'s ends.
-- **Interaction** `i ∈ L_src ↦` the Interactions of `L_tgt` it is carried out with.
 
 Mapping an Entity without mapping what defines it is meaningless: `Person.name : Name`
 maps to `class Person { name: String }` only together with a mapping of `Name` to
 `String`, which is lower-level than `Name`.
 
 **Definition before use.** A mapping may reference only mapped things: a Relationship
-mapping requires the Entities at both ends mapped; an Interaction mapping requires the
-types of its Parameters and its output mapped. Otherwise a Transformation need not map
-everything.
+mapping requires the Entities at both ends mapped. Otherwise a Transformation need not
+map everything.
 
-#### Reverse
+A Transformation may declare its **context**: the Entities of its target whose instances
+must be kept for it to work (see *Round trip*).
 
-Semantically, `τ` is a correspondence between instances of `L_src` and `L_tgt`,
-maintained by `D`. A Transformation may have a **partial** reverse
+#### Round trip
 
-```
-ρ: Tgt ⇀ Src
-```
-
-which must satisfy the **round-trip law** — being able to reconstruct the original is
-the point of thinking at the higher level at all:
+Semantically, a Transformation is a correspondence between instances of its Languages.
+Two Transformations `down: L → H` and `up: H → L` form a **round trip** when `up` gives
+back what `down` was given — being able to reconstruct the original is the point of
+thinking at the higher level at all:
 
 ```
-∀x ∈ Src. ρ(τ(x)) ≈ x
+∀x ∈ L. up(down(x)) ≈ x
 ```
 
-`≈` is **observational equivalence** in `L_src`: two instances are equivalent iff
-nothing the Language can express tells them apart. Formally, `≈` is the largest
-relation such that `x ≈ y` implies:
+`≈` is **observational equivalence** in `L`: two instances are equivalent iff nothing the
+Language can express tells them apart. Formally, `≈` is the largest relation such that
+`x ≈ y` implies:
 
 - `x` and `y` are instances of the same Entity;
 - for every end reachable from their Entity, each instance `x` reaches through it has
@@ -286,36 +453,132 @@ relation such that `x ≈ y` implies:
 
 Identity implies equivalence. The law thus says: the representation must preserve
 everything the higher Language can observe. The lower representation need not hold all
-of it on its own; the Domain may hold **context** that completes it:
+of it on its own; `up` may keep **context** that completes it:
 
-- **By value** (serialization): the correspondence is computed; `Tgt` encodes
-  everything. Decoding creates a new instance, so identity does not survive the round
-  trip, but equivalence does.
-- **By reference** (an ID sent to a client, resolved by a server-side lookup): the
-  correspondence is stored by `D` as context. Identity survives.
+- **By value** (serialization): `H` encodes everything, and `up` needs no context.
+  Decoding creates a new instance, so identity does not survive the round trip, but
+  equivalence does.
+- **By reference** (an ID sent to a client, resolved by a server-side lookup): `up` keeps
+  the correspondence as context — here `CombatMonster`: the server keeps its Monsters, so
+  an ID can be resolved. Identity survives.
 
-Like a mapping, a reverse states only what it needs. It reads the mappings backwards,
-and declares its **context**: the Entities whose instances the holding Domain must keep
-for reconstruction to work. A by-value reverse needs no context. The by-reference
-reverse above needs `Monster`: the server keeps its Monsters, so an ID can be resolved.
+`up` is partial: a crafted packet, corrupted bytes or an unknown ID has no preimage, and
+neither does a well-formed encoding of something that violates `L`'s axioms. Such a
+failure is a property of the Transformation. It is not an Entity of either Language: no
+`Optional⟨Monster⟩` is introduced into the higher Language. Handling it is part of the
+"how".
 
-`ρ` is partial: a crafted packet, corrupted bytes or an unknown ID has no preimage, and
-neither does a well-formed encoding of something that violates `L_src`'s axioms. Such a
-failure is a property of the Transformation, and so of the Domain that holds it. It is
-not an Entity of either Language: no `Optional⟨Monster⟩` is introduced into the higher
-Language. Handling it is part of the "how".
+A round trip stands on its own, too: a compiler lowers a program into its executable
+form, and a source map leads back to the same program. A Transformation that is not part
+of a round trip is one-way: a lowering that never needs to come back, or a projection from
+a base into an extension (see *Contracts and projections*).
 
-### Mediation *(Contexts)*
+### Deployment *(Deployment)*
 
-A **Mediation** `D₁ /ₘ D₂` reads "D₁ over D₂": the "what" of `D₁` carried out by the
-"how" of `D₂`, as in IP over Avian Carriers. It relates three Domains — `what = D₁`,
-`how = D₂`, `mediator = m` — and is **witnessed** by `m` holding a Transformation
-`τ: L₁ → L₂` with a reverse, where `L₁ ∈ langs*(D₁)` and `L₂ ∈ langs*(D₂)`.
+A **Deployment** of a Component is one way to put it together: which of its children
+exist side by side, which of them each one's imports reach, and over what. A Component may
+have any number of Deployments — options, such as `Online` and `Local` for the game — or
+none, if how it is put together is left open. A Deployment places only its Component's
+own children and what it imports, because anything deeper is an implementation detail of
+one of them; and it
+never refers to another Deployment, so each is a choice local to its Component.
 
-A Mediation is declared, not inferred, because it records intent: which "what" is
-carried out over which "how". `D₁ / D₂` can be written only if a mediator exists. It
-need not be unique — `Game / Network` can send a Monster by ID or by value — and when it
-is, `D₁ / D₂` names it.
+- An **Instance** is one occurrence of a child Component, or of a Component the deployed
+  Component imports. It is **named**, uniquely within its Deployment, since a Deployment may
+  hold several Instances of the same Component. A Component may have any number of Instances: `client₁` and
+  `client₂` are both of `Client`. An imported Component's Instance belongs to the
+  Deployment that places it: two parts that each place one have one each.
+- A **Connection** goes from an Instance to what provides some of the Interactions its
+  Component has access to: another Instance, whose Component offers them, or the deployed
+  Component itself, which offers or imports them. Those Interactions are the
+  Connection's **What**; they are all over one Language. Its direction is always the
+  same: from what uses the What to what offers it.
+
+An Interaction may be reached by any number of Connections (a central service with many
+users), and an Instance may reach the same Interaction on several Instances (a load
+balancer, connected to each runner). There is no two-way Connection: `a → b` and `b → a`
+are two Connections, each its own dependency.
+
+### Mediation *(Mediation)*
+
+Every Connection is mediated: even an in-process use passes its Entities over something,
+such as a pointer. A Connection may say what over, with Mediations; it need not. A
+Connection with no Mediation is not in-process, nor anything else: how it passes is an
+**implementation detail, not part of the design**, and the System is content with that.
+The same holds at every level of a stack. Whether a design must say more is a rule of its
+profile (see *Standard rules*). Two Connections between the same two Instances may be
+mediated differently — two parts of one process may talk both directly and through an
+internal HTTP server.
+
+A **Medium** is something a What can be passed over: HTTP, gRPC, JSON, a pipe, the
+process itself. It is defined apart from any Connection, by the Component that defines
+the medium itself — `HTTP` defines the HTTP Medium — and names
+
+- its **Language** `H`: what passes over it;
+- its **call**: an Interaction of its Component over `H`, through which a use of the What
+  travels, and to which further Mediations can be applied, such as
+  `send(Request): Response`.
+
+Mediums are imported, like Interactions and Transformations, and by the same rule: a
+Component has access to its own Mediums and those of every Component it is nested in, and
+imports the rest from its `iscope`. To mediate a Connection over a Medium, the deployed
+Component must have access to it: for `A₁` and `A₂` to talk over HTTP, `A` imports the
+HTTP Medium.
+
+A **Mediation** of a Connection has
+
+1. a **What**: the Interactions it mediates, and so their Language `L`;
+2. a **How**: a Medium the deployed Component has access to;
+3. optionally, a **realization**: Transformations `down: L → H` and `up: H → L`, forming a
+   round trip.
+
+A Mediation mediates Interactions, and so the Entities they are made of. Saying which
+Medium a What passes over is already part of the design; realizing it says more: `down`
+and `up` say how each use of the What goes into the Medium and comes back out, its
+Parameters on the way in and its output on the way back. A design may realize a
+Mediation or not, and need not map every Interaction of its What. The model requires
+nothing more; a verification script may (see *Standard rules*). A realization that is given must be
+right: both ends of the Connection take part, so it must be accessible to both — owned,
+imported, or offered by a Component they are nested in. Neither end needs to use `H`:
+typically the realization is a Component of its own, beside them, which both import.
+
+**Stacks.** Mediations stack, as far as the design cares to fix the how. The first one's
+What is the Connection's; each further one's What is the call of the Medium below:
+
+```
+client₁ ──attack──▶ server
+   1. What attack        How Network (call send)       realized by CombatOverNetwork
+   2. What send          How Wire (call transmit)      realized by NetworkOverWire
+   Combat → Network → Transport → Network → Combat
+```
+
+A stack ends wherever the design stops saying more; below its last Mediation, the call
+is an implementation detail. Which Mediations a Connection has belongs to the Deployment,
+so the same Instances, connected the same way, may be mediated differently in two
+Deployments.
+
+A Mediation whose Medium no longer exists is **broken**: it keeps its place in the
+stack, and the System is ill-formed until it is given a Medium again or removed. Deleting
+a Medium never silently turns a mediated Connection into an unmediated one.
+
+### Configuration *(Configuration)*
+
+A Deployment is local: it says how one Component is put together, not how each of its
+children is. A **Configuration** puts the whole System together, by choosing a Deployment
+for the root and then, recursively, for each Instance in the chosen Deployment:
+
+```
+Configuration "Release"
+  Game      ↦ Online
+    server  ↦ Server.Sharded
+    client₁ ↦ Client.Desktop
+    client₂ ↦ Client.Mobile
+```
+
+Choices are made per Instance, along its path from the root, spelled with the Instances'
+names (`server`, `server/physics`), so the same Component may be put together differently
+in different places. A Configuration may leave a choice
+open; a System may have any number of Configurations.
 
 ## Well-formedness
 
@@ -325,12 +588,19 @@ belongs to the layer whose vocabulary it is about.
 
 | #  | Condition | Layer |
 |----|-----------|-------|
-| W1 | **Closure.** Both ends of every Relationship, every symbol of every formula of `L`, and the types of every Interaction's Parameters and its output, belong to `L`. | Kernel; Operations for Interactions |
+| W1 | **Closure.** Both ends of every Relationship and every symbol of every formula of `L` belong to `vocab(L)`; the bases of every Entity of `L` belong to the Languages `L` extends, `L.^extends`. | Kernel |
 | W2 | **Ranges.** Every range is well-formed. | Kernel |
-| W3 | **End names.** From every Entity, the named ends reachable across its Relationships have distinct names. | Kernel |
-| W4 | **Transformation scope.** For `τ: L_src → L_tgt` held by `D`: `L_src, L_tgt ∈ langs*(D)`. | Contexts |
-| W5 | **Definition before use.** Every mapping references only mapped things. | Contexts; Operations for Interaction mappings |
-| W6 | **Witness.** Every Mediation is witnessed by its mediator. | Contexts |
+| W3 | **End names.** In every Language, from every Entity, the named ends reachable across its vocabulary have distinct names. | Kernel |
+| W4 | **No cycles.** No Language extends itself, and no Entity is its own base, eventually. | Kernel |
+| W5 | **Scope.** Every Language a Component uses, and every Language a Language defined in it extends, is in its scope. | Contexts |
+| W6 | **Transformation scope.** For `τ: L_src → L_tgt` held by `C`: `L_src, L_tgt ∈ C.uses`, and its context is of `L_tgt`. | Contexts |
+| W7 | **Definition before use.** Every mapping references only mapped things. | Contexts |
+| W8 | **Purity.** Every Interaction is over a Language its Component uses, and its Parameters and output belong to that Language's vocabulary. | Operations |
+| W9 | **Imports.** Every Interaction, Transformation, Medium and Component a Component imports is in its `iscope`; every imported Interaction is over a Language it uses. | Operations; Mediation for Mediums |
+| W10 | **Placement.** Every Instance of a Deployment is of a child of the deployed Component, or of a Component it imports, and no two Instances of a Deployment share a name; every Connection goes from an Instance of the same Deployment, for Interactions over one Language that its Component has access to, to an Instance of the same Deployment whose Component offers them, or to the deployed Component, which offers or imports them. | Deployment |
+| W11 | **Mediums.** Every Medium's call is an Interaction of the Component that defines the Medium, over the Medium's Language. | Mediation |
+| W12 | **Mediations.** Every Mediation has a Medium the deployed Component has access to. A realization, if given, is `down: L → H` and `up: H → L`, where `L` is the What's Language and `H` the Medium's, both accessible to the Components at both ends. A Connection's first Mediation mediates its What; each further one, the call of the Medium below it. | Mediation |
+| W13 | **Choices.** A Configuration chooses, for the root and for each Instance under a choice, only Deployments of that Instance's Component; each choice below the root is for an Instance of the Deployment chosen above it. | Configuration |
 
 ## Obligations
 
@@ -340,23 +610,35 @@ specifications for an implementer (human or LLM) to satisfy.
 
 | #  | Obligation |
 |----|------------|
-| O1 | **Validity.** Every instance satisfies its Language's ranges and axioms. |
-| O2 | **Round trip.** Every reverse satisfies the round-trip law. |
+| O1 | **Validity.** Every instance satisfies its Language's ranges and axioms, and those of every extension in use. |
+| O2 | **Round trip.** Every Mediation's realization satisfies the round-trip law. |
 | O3 | **Preservation.** Every Transformation preserves the axioms of `L_src`: each, translated through it, holds in `L_tgt`. |
+| O4 | **Identity.** An instance of a projection is the same instance as each of its bases. |
 
 ## Deletion
 
-Ownership lives with the Language, so deletion is asymmetric.
+Ownership lives with the owner — a Language owns its vocabulary, a Component everything
+nested in it — so deletion cascades down ownership and removes whatever is left
+referencing what was deleted.
 
-- **Deleting a Language** cascades: its Entities, Relationships, Interactions and
-  Axioms; every mapping, in any Transformation, that names any of them; every
-  Transformation from or to it, and every Mediation that Transformation witnessed; and
-  every reference to it from a Domain.
-- **Deleting a Domain** removes its Transformations, every Mediation naming it in any
-  role, and every reference to it from another Domain. It is not purely local: a Domain
-  that referenced it loses the Languages it inherited, so every Transformation that
-  falls out of scope as a result is removed too, and then every Mediation left with no
-  witness. No Language or Entity is deleted.
+- **Deleting a Language** removes its Entities, Relationships and axioms; every base,
+  Relationship, axiom, Parameter or output, in any Language or Interaction, that names any
+  of them; every mapping that names any of them; every Transformation from or to it; every
+  Interaction over it; every `extends` and `uses` of it.
+- **Deleting an Interaction** removes every import of it, and removes it from every
+  Connection's What; a Connection left with no What is removed. A Medium whose call it
+  was is left without one, and ill-formed until it is given another.
+- **Deleting a Transformation** removes every import of it, and the realization it was
+  part of from every Mediation; the Mediation stays, unrealized.
+- **Deleting a Medium** removes every import of it, and leaves every Mediation over it
+  broken.
+- **Deleting a Component** removes everything it owns, recursively; its Deployments;
+  every Medium of it; every import of it or of anything it offers; every Instance of it,
+  and every Connection from or to those Instances.
+- **Deleting a Deployment** removes its Instances and Connections, and every choice of it
+  in a Configuration, with the choices beneath.
+- **Deleting an Instance** removes every Connection from or to it, and every choice for it
+  in a Configuration, with the choices beneath.
 
 ---
 
@@ -365,29 +647,63 @@ Ownership lives with the Language, so deletion is asymmetric.
 Everything in this part is defined in terms of the core. None of it is needed for the
 core to mean anything.
 
-## How the core is extended
+## Core Languages and extensions
 
-A Language is extended without changing it: define a separate **extension Language**
-holding only the new part, and a Domain referencing both, with a Transformation from
-the extended Language into the extension. Consumers choose to use the original, the
-extension, or both. Identity stays in the original; functionality lives in the
-extension.
+- **Core Language:** a Language that extends nothing in its own Component — it extends
+  nothing at all, or only Languages from the Components it is nested in. A child's core
+  Languages build on its parent's vocabulary, as the System's build on nothing.
+- **Extension:** a Language that extends another of its own Component.
 
-An **inclusion** is the simplest such Transformation: the identity projection of a chosen
-subset of the extended Language's Entities, with every Relationship among them. The
-extension then speaks of those Entities as its own, and adds to them.
+A core Language is ideally minimal: identities and their vital Relationships. Depth is
+added by extensions, each holding one refinement, so consumers choose what they use: the
+core, an extension, or several. Identity stays in the core; functionality lives in the
+extensions.
 
 The Systemathic Languages are layered this way (see *The Systemathic Languages*), and
-the standard concepts are one more layer on top: **Std**, which includes Kernel,
+the standard concepts are one more layer on top: **Std**, which extends Kernel,
 Contexts and Operations and adds an `Action`'s primary Parameter, a comparison
 designated for an Entity, and deferred mappings.
 `from systemathic.core import *` and `from systemathic.std import *` together are a
-consumer that chose both.
+consumer that uses both.
 
-## Domains
+## Contracts and projections
 
-- **Standalone:** a Domain that references no other Domain.
-- **Pure:** `|langs*(D)| = 1`, a Domain defined entirely in terms of one Language.
+The same identity looks different in different contexts. A Monster, in the context of
+combat, is `Targetable` and an `Attacker`; on the network, it is a `SyncedEntity`. These
+are not lower-level representations but **contextual views**, and an extension states
+them as a projection, over contracts it extends:
+
+```
+Fighting:                                        core: the contracts
+  Targetable, Attacker, Damage
+Combat extends Core, Fighting:
+  CombatMonster : Monster, Targetable, Attacker  a Monster, seen in combat
+  CombatPlayer  : Player, Attacker
+```
+
+The extension knows the core; the core knows no extension. A Monster is not, by itself, a
+`CombatMonster`: a Component that needs one uses `CombatMonster`. Where a design needs to
+get from one to the other, that is a **projection**: a Transformation `Core → Combat`
+mapping `Monster ↦ CombatMonster`, one-way, because a view needs no way back — it *is*
+that identity, seen in context. Like every Transformation, it is designed and built
+explicitly.
+
+## Composition
+
+Composite Entities are built from Relationships and bases.
+
+- **Attribute / product** (has-a): an Entity with `1..1` ends to each of its parts. "A
+  Person has a Name" is a Relationship, not a field.
+- **Sum** (one-of, closed): `S = V₁ | … | Vₖ` is a Relationship from `S` to each `Vᵢ`
+  with an end `vᵢ` of range `0..1`, plus the axiom that every `S` has exactly one:
+
+  ```
+  ∀s ∈ S. ⋁ᵢ ( some s.vᵢ  ∧  ⋀_{j≠i} no s.vⱼ )
+  ```
+
+  A `Shape` holds a `Circle`. Use it when the Language owning `S` knows every variant.
+- **Contract** (is-a, open): `Circle : Shape`. Use it when extensions add variants the
+  Language owning `Shape` does not know.
 
 ## Interactions
 
@@ -399,104 +715,63 @@ consumer that chose both.
   axiom: ∀i ∈ Interaction. i.primary ⊆ i.parameters
   ```
 
-- **Deferred:** an item a mediation deliberately leaves unmapped. Unlike an ordinary
+- **Deferred:** an item a Mediation deliberately leaves unmapped. Unlike an ordinary
   gap, it is intentional; like one, it is present in exported specifications.
 - **Comparison:** an Interaction designated as a Language's own notion of sameness for
   an Entity, coarser than observational equivalence.
 
+## Components
+
+- **Leaf:** a Component with no children.
+- **Self-contained:** a Component that uses only Languages it owns.
+- **Pure:** a Component that imports nothing — it depends only on Languages.
+- **Standalone:** a Component with an Instance in a Deployment of its parent.
+- **Shared:** a Component that siblings import, to run Instances of their own. A
+  Component may be both, or neither.
+
+A Component's dependencies are its imports, and its children's that reach outside it.
+The **dependency graph** of a Component's children has an edge from each to every
+sibling it imports from. Two Components importing from each other are two dependencies,
+not one two-way link; whether that is allowed is a rule (`imports_acyclic`).
+
 ## Abstractness
 
-- **Abstract Language:** a Language that is never the "how" side of a Mediation — for
-  every Mediation witnessed by `τ: L₁ → L₂`, `L ≠ L₂`. An abstract Language may be used
-  by any number of Domains; what it cannot be is replaceable.
-- **Abstract Domain:** a Domain all of whose Languages, `langs*(D)`, are abstract.
+- **Abstract Language:** a Language that is never the "how" of a Mediation — never the
+  target of a Mediation's `down`. An abstract Language may be used by any number of
+  Components; what it cannot be is replaceable.
+- **Abstract Interaction:** an Interaction over an abstract Language.
 
 Abstractness separates a System's stable contract — the vocabularies nothing can swap
 out — from its implementation vocabularies. It is a property of how a Language is used
-in a System, not of the Language itself: `Unity` is not abstract in `Game / Unity`,
-even though it is the "what" of `Unity / Windows`.
+in a System, not of the Language itself: `Network` is not abstract in the game, where
+`attack` is mediated over it, even though it is the "what" of the Mediation over `Wire`.
 
-## Composition
+## Stacks
 
-Composite Entities are built from Relationships.
+- **Stacks:** a Medium's call is itself a What, so Mediations stack: `attack` over
+  `Network`, whose `send` is over `Wire`. Where a stack stops is a choice of how tightly
+  the model constrains the real system. Realizations compose down a stack, and each
+  `up`'s failures stay with the Mediation where they arise. The seven layers of a network
+  stack are one such stack, written out.
+- **The mediation graph:** Languages and Mediations form a directed graph from what to
+  how. It is a DAG, not a tree: a Language may be mediated over several Languages, and
+  several over a shared one.
+- **Opacity:** for a mediated Connection, ideally neither end's Component uses any
+  Language below its What's: what uses and what offers do not know how they are
+  connected. They import the realization; only the Deployment, and the realization,
+  know the how.
+- **Two swaps**, both leaving the ends untouched: change the how (`Network` → a
+  `WebSocket` Medium, with a realization of its own), or change the realization (by-ID →
+  by-value over `Network`, different Transformations between the same Languages).
 
-- **Attribute / product** (has-a): an Entity with `1..1` ends to each of its parts. "A
-  Person has a Name" is a Relationship, not a field.
-- **Sum** (one-of): `S = V₁ | … | Vₖ` is a Relationship from `S` to each `Vᵢ` with an
-  end `vᵢ` of range `0..1`, plus the axiom that every `S` has exactly one:
-
-  ```
-  ∀s ∈ S. ⋁ᵢ ( some s.vᵢ  ∧  ⋀_{j≠i} no s.vⱼ )
-  ```
-
-  A `Circle` is not a `Shape`; a `Shape` holds a `Circle`.
-
-## Projection and mediation
-
-A Transformation's **kind** follows from whether it has a reverse:
-
-- A **projection** has none. It is one-way and sideways: a contextual view of an
-  identity, from core to context.
-- A **mediation** has one. It is two-way and downward: how a "what" is carried out by a
-  "how". Only mediations can witness Mediations.
-
-### Projection
-
-The same identity looks different in different contexts. A Monster, in the context of
-networking, is a `SyncedEntity`; in the context of combat, it is `Targetable` and an
-`Attacker`. These are not lower-level representations but **contextual views**.
-
-The purest **core** Domain defines only identities and their vital relationships. It is
-extended by projections, exactly as in *How the core is extended*:
-
-```
-Combat:  π(Monster) = { Targetable, Attacker }
-Network: π(Monster) = { SyncedEntity }
-```
-
-The context knows the core; the core knows no context. A view needs no reverse, because
-it *is* that identity, seen in context. A projection could formally be read as a
-Mediation (the context "carrying out" the core), but that invites the wrong intuition
-that the context is how the core is implemented.
-
-### Mediation structure
-
-- **Top Domains:** the Domains that are neither the "how" nor the mediator of any
-  Mediation — mediators are implementation too. They are the "how" of the System itself. Ideally they alone would describe the System fully; in
-  practice higher-level intents must be carried out by lower-level realities.
-- **Stacks:** every Domain is a "what", including one serving as a "how", so Mediations
-  stack: `Game / Unity / Windows`. Where the stack stops is a choice of how tightly the
-  model constrains the real system. Transformations compose down a stack, and each
-  reverse's failures stay in the mediator where they arise.
-- **The mediation graph:** Domains and Mediations form a directed graph from what to
-  how. It is a DAG, not a tree: a Domain may be carried out over several Domains, and
-  several over a shared one (`Unity / Windows`, `Network / Windows`).
-- **Opacity:** in `D₁ /ₘ D₂` via `τ: L₁ → L₂`, ideally `L₂ ∉ langs*(D₁)` and
-  `L₁ ∉ langs*(D₂)`: the what does not know how it is carried out, and the how does not
-  know what it is carrying. Only the mediator knows both.
-- **Two swaps**, both leaving `D₁` untouched: change the how (`Game / Unity →
-  Game / Godot`, necessarily a new mediator), or change the mapping (by-ID → by-value
-  over `Network`, the mediator only).
-
-In a full System both kinds combine. The core is projected sideways into contexts, and
-each context is mediated downward on its own:
-
-```
-            Core
-          π ↙    ↘ π
-     Combat        Network
-        /              /
-      Unity         Transport
-```
-
-A Monster then has several views (`Targetable`, `SyncedEntity`) and several
-representations (a Unity GameObject, a network ID), all of the same identity.
+The same Connection reads at any depth. Cut a stack at one Mediation, and everything
+above it is the Components talking, everything below it is how they talk.
 
 ## Generic Languages
 
 A **Generic Language** `G⟨P₁ … Pₙ⟩` is a template parameterized by Entities.
 Instantiating it with Entities `X₁ … Xₙ`, all of one Language, expands into ordinary
-Entities, Relationships, Interactions and axioms **in that Language**:
+Entities, Relationships and axioms **in that Language**:
 
 ```
 Level(G⟨X₁ … Xₙ⟩) = Level(X₁) = … = Level(Xₙ)
@@ -507,7 +782,7 @@ lifts through a generic: `τ` induces `G⟨τ⟩: G⟨X⟩ → G⟨τ(X)⟩`.
 
 `Optional`, `Result` and similar are generic. A Language instantiates one only for
 failure or absence meaningful at its own level (a player may have no target). Failures
-of how a level is carried out belong to the mediator.
+of how a level is carried out belong to the Mediation.
 
 ---
 
@@ -515,19 +790,22 @@ of how a level is carried out belong to the mediator.
 
 `systemathic.lib` holds ordinary Languages for common vocabularies and protocols —
 bytes, JSON, HTTP, TCP, IP, Ethernet, REST, WebSocket, SQL, … — and generics (optional,
-result, …). They have no special status.
+result, …), together with the Components that define them and the common **Mediums**:
+HTTP, gRPC, JSON, XML, and so on. They have no special status.
 
-The library also holds **mediations** between its Languages, such as HTTP over TCP. A
+One Medium is in the library because nearly every design needs it: **In-process**, the
+process itself — a use passed within one process, over a reference. It is a Medium like
+any other, with no special standing anywhere.
+
+The library also holds realizations between its own Languages, such as HTTP over TCP. A
 Language never depends on another — HTTP does not depend on TCP, and HTTP/3 runs over
-QUIC — so "HTTP over TCP" is not part of HTTP; it is a Mediation of its own. The library
-provides it with everything it needs: a Domain for each side, the mediator and its
-Transformation, and the Mediation itself. A design stacks on top of it: `Api / HTTP`
-above the imported `HTTP / TCP` gives `Api / HTTP / TCP`, and moving to HTTP/3 replaces
-only the lower mediation.
+QUIC — so "HTTP over TCP" is not part of HTTP; it is a realization of its own. A design
+stacks on top of it: a Connection mediated over the HTTP Medium, whose call is `send`, can
+have `send` mediated over TCP, and moving to HTTP/3 replaces only that lower Mediation.
 
 A System is closed, so library content is used by being part of the System: nothing in
-a System references anything outside it. How content is brought from the library, or
-from one System into another, is the tool's concern, not the foundation's.
+a System references anything outside it. How content is brought from the library, or from
+one System into another, is the tool's concern, not the foundation's.
 
 A Language reaches a library Language only through Transformations, because library
 Languages are lower-level *representations*: `Money` is not a number; a number is one
@@ -554,28 +832,28 @@ starts from the core and standard concepts:
 from systemathic.core import *
 from systemathic.std import *
 
-GAME_CORE = "Game Core"
+GAME_CORE = "Core"
 
 @rule(severity=ERROR)
-def core_is_pure(system: System):
-    core = system.domain(GAME_CORE)
-    if not pure(core) or langs(core) != {system.language(GAME_CORE)}:
-        yield Violation(core, "Game Core must be defined purely in its own terms")
+def core_is_core(system: System):
+    core = system.language(GAME_CORE)
+    if not is_core(core):
+        yield Violation(core, "Core must build on nothing")
 
 @rule(severity=ERROR)
 def core_is_abstract(system: System):
-    core = system.domain(GAME_CORE)
+    core = system.language(GAME_CORE)
     if not abstract(core):
-        yield Violation(core, "Game Core must never be an implementation detail")
+        yield Violation(core, "Core must never be an implementation detail")
 
-profile = Profile(core_is_pure, core_is_abstract, opacity, mediation_acyclic)
+profile = Profile(core_is_core, core_is_abstract, opacity, mediation_acyclic)
 ```
 
 - A **rule** yields violations, each naming the offending element, rather than failing
   on the first assertion.
 - A **profile** is the set of rules a System is checked against. Each rule has a
   severity: error or warning.
-- Lookups by name (`system.domain("…")`) raise if the name is missing or ambiguous; the
+- Lookups by name (`system.language("…")`) raise if the name is missing or ambiguous; the
   foundation does not require names to be unique.
 - Constructing the `System` object from a saved file is a deserializer — itself a
   mediation, `Systemathic / JSON`.
@@ -594,15 +872,28 @@ System's design rules reach an implementer as precisely as the System itself.
 
 | Rule | Checks | Default severity |
 |------|--------|------------------|
-| `opacity` | Every Mediation is opaque (see *Mediation structure*). | Error |
-| `mediation_acyclic` | No Domain is carried out, eventually, over itself. | Error |
+| `opacity` | Every mediated Connection is opaque (see *Stacks*). | Error |
+| `mediation_acyclic` | No Language is mediated, eventually, over itself. | Error |
 | `projection_acyclic` | No Language is projected, eventually, into itself. | Error |
-| `domain_refs_acyclic` | No Domain references itself, eventually. | Error |
 | `generic_level` | All arguments of a generic instantiation belong to one Language. | Error |
-| `pure_domain_transformation` | A pure Domain holds no Transformation. | Warning |
-| `wide_mediator` | A mediator references at most two Languages. | Warning |
-| `top_domains_abstract` | Every top Domain is abstract. | Error |
-| `completeness` | Every item of a mediation's `L_src` is mapped or deferred. | Warning |
+| `imports_acyclic` | No Component depends, eventually, on itself through its siblings' imports — no two Components import from each other. | Warning |
+| `deployments_complete` | In every Deployment, every import of every Instance is reached by a Connection. | Error |
+| `interactions_abstract` | Every imported Interaction is abstract: no Component is reached through an implementation vocabulary. | Warning |
+| `completeness` | Every item of a Mediation's What Language is mapped by its `down`, or deferred. | Warning |
+
+**How much mediation a design states** is never required by the tool: a Connection
+without Mediations is always well-formed. These rules are offered for a script that wants
+more. Each takes its arguments explicitly, with no defaults; a script that does not care
+about mediation includes none of them.
+
+| Rule | Checks |
+|------|--------|
+| `mediation_primitives(*mediums)` | Every Connection is mediated down to a **primitive**: its last Mediation is over one of the given Mediums, the ones the script accepts as trivial. |
+| `mediation_depth(n)` | Every Connection has at least `n` levels of Mediation. |
+| `mediations_realized(*mediums)` | Every Mediation over one of the given Mediums is realized. |
+
+A script might, for instance, accept HTTP, JSON and In-process as primitives, or ask for a
+depth of 1.
 
 ---
 
@@ -612,8 +903,10 @@ System's design rules reach an implementer as precisely as the System itself.
   together, or that an implementation satisfies them.
 - **Behaviour over time.** There are no pre/postconditions, states or transitions.
   Axioms say what is always true; lifecycles that matter are modelled as vocabulary.
-- **Wiring.** How mediators and implementations are constructed and connected
-  (dependency injection, containers, lifetimes) is coupling mechanics, not design.
-- **Deployment.** Machines, networks and reachability are not special. They are
-  Entities of a deployment Language, carried like any other — typically the bottom of a
-  stack (`Game / Unity / Windows`).
+- **Wiring mechanics.** A Deployment says which Instances exist, which one's imports reach
+  which, and over what. How they are constructed and connected (dependency injection, containers,
+  lifetimes) is coupling mechanics, not design.
+- **Infrastructure.** Machines, networks and reachability are not special. A machine
+  boundary is a Mediation a Connection is carried over; where an Instance physically runs,
+  when it matters, is vocabulary of a deployment Language, carried like any other.
+- **Requirements.** What the System is for is not modelled; the design realizes it.
