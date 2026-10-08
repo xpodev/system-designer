@@ -15,10 +15,10 @@ describe("deletion", () => {
     const system = load();
     const removed = remove(system.design, "lib.network");
     expect(removed).toEqual(
-      expect.arrayContaining(["lib.network", "lib.network.message", "lib.netstack.send", "game.combat-over-network.down", "game.network-over-wire.up"]),
+      expect.arrayContaining(["lib.network", "lib.network.message", "pkg.netstack.send", "game.combat-over-network.down", "game.network-over-wire.up"]),
     );
-    expect(system.design.navigate("lib.netstack", "uses")).toEqual([]);
-    expect(system.design.has("lib.netstack.network")).toBe(true);
+    expect(system.design.navigate("pkg.netstack", "uses")).toEqual([]);
+    expect(system.design.has("pkg.netstack.medium")).toBe(true);
   });
 
   it("deleting a Transformation leaves the Mediations it realized, unrealized", () => {
@@ -26,12 +26,12 @@ describe("deletion", () => {
     remove(system.design, "game.combat-over-network.down");
     const [first] = mediationStack(system.design, "game.online.client-1-attacks");
     expect(system.design.navigate(first!, "down")).toEqual([]);
-    expect(system.design.navigate(first!, "how")).toEqual(["lib.netstack.network"]);
+    expect(system.design.navigate(first!, "how")).toEqual(["pkg.netstack.medium"]);
   });
 
   it("deleting a Medium leaves the Mediations over it broken, in their place", () => {
     const system = load();
-    remove(system.design, "lib.link.wire");
+    remove(system.design, "pkg.link.medium");
     expect(mediationStack(system.design, "game.online.client-1-attacks")).toHaveLength(2);
     expect(system.design.navigate("game.online.client-1-attacks#m1", "how")).toEqual([]);
   });
@@ -65,7 +65,7 @@ describe("deletion", () => {
   });
 
   it("is undone exactly by inverting what it recorded", () => {
-    for (const root of ["core", "lib.network", "game.server", "game.online.client-2", "game.server.attack", "lib.link.wire", "core.monster", "game.online"]) {
+    for (const root of ["core", "lib.network", "game.server", "game.online.client-2", "game.server.attack", "pkg.link.medium", "core.monster", "game.online"]) {
       const system = load();
       const delta = system.design.record((graph) => remove(graph, root));
       system.design.apply(invert(delta));

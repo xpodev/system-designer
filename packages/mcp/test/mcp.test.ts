@@ -70,10 +70,11 @@ describe("MCP server", () => {
     const { client, call } = await connected();
     const { value } = await call("new_system", { name: "Api" });
     expect((await call("search_catalog", { tag: "web" })).value.map((p: { id: string }) => p.id)).toContain("http");
-    expect((await call("import_package", { context: value.id, package: "http" })).value.edits).toHaveLength(2);
+    expect((await call("import_package", { context: value.id, package: "http" })).value.edits).toHaveLength(1);
     const { resources } = await client.listResources();
-    expect(resources.map((r) => r.uri)).toContain(`systemathic://${value.id}/views/domain-map`);
-    const read = await client.readResource({ uri: `systemathic://${value.id}/views/domain-map` });
-    expect(JSON.parse((read.contents[0] as { text: string }).text).items.map((i: { label: string }) => i.label)).toEqual(["HTTP", "HTTP"]);
+    expect(resources.map((r) => r.uri)).toContain(`systemathic://${value.id}/views/outline`);
+    expect(resources.map((r) => r.uri)).not.toContain(`systemathic://${value.id}/views/component`);
+    const read = await client.readResource({ uri: `systemathic://${value.id}/views/outline` });
+    expect(JSON.parse((read.contents[0] as { text: string }).text).items.map((i: { label: string }) => i.label)).toContain("HTTP");
   });
 });

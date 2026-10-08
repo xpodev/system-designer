@@ -70,8 +70,8 @@ export class HostClient implements HostApi {
   system = (context: string) => this.call<SystemFile>("GET", `${this.c(context)}/system`);
   history = (context: string) => this.call<EditInfo[]>("GET", `${this.c(context)}/history`);
   diagnostics = (context: string) => this.call<Diagnostic[]>("GET", `${this.c(context)}/diagnostics`);
-  view = (context: string, perspective: string, language?: string) =>
-    this.call<View>("GET", `${this.c(context)}/views/${enc(perspective)}${language === undefined ? "" : `?language=${enc(language)}`}`);
+  view = (context: string, perspective: string, subject?: string) =>
+    this.call<View>("GET", `${this.c(context)}/views/${enc(perspective)}${subject === undefined ? "" : `?subject=${enc(subject)}`}`);
   verify = (context: string, script?: string, profile?: string) => this.call<RunInfo>("POST", `${this.c(context)}/verify`, { script, profile });
   specification = (context: string) => this.call<{ specification: Specification; markdown: string }>("GET", `${this.c(context)}/specification`);
   documentation = (context: string) => this.call<{ documentation: Documentation; markdown: string }>("GET", `${this.c(context)}/documentation`);

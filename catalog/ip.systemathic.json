@@ -1,116 +1,139 @@
 {
-  "format": "systemathic/1",
+  "format": "systemathic/2",
   "design": {
     "id": "lib.ip.system",
     "name": "IP",
-    "languages": [
+    "root": "pkg.ip",
+    "components": [
       {
-        "id": "lib.ip",
+        "id": "pkg.ip",
         "name": "IP",
-        "entities": [
+        "uses": [
+          "lib.ip"
+        ],
+        "imports": {
+          "components": [],
+          "transformations": [],
+          "interactions": [],
+          "mediums": []
+        },
+        "languages": [
           {
-            "id": "lib.ip.packet",
-            "name": "Packet"
-          },
-          {
-            "id": "lib.ip.address",
-            "name": "Address"
-          },
-          {
-            "id": "lib.ip.protocol",
-            "name": "Protocol"
-          },
-          {
-            "id": "lib.ip.payload",
-            "name": "Payload"
+            "id": "lib.ip",
+            "name": "IP",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.ip.packet",
+                "name": "Packet",
+                "extends": []
+              },
+              {
+                "id": "lib.ip.address",
+                "name": "Address",
+                "extends": []
+              },
+              {
+                "id": "lib.ip.protocol",
+                "name": "Protocol",
+                "extends": []
+              },
+              {
+                "id": "lib.ip.payload",
+                "name": "Payload",
+                "extends": []
+              }
+            ],
+            "relationships": [
+              {
+                "id": "lib.ip.sent-source",
+                "ends": [
+                  {
+                    "id": "lib.ip.sent-source.sent",
+                    "name": "sent",
+                    "entity": "lib.ip.packet",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.ip.sent-source.source",
+                    "name": "source",
+                    "entity": "lib.ip.address",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.ip.received-destination",
+                "ends": [
+                  {
+                    "id": "lib.ip.received-destination.received",
+                    "name": "received",
+                    "entity": "lib.ip.packet",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.ip.received-destination.destination",
+                    "name": "destination",
+                    "entity": "lib.ip.address",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.ip.packets-protocol",
+                "ends": [
+                  {
+                    "id": "lib.ip.packets-protocol.packets",
+                    "name": "packets",
+                    "entity": "lib.ip.packet",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.ip.packets-protocol.protocol",
+                    "name": "protocol",
+                    "entity": "lib.ip.protocol",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.ip.packet-payload",
+                "ends": [
+                  {
+                    "id": "lib.ip.packet-payload.packet",
+                    "name": "packet",
+                    "entity": "lib.ip.packet",
+                    "min": 1,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.ip.packet-payload.payload",
+                    "name": "payload",
+                    "entity": "lib.ip.payload",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              }
+            ],
+            "formulas": []
           }
         ],
-        "relationships": [
-          {
-            "id": "lib.ip.sent-source",
-            "ends": [
-              {
-                "id": "lib.ip.sent-source.sent",
-                "name": "sent",
-                "entity": "lib.ip.packet",
-                "min": 0,
-                "max": "N"
-              },
-              {
-                "id": "lib.ip.sent-source.source",
-                "name": "source",
-                "entity": "lib.ip.address",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.ip.received-destination",
-            "ends": [
-              {
-                "id": "lib.ip.received-destination.received",
-                "name": "received",
-                "entity": "lib.ip.packet",
-                "min": 0,
-                "max": "N"
-              },
-              {
-                "id": "lib.ip.received-destination.destination",
-                "name": "destination",
-                "entity": "lib.ip.address",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.ip.packets-protocol",
-            "ends": [
-              {
-                "id": "lib.ip.packets-protocol.packets",
-                "name": "packets",
-                "entity": "lib.ip.packet",
-                "min": 0,
-                "max": "N"
-              },
-              {
-                "id": "lib.ip.packets-protocol.protocol",
-                "name": "protocol",
-                "entity": "lib.ip.protocol",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.ip.packet-payload",
-            "ends": [
-              {
-                "id": "lib.ip.packet-payload.packet",
-                "name": "packet",
-                "entity": "lib.ip.packet",
-                "min": 1,
-                "max": 1
-              },
-              {
-                "id": "lib.ip.packet-payload.payload",
-                "name": "payload",
-                "entity": "lib.ip.payload",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          }
-        ],
-        "formulas": [],
+        "transformations": [],
         "interactions": [
           {
-            "id": "lib.ip.route",
+            "id": "pkg.ip.route",
             "name": "route",
+            "language": "lib.ip",
             "parameters": [
               {
-                "id": "lib.ip.route.packet",
+                "id": "pkg.ip.route.packet",
                 "name": "packet",
                 "type": "lib.ip.packet"
               }
@@ -119,21 +142,20 @@
             "primary": null,
             "compares": []
           }
-        ]
-      }
-    ],
-    "domains": [
-      {
-        "id": "lib.ip.domain",
-        "name": "IP",
-        "languages": [
-          "lib.ip"
         ],
-        "references": [],
-        "transformations": []
+        "mediums": [
+          {
+            "id": "pkg.ip.medium",
+            "name": "IP",
+            "language": "lib.ip",
+            "call": "pkg.ip.route"
+          }
+        ],
+        "deployments": [],
+        "components": []
       }
     ],
-    "mediations": []
+    "configurations": []
   },
   "attachments": [
     {

@@ -207,13 +207,15 @@ export class Host implements HostApi {
     return diagnose(hosted.target.context, hosted.run?.run);
   }
 
-  async view(context: string, perspective: string, language?: string): Promise<View> {
-    if (!perspectives.some((p) => p.perspective === perspective)) throw new HostError(404, `no perspective '${perspective}'`);
+  async view(context: string, perspective: string, subject?: string): Promise<View> {
+    const info = perspectives.find((p) => p.perspective === perspective);
+    if (info === undefined) throw new HostError(404, `no perspective '${perspective}'`);
     const hosted = this.get(context);
-    if (perspective === "language" && (language === undefined || !hosted.target.graph.has(language))) {
-      throw new HostError(400, "the Language perspective needs the id of a Language");
+    const graph = hosted.target.graph;
+    if (info.needs !== undefined && (subject === undefined || !graph.has(subject) || graph.get(subject).entity !== info.needs)) {
+      throw new HostError(400, `the ${info.title} perspective needs the id of a ${info.needs}`);
     }
-    const options = { diagnostics: diagnose(hosted.target.context, hosted.run?.run), ...(language === undefined ? {} : { language }) };
+    const options = { diagnostics: diagnose(hosted.target.context, hosted.run?.run), ...(subject === undefined ? {} : { subject }) };
     return view(hosted.target.context, perspective as Perspective, options);
   }
 
@@ -387,12 +389,12 @@ from systemathic.std import *
 
 
 @rule(severity=ERROR)
-def every_domain_uses_a_language(system: System):
-    """Every Domain uses at least one Language of its own."""
-    for domain in system.domains:
-        if not domain.languages:
-            yield Violation(domain, f"{domain.name} uses no Language of its own")
+def every_component_uses_a_language(system: System):
+    """Every Component uses at least one Language."""
+    for component in system.all("Component"):
+        if not component.uses:
+            yield Violation(component, f"{component.name} uses no Language")
 
 
-profile = Profile(*standard_rules, every_domain_uses_a_language)
+profile = Profile(*standard_rules, every_component_uses_a_language)
 `;

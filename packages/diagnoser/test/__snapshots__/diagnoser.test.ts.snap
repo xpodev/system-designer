@@ -34,21 +34,21 @@ exports[`diagnoser > diagnoses broken/range.systemathic.json 1`] = `
       "check": "range",
       "message": "Medium 'Network' has 0 'call', expected 1..1",
       "subjects": [
-        "lib.netstack.network",
+        "pkg.netstack.medium",
       ],
     },
     {
       "check": "W11",
       "message": "A Medium's call is an Interaction of the Component that defines it",
       "subjects": [
-        "lib.netstack.network",
+        "pkg.netstack.medium",
       ],
     },
     {
       "check": "W11",
       "message": "A Medium's call is over the Medium's Language",
       "subjects": [
-        "lib.netstack.network",
+        "pkg.netstack.medium",
       ],
     },
   ],
@@ -298,14 +298,14 @@ exports[`diagnoser > diagnoses broken/w11.systemathic.json 1`] = `
       "check": "W11",
       "message": "A Medium's call is an Interaction of the Component that defines it",
       "subjects": [
-        "lib.netstack.network",
+        "pkg.netstack.medium",
       ],
     },
     {
       "check": "W11",
       "message": "A Medium's call is over the Medium's Language",
       "subjects": [
-        "lib.netstack.network",
+        "pkg.netstack.medium",
       ],
     },
   ],

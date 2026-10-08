@@ -1,116 +1,139 @@
 {
-  "format": "systemathic/1",
+  "format": "systemathic/2",
   "design": {
     "id": "lib.ethernet.system",
     "name": "Ethernet",
-    "languages": [
+    "root": "pkg.ethernet",
+    "components": [
       {
-        "id": "lib.ethernet",
+        "id": "pkg.ethernet",
         "name": "Ethernet",
-        "entities": [
+        "uses": [
+          "lib.ethernet"
+        ],
+        "imports": {
+          "components": [],
+          "transformations": [],
+          "interactions": [],
+          "mediums": []
+        },
+        "languages": [
           {
-            "id": "lib.ethernet.frame",
-            "name": "Frame"
-          },
-          {
-            "id": "lib.ethernet.macaddress",
-            "name": "MacAddress"
-          },
-          {
-            "id": "lib.ethernet.ethertype",
-            "name": "EtherType"
-          },
-          {
-            "id": "lib.ethernet.payload",
-            "name": "Payload"
+            "id": "lib.ethernet",
+            "name": "Ethernet",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.ethernet.frame",
+                "name": "Frame",
+                "extends": []
+              },
+              {
+                "id": "lib.ethernet.macaddress",
+                "name": "MacAddress",
+                "extends": []
+              },
+              {
+                "id": "lib.ethernet.ethertype",
+                "name": "EtherType",
+                "extends": []
+              },
+              {
+                "id": "lib.ethernet.payload",
+                "name": "Payload",
+                "extends": []
+              }
+            ],
+            "relationships": [
+              {
+                "id": "lib.ethernet.sent-source",
+                "ends": [
+                  {
+                    "id": "lib.ethernet.sent-source.sent",
+                    "name": "sent",
+                    "entity": "lib.ethernet.frame",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.ethernet.sent-source.source",
+                    "name": "source",
+                    "entity": "lib.ethernet.macaddress",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.ethernet.received-destination",
+                "ends": [
+                  {
+                    "id": "lib.ethernet.received-destination.received",
+                    "name": "received",
+                    "entity": "lib.ethernet.frame",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.ethernet.received-destination.destination",
+                    "name": "destination",
+                    "entity": "lib.ethernet.macaddress",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.ethernet.frames-type",
+                "ends": [
+                  {
+                    "id": "lib.ethernet.frames-type.frames",
+                    "name": "frames",
+                    "entity": "lib.ethernet.frame",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.ethernet.frames-type.type",
+                    "name": "type",
+                    "entity": "lib.ethernet.ethertype",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.ethernet.frame-payload",
+                "ends": [
+                  {
+                    "id": "lib.ethernet.frame-payload.frame",
+                    "name": "frame",
+                    "entity": "lib.ethernet.frame",
+                    "min": 1,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.ethernet.frame-payload.payload",
+                    "name": "payload",
+                    "entity": "lib.ethernet.payload",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              }
+            ],
+            "formulas": []
           }
         ],
-        "relationships": [
-          {
-            "id": "lib.ethernet.sent-source",
-            "ends": [
-              {
-                "id": "lib.ethernet.sent-source.sent",
-                "name": "sent",
-                "entity": "lib.ethernet.frame",
-                "min": 0,
-                "max": "N"
-              },
-              {
-                "id": "lib.ethernet.sent-source.source",
-                "name": "source",
-                "entity": "lib.ethernet.macaddress",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.ethernet.received-destination",
-            "ends": [
-              {
-                "id": "lib.ethernet.received-destination.received",
-                "name": "received",
-                "entity": "lib.ethernet.frame",
-                "min": 0,
-                "max": "N"
-              },
-              {
-                "id": "lib.ethernet.received-destination.destination",
-                "name": "destination",
-                "entity": "lib.ethernet.macaddress",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.ethernet.frames-type",
-            "ends": [
-              {
-                "id": "lib.ethernet.frames-type.frames",
-                "name": "frames",
-                "entity": "lib.ethernet.frame",
-                "min": 0,
-                "max": "N"
-              },
-              {
-                "id": "lib.ethernet.frames-type.type",
-                "name": "type",
-                "entity": "lib.ethernet.ethertype",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.ethernet.frame-payload",
-            "ends": [
-              {
-                "id": "lib.ethernet.frame-payload.frame",
-                "name": "frame",
-                "entity": "lib.ethernet.frame",
-                "min": 1,
-                "max": 1
-              },
-              {
-                "id": "lib.ethernet.frame-payload.payload",
-                "name": "payload",
-                "entity": "lib.ethernet.payload",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          }
-        ],
-        "formulas": [],
+        "transformations": [],
         "interactions": [
           {
-            "id": "lib.ethernet.transmit",
+            "id": "pkg.ethernet.transmit",
             "name": "transmit",
+            "language": "lib.ethernet",
             "parameters": [
               {
-                "id": "lib.ethernet.transmit.frame",
+                "id": "pkg.ethernet.transmit.frame",
                 "name": "frame",
                 "type": "lib.ethernet.frame"
               }
@@ -119,21 +142,20 @@
             "primary": null,
             "compares": []
           }
-        ]
-      }
-    ],
-    "domains": [
-      {
-        "id": "lib.ethernet.domain",
-        "name": "Ethernet",
-        "languages": [
-          "lib.ethernet"
         ],
-        "references": [],
-        "transformations": []
+        "mediums": [
+          {
+            "id": "pkg.ethernet.medium",
+            "name": "Ethernet",
+            "language": "lib.ethernet",
+            "call": "pkg.ethernet.transmit"
+          }
+        ],
+        "deployments": [],
+        "components": []
       }
     ],
-    "mediations": []
+    "configurations": []
   },
   "attachments": [
     {

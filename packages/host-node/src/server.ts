@@ -28,7 +28,7 @@ function routes(host: HostApi): [method: string, pattern: string, handler: Handl
     ["GET", `${C}/system`, (p) => host.system(p.context!)],
     ["GET", `${C}/history`, (p) => host.history(p.context!)],
     ["GET", `${C}/diagnostics`, (p) => host.diagnostics(p.context!)],
-    ["GET", `${C}/views/:perspective`, (p, _, q) => host.view(p.context!, p.perspective!, q.get("language") ?? undefined)],
+    ["GET", `${C}/views/:perspective`, (p, _, q) => host.view(p.context!, p.perspective!, q.get("subject") ?? undefined)],
     ["POST", `${C}/verify`, (p, b) => host.verify(p.context!, b.script, b.profile)],
     ["GET", `${C}/specification`, (p) => host.specification(p.context!)],
     ["GET", `${C}/documentation`, (p) => host.documentation(p.context!)],

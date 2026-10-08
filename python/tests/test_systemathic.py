@@ -152,8 +152,8 @@ class Standard(unittest.TestCase):
 
     def test_interactions_abstract(self):
         file = copy.deepcopy(GAME)
-        find(file, "game.client")["imports"]["interactions"].append("lib.netstack.send")
-        find(file, "game.client")["imports"]["components"].append("lib.netstack")
+        find(file, "game.client")["imports"]["interactions"].append("pkg.netstack.send")
+        find(file, "game.client")["imports"]["components"].append("pkg.netstack")
         self.assertIn("Client imports send, over Network, which Mediations are over", found(file)["interactions_abstract"])
 
     def test_deferred_items_are_complete(self):

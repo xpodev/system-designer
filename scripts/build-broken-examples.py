@@ -46,7 +46,7 @@ def formula(f):
 
 
 def range_(f):
-    find(f, "lib.netstack.network")["call"] = "nothing"
+    find(f, "pkg.netstack.medium")["call"] = "nothing"
 
 
 def w1_relationship(f):
@@ -95,7 +95,7 @@ def w10(f):
 
 
 def w11(f):
-    find(f, "lib.netstack.network")["call"] = "lib.link.transmit"
+    find(f, "pkg.netstack.medium")["call"] = "pkg.link.transmit"
 
 
 def w12(f):

@@ -11,9 +11,9 @@
         "uses": [],
         "imports": {
           "components": [
-            "lib.netstack",
-            "lib.link",
-            "lib.in-process"
+            "pkg.netstack",
+            "pkg.link",
+            "pkg.in-process"
           ],
           "transformations": [],
           "interactions": [],
@@ -215,12 +215,12 @@
                 ],
                 "mediations": [
                   {
-                    "how": "lib.netstack.network",
+                    "how": "pkg.netstack.medium",
                     "down": "game.combat-over-network.down",
                     "up": "game.combat-over-network.up"
                   },
                   {
-                    "how": "lib.link.wire",
+                    "how": "pkg.link.medium",
                     "down": "game.network-over-wire.down",
                     "up": "game.network-over-wire.up"
                   }
@@ -236,12 +236,12 @@
                 ],
                 "mediations": [
                   {
-                    "how": "lib.netstack.network",
+                    "how": "pkg.netstack.medium",
                     "down": "game.combat-over-network.down",
                     "up": "game.combat-over-network.up"
                   },
                   {
-                    "how": "lib.link.wire",
+                    "how": "pkg.link.medium",
                     "down": "game.network-over-wire.down",
                     "up": "game.network-over-wire.up"
                   }
@@ -275,7 +275,7 @@
                 ],
                 "mediations": [
                   {
-                    "how": "lib.in-process.in-process",
+                    "how": "pkg.in-process.medium",
                     "down": null,
                     "up": null
                   }
@@ -329,7 +329,7 @@
             ],
             "imports": {
               "components": [
-                "lib.netstack"
+                "pkg.netstack"
               ],
               "transformations": [],
               "interactions": [],
@@ -411,8 +411,8 @@
             ],
             "imports": {
               "components": [
-                "lib.netstack",
-                "lib.link"
+                "pkg.netstack",
+                "pkg.link"
               ],
               "transformations": [],
               "interactions": [],
@@ -545,7 +545,7 @@
                 "game.physics",
                 "game.combat-over-network",
                 "game.network-over-wire",
-                "lib.in-process"
+                "pkg.in-process"
               ],
               "transformations": [],
               "interactions": [
@@ -584,7 +584,7 @@
                     ],
                     "mediations": [
                       {
-                        "how": "lib.in-process.in-process",
+                        "how": "pkg.in-process.medium",
                         "down": null,
                         "up": null
                       }
@@ -620,7 +620,7 @@
         ]
       },
       {
-        "id": "lib.netstack",
+        "id": "pkg.netstack",
         "name": "NetStack",
         "uses": [
           "lib.network"
@@ -675,12 +675,12 @@
         "transformations": [],
         "interactions": [
           {
-            "id": "lib.netstack.send",
+            "id": "pkg.netstack.send",
             "name": "send",
             "language": "lib.network",
             "parameters": [
               {
-                "id": "lib.netstack.send.message",
+                "id": "pkg.netstack.send.message",
                 "name": "message",
                 "type": "lib.network.message"
               }
@@ -692,17 +692,17 @@
         ],
         "mediums": [
           {
-            "id": "lib.netstack.network",
+            "id": "pkg.netstack.medium",
             "name": "Network",
             "language": "lib.network",
-            "call": "lib.netstack.send"
+            "call": "pkg.netstack.send"
           }
         ],
         "deployments": [],
         "components": []
       },
       {
-        "id": "lib.link",
+        "id": "pkg.link",
         "name": "Link",
         "uses": [
           "lib.transport"
@@ -757,12 +757,12 @@
         "transformations": [],
         "interactions": [
           {
-            "id": "lib.link.transmit",
+            "id": "pkg.link.transmit",
             "name": "transmit",
             "language": "lib.transport",
             "parameters": [
               {
-                "id": "lib.link.transmit.packet",
+                "id": "pkg.link.transmit.packet",
                 "name": "packet",
                 "type": "lib.transport.packet"
               }
@@ -774,20 +774,20 @@
         ],
         "mediums": [
           {
-            "id": "lib.link.wire",
+            "id": "pkg.link.medium",
             "name": "Wire",
             "language": "lib.transport",
-            "call": "lib.link.transmit"
+            "call": "pkg.link.transmit"
           }
         ],
         "deployments": [],
         "components": []
       },
       {
-        "id": "lib.in-process",
+        "id": "pkg.in-process",
         "name": "In-process",
         "uses": [
-          "lib.process"
+          "lib.in-process"
         ],
         "imports": {
           "components": [],
@@ -797,12 +797,12 @@
         },
         "languages": [
           {
-            "id": "lib.process",
-            "name": "Process",
+            "id": "lib.in-process",
+            "name": "In-process",
             "extends": [],
             "entities": [
               {
-                "id": "lib.process.reference",
+                "id": "lib.in-process.reference",
                 "name": "Reference",
                 "extends": []
               }
@@ -814,27 +814,27 @@
         "transformations": [],
         "interactions": [
           {
-            "id": "lib.in-process.pass",
+            "id": "pkg.in-process.pass",
             "name": "pass",
-            "language": "lib.process",
+            "language": "lib.in-process",
             "parameters": [
               {
-                "id": "lib.in-process.pass.reference",
+                "id": "pkg.in-process.pass.reference",
                 "name": "reference",
-                "type": "lib.process.reference"
+                "type": "lib.in-process.reference"
               }
             ],
-            "output": "lib.process.reference",
+            "output": "lib.in-process.reference",
             "primary": null,
             "compares": []
           }
         ],
         "mediums": [
           {
-            "id": "lib.in-process.in-process",
+            "id": "pkg.in-process.medium",
             "name": "In-process",
-            "language": "lib.process",
-            "call": "lib.in-process.pass"
+            "language": "lib.in-process",
+            "call": "pkg.in-process.pass"
           }
         ],
         "deployments": [],

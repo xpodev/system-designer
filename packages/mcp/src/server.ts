@@ -60,8 +60,9 @@ export async function createServer(host: HostApi): Promise<McpServer> {
     { name: "systemathic", version: "0.0.0" },
     {
       instructions:
-        "Systemathic designs systems as precise models: Languages (closed vocabularies of Entities, Relationships, Interactions and axioms), " +
-        "Domains that reference Languages and other Domains, Transformations between Languages, and Mediations (a 'what' carried out over a 'how'). " +
+        "Systemathic designs systems as precise models: core Languages (closed vocabularies of Entities, Relationships and axioms) and extensions of them; " +
+        "Components that use Languages, offer Interactions, hold Transformations between Languages, nest other Components and import what they depend on; " +
+        "Deployments that place Instances and connect them, each Connection optionally mediated over a stack of Mediums; and Configurations that choose a Deployment per Instance. " +
         "Open or create a System with open_system or new_system, read it with view (start with the outline perspective), edit it with the editor tools, " +
         "and check it with diagnostics and verify. Edits never fail for leaving the System ill-formed: read diagnostics after editing, and fix what they show. " +
         "Others may be editing the same System at the same time; undo undoes only your own edits.",
@@ -134,10 +135,10 @@ export async function createServer(host: HostApi): Promise<McpServer> {
       inputSchema: {
         context: CONTEXT,
         perspective: z.enum(perspectives.map((p) => p.perspective) as [string, ...string[]]),
-        language: z.string().optional().describe("for the language perspective: the id of the Language"),
+        subject: z.string().optional().describe("for a perspective that needs one: the id of the Language, Component or Deployment it is of"),
       },
     },
-    ({ context, perspective, language }) => guarded(() => host.view(context, perspective, language)),
+    ({ context, perspective, subject }) => guarded(() => host.view(context, perspective, subject)),
   );
 
   // McpVerification.
@@ -158,7 +159,7 @@ export async function createServer(host: HostApi): Promise<McpServer> {
   server.registerTool(
     "export_documentation",
     {
-      description: "The System's documentation, in Markdown: every Language, Domain and Mediation with its description, and the verification rules with theirs.",
+      description: "The System's documentation, in Markdown: every Component, nested, with its Languages, Interactions, Mediums and Deployments and their descriptions, and the verification rules with theirs.",
       inputSchema: { context: CONTEXT },
     },
     ({ context }) => guarded(async () => (await host.documentation(context)).markdown),
@@ -167,7 +168,7 @@ export async function createServer(host: HostApi): Promise<McpServer> {
   // The catalog.
   server.registerTool(
     "search_catalog",
-    { description: "Searches the catalog of standard Languages, Domains and Mediations to import.", inputSchema: { text: z.string().optional(), tag: z.string().optional() } },
+    { description: "Searches the catalog of standard packages to import: Components with their Languages, Interactions and Mediums, brought in beside the root.", inputSchema: { text: z.string().optional(), tag: z.string().optional() } },
     ({ text: query, tag }) => guarded(() => host.catalog(query, tag)),
   );
   server.registerTool(

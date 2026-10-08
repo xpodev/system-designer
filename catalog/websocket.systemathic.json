@@ -1,74 +1,96 @@
 {
-  "format": "systemathic/1",
+  "format": "systemathic/2",
   "design": {
     "id": "lib.websocket.system",
     "name": "WebSocket",
-    "languages": [
+    "root": "pkg.websocket",
+    "components": [
       {
-        "id": "lib.websocket",
+        "id": "pkg.websocket",
         "name": "WebSocket",
-        "entities": [
-          {
-            "id": "lib.websocket.connection",
-            "name": "Connection"
-          },
-          {
-            "id": "lib.websocket.message",
-            "name": "Message"
-          },
-          {
-            "id": "lib.websocket.data",
-            "name": "Data"
-          }
+        "uses": [
+          "lib.websocket"
         ],
-        "relationships": [
+        "imports": {
+          "components": [],
+          "transformations": [],
+          "interactions": [],
+          "mediums": []
+        },
+        "languages": [
           {
-            "id": "lib.websocket.connection-messages",
-            "ends": [
+            "id": "lib.websocket",
+            "name": "WebSocket",
+            "extends": [],
+            "entities": [
               {
-                "id": "lib.websocket.connection-messages.connection",
-                "name": "connection",
-                "entity": "lib.websocket.connection",
-                "min": 1,
-                "max": 1
+                "id": "lib.websocket.connection",
+                "name": "Connection",
+                "extends": []
               },
               {
-                "id": "lib.websocket.connection-messages.messages",
-                "name": "messages",
-                "entity": "lib.websocket.message",
-                "min": 0,
-                "max": "N"
-              }
-            ]
-          },
-          {
-            "id": "lib.websocket.message-data",
-            "ends": [
-              {
-                "id": "lib.websocket.message-data.message",
-                "name": "message",
-                "entity": "lib.websocket.message",
-                "min": 1,
-                "max": 1
+                "id": "lib.websocket.message",
+                "name": "Message",
+                "extends": []
               },
               {
-                "id": "lib.websocket.message-data.data",
-                "name": "data",
-                "entity": "lib.websocket.data",
-                "min": 1,
-                "max": 1
+                "id": "lib.websocket.data",
+                "name": "Data",
+                "extends": []
               }
-            ]
+            ],
+            "relationships": [
+              {
+                "id": "lib.websocket.connection-messages",
+                "ends": [
+                  {
+                    "id": "lib.websocket.connection-messages.connection",
+                    "name": "connection",
+                    "entity": "lib.websocket.connection",
+                    "min": 1,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.websocket.connection-messages.messages",
+                    "name": "messages",
+                    "entity": "lib.websocket.message",
+                    "min": 0,
+                    "max": "N"
+                  }
+                ]
+              },
+              {
+                "id": "lib.websocket.message-data",
+                "ends": [
+                  {
+                    "id": "lib.websocket.message-data.message",
+                    "name": "message",
+                    "entity": "lib.websocket.message",
+                    "min": 1,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.websocket.message-data.data",
+                    "name": "data",
+                    "entity": "lib.websocket.data",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              }
+            ],
+            "formulas": []
           }
         ],
-        "formulas": [],
+        "transformations": [],
         "interactions": [
           {
-            "id": "lib.websocket.open",
+            "id": "pkg.websocket.open",
             "name": "open",
+            "language": "lib.websocket",
             "parameters": [
               {
-                "id": "lib.websocket.open.peer",
+                "id": "pkg.websocket.open.peer",
                 "name": "peer",
                 "type": "lib.websocket.connection"
               }
@@ -78,30 +100,27 @@
             "compares": []
           },
           {
-            "id": "lib.websocket.send",
+            "id": "pkg.websocket.send",
             "name": "send",
+            "language": "lib.websocket",
             "parameters": [
               {
-                "id": "lib.websocket.send.connection",
-                "name": "connection",
-                "type": "lib.websocket.connection"
-              },
-              {
-                "id": "lib.websocket.send.message",
+                "id": "pkg.websocket.send.message",
                 "name": "message",
                 "type": "lib.websocket.message"
               }
             ],
-            "output": "lib.websocket.connection",
+            "output": "lib.websocket.message",
             "primary": null,
             "compares": []
           },
           {
-            "id": "lib.websocket.close",
+            "id": "pkg.websocket.close",
             "name": "close",
+            "language": "lib.websocket",
             "parameters": [
               {
-                "id": "lib.websocket.close.connection",
+                "id": "pkg.websocket.close.connection",
                 "name": "connection",
                 "type": "lib.websocket.connection"
               }
@@ -110,28 +129,27 @@
             "primary": null,
             "compares": []
           }
-        ]
-      }
-    ],
-    "domains": [
-      {
-        "id": "lib.websocket.domain",
-        "name": "WebSocket",
-        "languages": [
-          "lib.websocket"
         ],
-        "references": [],
-        "transformations": []
+        "mediums": [
+          {
+            "id": "pkg.websocket.medium",
+            "name": "WebSocket",
+            "language": "lib.websocket",
+            "call": "pkg.websocket.send"
+          }
+        ],
+        "deployments": [],
+        "components": []
       }
     ],
-    "mediations": []
+    "configurations": []
   },
   "attachments": [
     {
       "owner": "catalog",
       "data": {
         "package": "websocket",
-        "about": "WebSocket connections carrying messages both ways.",
+        "about": "WebSocket connections carrying messages.",
         "tags": [
           "web",
           "realtime"

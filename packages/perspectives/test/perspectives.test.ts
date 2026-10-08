@@ -101,7 +101,7 @@ describe("perspectives", () => {
     const v = view(game, "mediation-stack");
     const level = (id: string) => v.items.find((item) => item.id === id)!.level;
     expect([level("combat"), level("lib.network"), level("lib.transport")]).toEqual([0, 1, 2]);
-    expect(v.links.map((link) => `${link.source} → ${link.target}: ${link.label}`)).toEqual(["combat → lib.network: Network", "combat → lib.process: In-process", "lib.network → lib.transport: Wire"]);
+    expect(v.links.map((link) => `${link.source} → ${link.target}: ${link.label}`)).toEqual(["combat → lib.network: Network", "combat → lib.in-process: In-process", "lib.network → lib.transport: Wire"]);
   });
 
   it("levels: the kernel, the Systemathic Languages, the model", () => {

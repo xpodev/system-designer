@@ -34,7 +34,7 @@ describe("specification", () => {
     expect(text("connection:game.online.client-1-attacks")).toBe(
       "In Online, client-1 uses attack of server; it passes over Network (down by Combat down to Network, up by Network up to Combat), then Wire (down by Network down to Transport, up by Transport up to Network).",
     );
-    expect(text("medium:lib.netstack.network")).toBe("Medium Network: a What passes over Network, through send.");
+    expect(text("medium:pkg.netstack.medium")).toBe("Medium Network: a What passes over Network, through send.");
     expect(text("configuration:game.release")).toBe(
       "Configuration Release: the root is put together as Online; server is put together as Single; client-1 is put together as Desktop; client-2 is put together as Desktop.",
     );
@@ -48,7 +48,7 @@ describe("specification", () => {
   it("has the profile's rules as Requirements, and O1–O4 as Obligations for specific Subjects", () => {
     expect(spec.requirements).toEqual([{ id: "R:opacity", rule: "opacity", severity: "error", about: "Every mediated Connection is opaque.", script: "std" }]);
     const kinds = (kind: string) => spec.obligations.filter((o) => o.kind === kind).map((o) => o.id);
-    expect(kinds("O1")).toEqual(["O1:core", "O1:fighting", "O1:combat", "O1:lib.network", "O1:lib.transport", "O1:lib.process"]);
+    expect(kinds("O1")).toEqual(["O1:core", "O1:fighting", "O1:combat", "O1:lib.network", "O1:lib.transport", "O1:lib.in-process"]);
     expect(kinds("O2")).toEqual(["O2:game.combat-over-network.down", "O2:game.network-over-wire.down"]);
     expect(kinds("O4")).toEqual(["O4:combat.combat-monster", "O4:combat.combat-player"]);
   });

@@ -1,0 +1,81 @@
+{
+  "format": "systemathic/2",
+  "design": {
+    "id": "lib.in-process.system",
+    "name": "In-process",
+    "root": "pkg.in-process",
+    "components": [
+      {
+        "id": "pkg.in-process",
+        "name": "In-process",
+        "uses": [
+          "lib.in-process"
+        ],
+        "imports": {
+          "components": [],
+          "transformations": [],
+          "interactions": [],
+          "mediums": []
+        },
+        "languages": [
+          {
+            "id": "lib.in-process",
+            "name": "In-process",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.in-process.reference",
+                "name": "Reference",
+                "extends": []
+              }
+            ],
+            "relationships": [],
+            "formulas": []
+          }
+        ],
+        "transformations": [],
+        "interactions": [
+          {
+            "id": "pkg.in-process.pass",
+            "name": "pass",
+            "language": "lib.in-process",
+            "parameters": [
+              {
+                "id": "pkg.in-process.pass.reference",
+                "name": "reference",
+                "type": "lib.in-process.reference"
+              }
+            ],
+            "output": "lib.in-process.reference",
+            "primary": null,
+            "compares": []
+          }
+        ],
+        "mediums": [
+          {
+            "id": "pkg.in-process.medium",
+            "name": "In-process",
+            "language": "lib.in-process",
+            "call": "pkg.in-process.pass"
+          }
+        ],
+        "deployments": [],
+        "components": []
+      }
+    ],
+    "configurations": []
+  },
+  "attachments": [
+    {
+      "owner": "catalog",
+      "data": {
+        "package": "in-process",
+        "about": "The process itself: a use passed within one process, over a reference.",
+        "tags": [
+          "process",
+          "primitive"
+        ]
+      }
+    }
+  ]
+}

@@ -1,97 +1,120 @@
 {
-  "format": "systemathic/1",
+  "format": "systemathic/2",
   "design": {
     "id": "lib.rest.system",
     "name": "REST",
-    "languages": [
+    "root": "pkg.rest",
+    "components": [
       {
-        "id": "lib.rest",
+        "id": "pkg.rest",
         "name": "REST",
-        "entities": [
+        "uses": [
+          "lib.rest"
+        ],
+        "imports": {
+          "components": [],
+          "transformations": [],
+          "interactions": [],
+          "mediums": []
+        },
+        "languages": [
           {
-            "id": "lib.rest.resource",
-            "name": "Resource"
-          },
-          {
-            "id": "lib.rest.collection",
-            "name": "Collection"
-          },
-          {
-            "id": "lib.rest.identifier",
-            "name": "Identifier"
-          },
-          {
-            "id": "lib.rest.representation",
-            "name": "Representation"
+            "id": "lib.rest",
+            "name": "REST",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.rest.resource",
+                "name": "Resource",
+                "extends": []
+              },
+              {
+                "id": "lib.rest.collection",
+                "name": "Collection",
+                "extends": []
+              },
+              {
+                "id": "lib.rest.identifier",
+                "name": "Identifier",
+                "extends": []
+              },
+              {
+                "id": "lib.rest.representation",
+                "name": "Representation",
+                "extends": []
+              }
+            ],
+            "relationships": [
+              {
+                "id": "lib.rest.collection-members",
+                "ends": [
+                  {
+                    "id": "lib.rest.collection-members.collection",
+                    "name": "collection",
+                    "entity": "lib.rest.collection",
+                    "min": 0,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.rest.collection-members.members",
+                    "name": "members",
+                    "entity": "lib.rest.resource",
+                    "min": 0,
+                    "max": "N"
+                  }
+                ]
+              },
+              {
+                "id": "lib.rest.resource-identifier",
+                "ends": [
+                  {
+                    "id": "lib.rest.resource-identifier.resource",
+                    "name": "resource",
+                    "entity": "lib.rest.resource",
+                    "min": 1,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.rest.resource-identifier.identifier",
+                    "name": "identifier",
+                    "entity": "lib.rest.identifier",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              },
+              {
+                "id": "lib.rest.resource-representations",
+                "ends": [
+                  {
+                    "id": "lib.rest.resource-representations.resource",
+                    "name": "resource",
+                    "entity": "lib.rest.resource",
+                    "min": 1,
+                    "max": 1
+                  },
+                  {
+                    "id": "lib.rest.resource-representations.representations",
+                    "name": "representations",
+                    "entity": "lib.rest.representation",
+                    "min": 0,
+                    "max": "N"
+                  }
+                ]
+              }
+            ],
+            "formulas": []
           }
         ],
-        "relationships": [
-          {
-            "id": "lib.rest.collection-members",
-            "ends": [
-              {
-                "id": "lib.rest.collection-members.collection",
-                "name": "collection",
-                "entity": "lib.rest.collection",
-                "min": 0,
-                "max": 1
-              },
-              {
-                "id": "lib.rest.collection-members.members",
-                "name": "members",
-                "entity": "lib.rest.resource",
-                "min": 0,
-                "max": "N"
-              }
-            ]
-          },
-          {
-            "id": "lib.rest.resource-identifier",
-            "ends": [
-              {
-                "id": "lib.rest.resource-identifier.resource",
-                "name": "resource",
-                "entity": "lib.rest.resource",
-                "min": 1,
-                "max": 1
-              },
-              {
-                "id": "lib.rest.resource-identifier.identifier",
-                "name": "identifier",
-                "entity": "lib.rest.identifier",
-                "min": 1,
-                "max": 1
-              }
-            ]
-          },
-          {
-            "id": "lib.rest.resource-representations",
-            "ends": [
-              {
-                "id": "lib.rest.resource-representations.resource",
-                "name": "resource",
-                "entity": "lib.rest.resource",
-                "min": 1,
-                "max": 1
-              },
-              {
-                "id": "lib.rest.resource-representations.representations",
-                "name": "representations",
-                "entity": "lib.rest.representation",
-                "min": 0,
-                "max": "N"
-              }
-            ]
-          }
-        ],
-        "formulas": [],
+        "transformations": [],
         "interactions": [
           {
-            "id": "lib.rest.get",
+            "id": "pkg.rest.get",
             "name": "get",
+            "language": "lib.rest",
             "parameters": [
               {
-                "id": "lib.rest.get.resource",
+                "id": "pkg.rest.get.resource",
                 "name": "resource",
                 "type": "lib.rest.identifier"
               }
@@ -101,16 +124,17 @@
             "compares": []
           },
           {
-            "id": "lib.rest.put",
+            "id": "pkg.rest.put",
             "name": "put",
+            "language": "lib.rest",
             "parameters": [
               {
-                "id": "lib.rest.put.resource",
+                "id": "pkg.rest.put.resource",
                 "name": "resource",
                 "type": "lib.rest.identifier"
               },
               {
-                "id": "lib.rest.put.state",
+                "id": "pkg.rest.put.state",
                 "name": "state",
                 "type": "lib.rest.representation"
               }
@@ -120,16 +144,17 @@
             "compares": []
           },
           {
-            "id": "lib.rest.create",
+            "id": "pkg.rest.create",
             "name": "create",
+            "language": "lib.rest",
             "parameters": [
               {
-                "id": "lib.rest.create.collection",
+                "id": "pkg.rest.create.collection",
                 "name": "collection",
                 "type": "lib.rest.collection"
               },
               {
-                "id": "lib.rest.create.state",
+                "id": "pkg.rest.create.state",
                 "name": "state",
                 "type": "lib.rest.representation"
               }
@@ -139,11 +164,12 @@
             "compares": []
           },
           {
-            "id": "lib.rest.delete",
+            "id": "pkg.rest.delete",
             "name": "delete",
+            "language": "lib.rest",
             "parameters": [
               {
-                "id": "lib.rest.delete.resource",
+                "id": "pkg.rest.delete.resource",
                 "name": "resource",
                 "type": "lib.rest.identifier"
               }
@@ -151,22 +177,36 @@
             "output": "lib.rest.identifier",
             "primary": null,
             "compares": []
+          },
+          {
+            "id": "pkg.rest.transfer",
+            "name": "transfer",
+            "language": "lib.rest",
+            "parameters": [
+              {
+                "id": "pkg.rest.transfer.representation",
+                "name": "representation",
+                "type": "lib.rest.representation"
+              }
+            ],
+            "output": "lib.rest.representation",
+            "primary": null,
+            "compares": []
           }
-        ]
-      }
-    ],
-    "domains": [
-      {
-        "id": "lib.rest.domain",
-        "name": "REST",
-        "languages": [
-          "lib.rest"
         ],
-        "references": [],
-        "transformations": []
+        "mediums": [
+          {
+            "id": "pkg.rest.medium",
+            "name": "REST",
+            "language": "lib.rest",
+            "call": "pkg.rest.transfer"
+          }
+        ],
+        "deployments": [],
+        "components": []
       }
     ],
-    "mediations": []
+    "configurations": []
   },
   "attachments": [
     {

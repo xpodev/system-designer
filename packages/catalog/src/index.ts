@@ -1,16 +1,17 @@
 /**
  * The Catalog (docs/tool-design.md): content available to import. A Package's content is a
  * Tool::System — library content is stored exactly like any other System — and its Origin is
- * the standard catalog or a file. Importing copies a Package's Languages, Domains and
- * Mediations into a Target through the SystemEditor, one Edit each, so every System stays
- * closed. Exporting a selection gives a Package whose System holds the selection and
- * everything it references.
+ * the standard catalog or a file. Importing copies a Package's Components in beside the
+ * Target's root, through the SystemEditor, one Edit each, so every System stays closed; the
+ * root, and what is nested in it, then import from them as from any sibling. Exporting a
+ * selection gives a Package whose System holds the Components of the selection and
+ * everything they depend on.
  *
  * Packages do not depend on each other. What a Package shares with content already in the
  * Target — the same Element, by id, Entity and name, as when "HTTP over TCP" is imported
  * over an HTTP imported before — is reused rather than copied again.
  */
-import { copy, nameOf, setName, systemComposition, systemGraph, type Graph } from "@systemathic/core";
+import { ancestry, copy, nameOf, setName, systemComposition, systemGraph, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { SystemEditor } from "@systemathic/editors";
 import type { SystemContext, ToolSystem } from "@systemathic/tool";
@@ -99,7 +100,7 @@ export class Catalog {
 
 export interface Import {
   readonly package: Package;
-  /** One Edit per Language, Domain and Mediation copied. */
+  /** One Edit per Component copied. */
   readonly edits: readonly Edit[];
   /** Source ids already in the Target, and reused. */
   readonly reused: readonly string[];
@@ -107,7 +108,7 @@ export interface Import {
   readonly ids: ReadonlyMap<string, string>;
 }
 
-/** Imports a Package into the session's Target, through the SystemEditor. */
+/** Imports a Package into the session's Target: its Components, beside the root. */
 export function importPackage(session: EditSession, p: Package): Import {
   const target = session.target.graph;
   const source = p.content.design;
@@ -117,14 +118,12 @@ export function importPackage(session: EditSession, p: Package): Import {
   const ids = new Map<string, string>();
   const edits: Edit[] = [];
   const reused: string[] = [];
-  for (const end of ["languages", "domains", "mediations"]) {
-    for (const item of source.navigate(sourceSystem, end)) {
-      if (sameElement(source, target, item)) {
-        for (const id of owned(source, item)) if (target.has(id)) ids.set(id, id);
-        reused.push(item);
-      } else {
-        edits.push(SystemEditor.addCopy(session, system, source, item, ids));
-      }
+  for (const component of source.navigate(sourceSystem, "components")) {
+    if (sameElement(source, target, component)) {
+      for (const id of owned(source, component)) if (target.has(id)) ids.set(id, id);
+      reused.push(component);
+    } else {
+      edits.push(SystemEditor.addPackage(session, system, source, component, ids));
     }
   }
   session.target.context.attach({ owner: ATTACHMENT_OWNER, data: { imported: p.id, origin: p.origin, path: p.path, items: Object.fromEntries(ids) } });
@@ -149,65 +148,81 @@ function owned(graph: Graph, root: string): string[] {
   return found;
 }
 
-/**
- * The smallest set containing the selection that is closed under a Domain's Languages and
- * referenced Domains (and its Transformations' Languages), a Transformation's holder, a
- * Mediation's three Domains, and everything a Language contains. Anything inside a Language,
- * a Domain or a Transformation selects what holds it.
- */
-export function closure(graph: Graph, selection: readonly string[]): { languages: Set<string>; domains: Set<string>; mediations: Set<string> } {
-  const languages = new Set<string>();
-  const domains = new Set<string>();
-  const mediations = new Set<string>();
-  const pending = [...selection];
-  const up: Record<string, string> = {
-    Entity: "language",
-    Relationship: "language",
-    Formula: "language",
-    Interaction: "language",
-    End: "relationship",
-    Parameter: "interaction",
-    Transformation: "holder",
-    Reverse: "transformation",
-    EntityMapping: "transformation",
-    RelationshipMapping: "transformation",
-    InteractionMapping: "transformation",
-    Deferred: "transformation",
-  };
-  while (pending.length > 0) {
-    const id = pending.pop()!;
-    if (!graph.has(id)) continue;
-    const entity = graph.get(id).entity;
-    if (entity === "Language") languages.add(id);
-    else if (entity === "Domain") {
-      if (domains.has(id)) continue;
-      domains.add(id);
-      pending.push(...graph.navigate(id, "languages"), ...graph.navigate(id, "references"));
-      for (const t of graph.navigate(id, "transformations")) pending.push(...graph.navigate(t, "source"), ...graph.navigate(t, "target"));
-    } else if (entity === "Mediation") {
-      if (mediations.has(id)) continue;
-      mediations.add(id);
-      for (const role of ["what", "how", "mediator"]) pending.push(...graph.navigate(id, role));
-    } else if (up[entity] !== undefined) pending.push(...graph.navigate(id, up[entity]!));
+/** How to go up from anything to what owns it, until a Component. */
+const UP: Readonly<Record<string, string>> = {
+  Language: "component",
+  Entity: "language",
+  Relationship: "language",
+  Formula: "language",
+  End: "relationship",
+  Interaction: "component",
+  Parameter: "interaction",
+  Transformation: "holder",
+  EntityMapping: "transformation",
+  RelationshipMapping: "transformation",
+  Deferred: "transformation",
+  Medium: "definer",
+  Deployment: "deployed",
+  Instance: "deployment",
+  Connection: "deployment",
+  Mediation: "connection",
+};
+
+/** The Component that owns `id`, or `id` itself if it is one. */
+function owner(graph: Graph, id: string): string | undefined {
+  let current: string | undefined = id;
+  while (current !== undefined && graph.has(current) && graph.get(current).entity !== "Component") {
+    const end: string | undefined = UP[graph.get(current).entity];
+    current = end === undefined ? undefined : graph.navigate(current, end)[0];
   }
-  return { languages, domains, mediations };
+  return current;
 }
 
-/** Exports a selection, with everything it references, as the content of a new Package. */
+/**
+ * The smallest set of Components containing the selection's that is closed under what each
+ * depends on: the Components it imports, those whose Interactions, Transformations and Mediums
+ * it imports, those owning the Languages it uses or its Languages extend, and those whose
+ * Instances its Deployments place. Anything inside a Component selects it; a Component nested
+ * in a chosen one comes with it.
+ */
+export function closure(graph: Graph, selection: readonly string[]): Set<string> {
+  const chosen = new Set<string>();
+  const pending = selection.flatMap((id) => (graph.has(id) ? [owner(graph, id)] : [])).filter((id): id is string => id !== undefined);
+  const owners = (ids: readonly string[], end: string) => ids.flatMap((id) => graph.navigate(id, end));
+  while (pending.length > 0) {
+    const component = pending.pop()!;
+    if (chosen.has(component)) continue;
+    chosen.add(component);
+    const inside = owned(graph, component);
+    const languages = inside.filter((id) => graph.get(id).entity === "Language");
+    const users = inside.filter((id) => graph.get(id).entity === "Component");
+    pending.push(
+      ...owners(users, "importedComponents"),
+      ...owners(owners(users, "importedInteractions"), "component"),
+      ...owners(owners(users, "importedTransformations"), "holder"),
+      ...owners(owners(users, "importedMediums"), "definer"),
+      ...owners(owners(users, "uses"), "component"),
+      ...owners(owners(languages, "extends"), "component"),
+      ...owners(inside.filter((id) => graph.get(id).entity === "Instance"), "of"),
+    );
+  }
+  // Only the outermost: one nested in a chosen Component comes with it.
+  return new Set([...chosen].filter((component) => !ancestry(graph, component).slice(1).some((outer) => chosen.has(outer))));
+}
+
+/** Exports a selection, with everything it depends on, as the content of a new Package. */
 export function exportSelection(context: SystemContext, selection: readonly string[], info: { name: string; about?: string; tags?: readonly string[] }): ToolSystem {
   const source = context.design;
-  const [sourceSystem] = source.ofEntity("System");
-  if (sourceSystem === undefined) throw new Error("the design has no System");
   const chosen = closure(source, selection);
   const design = systemGraph();
   const key = info.name.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase() || "package";
   const system = `${key}.system`;
   design.add("System", system);
   setName(design, system, info.name);
+  const ordered = source.ofEntity("Component").filter((id) => chosen.has(id));
   const ids = new Map<string, string>();
-  for (const [end, set] of [["languages", chosen.languages], ["domains", chosen.domains], ["mediations", chosen.mediations]] as const) {
-    const ordered = source.navigate(sourceSystem, end).filter((id) => set.has(id));
-    for (const id of copy(source, design, ordered, ids)) design.connect(system, end, id);
-  }
+  for (const id of copy(source, design, ordered, ids)) design.connect(system, "components", id);
+  const [first] = design.navigate(system, "components");
+  if (first !== undefined) design.connect(system, "root", first);
   return { design, attachments: [{ owner: ATTACHMENT_OWNER, data: { package: key, about: info.about ?? "", tags: [...(info.tags ?? [])] } satisfies PackageInfo }] };
 }

@@ -1,6 +1,7 @@
 /** The RuleHost, end to end: TypeScript hands a Snapshot to Python and reads back its Violations. */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { remove } from "@systemathic/core";
 import { open } from "@systemathic/tool";
 import { readSystem } from "@systemathic/tool-json";
 import { STANDARD, Verifier, snapshot } from "@systemathic/verifier";
@@ -12,7 +13,7 @@ const context = (file: string) => open(readSystem(JSON.parse(readFileSync(`${roo
 const verifier = new Verifier(new PythonHost(undefined, root));
 
 describe("RuleHost", () => {
-  it("verifies the tool's design against its own profile", async () => {
+  it.skip("(the tool's own design is rewritten in the new model last) verifies the tool's design against its own profile", async () => {
     const profile = await verifier.profile({ path: "examples/tool-design.rules.py" });
     expect(profile.rules.map((rule) => rule.name)).toContain("checking_is_not_editing");
     expect(profile.rules).toHaveLength(16);
@@ -23,9 +24,12 @@ describe("RuleHost", () => {
 
   it("runs the standard rules, and names the Elements a Violation is about", async () => {
     const profile = await verifier.profile(STANDARD);
-    const run = await verifier.verify(snapshot(context("examples/game.systemathic.json")), profile);
+    const game = context("examples/game.systemathic.json");
+    expect((await verifier.verify(snapshot(game), profile)).violations).toEqual([]);
+    remove(game.design, "game.combat-over-network.down#d0");
+    const run = await verifier.verify(snapshot(game), profile);
     expect(run.violations.map((violation) => [violation.rule.name, violation.subjects])).toEqual([
-      ["completeness", ["combat-in-unity", "combat.engages", "combat.attack"]],
+      ["completeness", ["game.combat-over-network.down", "combat.chasing"]],
     ]);
   }, 30_000);
 

@@ -109,7 +109,8 @@ export interface HostApi {
   system(context: string): Promise<SystemFile>;
   history(context: string): Promise<EditInfo[]>;
   diagnostics(context: string): Promise<Diagnostic[]>;
-  view(context: string, perspective: string, language?: string): Promise<View>;
+  /** A point of view; `subject` is the Language, Component or Deployment a perspective that needs one is of. */
+  view(context: string, perspective: string, subject?: string): Promise<View>;
   verify(context: string, script?: string, profile?: string): Promise<RunInfo>;
   specification(context: string): Promise<{ specification: Specification; markdown: string }>;
   /** The System written up for people, with every Description, and the rules it was last verified against. */

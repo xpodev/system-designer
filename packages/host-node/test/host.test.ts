@@ -30,7 +30,7 @@ describe("Host", () => {
     host.subscribe((event) => events.push(event));
     const ui = (await host.startSession(id, "ui")).session;
     const llm = (await host.startSession(id, "mcp")).session;
-    const language = await host.apply(id, ui, "SystemEditor", "addLanguage", { system: "system", name: "Orders" });
+    const language = await host.apply(id, ui, "ComponentEditor", "addLanguage", { component: "system.root", name: "Orders" });
     await host.apply(id, llm, "LanguageEditor", "addEntity", { language: language.elements[0], name: "Order" });
     expect((await host.history(id)).map((e) => [e.id, e.client, e.summary])).toEqual([
       [1, "ui", "addLanguage Orders"],
@@ -69,10 +69,10 @@ describe("Host", () => {
     await host.saveScript(id, fresh.path, fresh.source);
     expect(await host.attachment(id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" });
     expect(await host.script(id)).toMatchObject({ path: "game.rules.py", exists: true, source: fresh.source });
-    expect((await host.verify(id)).rules).toBe(10);
+    expect((await host.verify(id)).rules).toBe(9);
     const broken = await host.checkScript("from systemathic.std import *\nprofile = Profile(nothing)\n");
     expect(broken.problems[0]).toMatchObject({ line: 2, severity: "error" });
-    expect((await host.symbols()).some((s) => s.name === "witnesses")).toBe(true);
+    expect((await host.symbols()).some((s) => s.name === "mediation_primitives")).toBe(true);
   }, 30_000);
 
   it("refuses malformed requests, never ill-formed results", async () => {
@@ -91,10 +91,16 @@ describe("Host", () => {
     const host = nodeHost({ cwd: workspace() });
     const { id } = await host.open("game.json");
     const run = await host.verify(id);
-    expect(run).toMatchObject({ profile: "standard", rules: 9, errors: 0, warnings: 1 });
+    expect(run).toMatchObject({ profile: "standard", rules: 8, errors: 0, warnings: 0 });
+    expect(await host.diagnostics(id)).toEqual([]);
+    const { session } = await host.startSession(id, "test");
+    await host.apply(id, session, "TransformationEditor", "unmap", { transformation: "game.combat-over-network.down", source: "combat.combat-player" });
+    await host.verify(id);
     expect((await host.diagnostics(id)).map((d) => [d.kind, d.check])).toEqual([["rule", "completeness"]]);
     const v = await host.view(id, "diagnostics");
     expect(v.items.find((item) => item.id === "warnings")!.detail).toBe("1");
+    await expect(host.view(id, "component")).rejects.toMatchObject({ status: 400 });
+    expect((await host.view(id, "component", "game")).title).toBe("Game");
   }, 30_000);
 
   it("saves, imports from the catalog, exports, and keeps attachments", async () => {
@@ -104,13 +110,13 @@ describe("Host", () => {
     const { session } = await host.startSession(id, "test");
     await expect(host.save(id)).rejects.toThrow("no file yet");
     const imported = await host.importPackage(id, session, { package: "http-over-tcp" });
-    expect(imported.edits).toHaveLength(6);
+    expect(imported.edits).toHaveLength(3);
     await host.setAttachment(id, "ui", { zoom: 2 });
     await host.save(id, "api.json");
     const saved = JSON.parse(readFileSync(join(dir, "api.json"), "utf8"));
     expect(saved.attachments.map((a: { owner: string }) => a.owner)).toEqual(["catalog", "ui"]);
     const exported = await host.exportSelection(id, ["lib.http"], "Just HTTP", "http.json");
-    expect(exported.file.design.languages.map((l) => l.id)).toEqual(["lib.http"]);
+    expect(exported.file.design.components.map((c) => c.id)).toEqual(["pkg.http"]);
     expect((await host.specification(id)).markdown).toMatch(/^# Api\n/);
   });
 });
