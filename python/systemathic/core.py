@@ -6,14 +6,15 @@ knows any particular Entity except where Python's natural forms differ from the 
 
 - navigating an end whose range is at most one gives an Element or None, otherwise a list;
 - a Name is its text and a Bound its number;
-- an Interaction's `parameters` are a list, in the order of its first/next chain.
+- an Interaction's `parameters` and a Connection's `mediations` are lists, in the order of
+  their first/next chains.
 
 `load` reads a System file (docs/format.md). It is tolerant: a reference to nothing is dropped,
 as the tool's own reader does, so a script can run on an ill-formed System.
 
     from systemathic.core import *
     system = load("examples/game.systemathic.json")
-    system.domain("Combat").languages
+    system.component("Server").interactions
 """
 
 from __future__ import annotations
@@ -52,7 +53,7 @@ _STEPS = _steps()
 
 
 class Element:
-    """An instance of an Entity of the Systemathic Languages: an Entity, a Domain, a Mediation, …
+    """An instance of an Entity of the Systemathic Languages: an Entity, a Component, a Mediation, …
 
     Which of them it is, is its `kind`; `entity`, like any other end, is navigated (`end.entity`).
     """
@@ -81,15 +82,25 @@ class Element:
 
 
 class System(Element):
-    """The System: what is opened and saved. Lookups by name raise if missing or ambiguous."""
+    """The System: what is opened and saved. Lookups by name — anywhere in the System —
+    raise if missing or ambiguous."""
 
     __slots__ = ()
 
-    def language(self, name: str) -> Element:
-        return _one(self.languages, name, "Language")
+    def component(self, name: str) -> Element:
+        return _one(self.all("Component"), name, "Component")
 
-    def domain(self, name: str) -> Element:
-        return _one(self.domains, name, "Domain")
+    def language(self, name: str) -> Element:
+        return _one(self.all("Language"), name, "Language")
+
+    def interaction(self, name: str) -> Element:
+        return _one(self.all("Interaction"), name, "Interaction")
+
+    def medium(self, name: str) -> Element:
+        return _one(self.all("Medium"), name, "Medium")
+
+    def deployment(self, name: str) -> Element:
+        return _one(self.all("Deployment"), name, "Deployment")
 
     def element(self, id: str) -> Element:
         return self.model.elements[id]
@@ -143,7 +154,7 @@ class Model:
         step = _STEPS[element.kind].get(end) if element.kind in _STEPS else None
         if step is None:
             raise AttributeError(f"{element.kind} has no end {end!r}")
-        if element.kind == "Interaction" and end == "parameters":
+        if (element.kind, end) in _CHAINS:
             return _chain(self, element)
         found = [self.elements[id] for id in self.ids(element, end)]
         if step.entity in _VALUES:
@@ -152,9 +163,12 @@ class Model:
         return (found[0] if found else None) if step.max == 1 else found
 
 
-def _chain(model: Model, interaction: Element) -> list[Element]:
+_CHAINS = {("Interaction", "parameters"), ("Connection", "mediations")}
+
+
+def _chain(model: Model, owner: Element) -> list[Element]:
     ordered: list[Element] = []
-    current = model.navigate(interaction, "first")
+    current = model.navigate(owner, "first")
     while current is not None and current not in ordered:
         ordered.append(current)
         current = model.navigate(current, "next")
@@ -203,33 +217,26 @@ class _Reader:
             self.model.connect(element, end, target)
 
 
+FORMAT = "systemathic/2"
+
+
 def read(file: dict) -> System:
     """A System from a parsed System file."""
-    if file.get("format") != "systemathic/1":
-        raise ValueError('not a System file: expected "format": "systemathic/1"')
+    if file.get("format") != FORMAT:
+        raise ValueError(f'not a System file of this model: expected "format": "{FORMAT}"')
     reader = _Reader()
     design = file["design"]
     system = reader.named("System", design, None, None)
     assert isinstance(system, System)
-    for language in design["languages"]:
-        _read_language(reader, system, language)
-    for domain in design["domains"]:
-        element = reader.named("Domain", domain, system, "domains")
-        if element is None:
-            continue
-        for id in domain["languages"]:
-            reader.refer(element, "languages", id)
-        for id in domain["references"]:
-            reader.refer(element, "references", id)
-        for transformation in domain["transformations"]:
-            _read_transformation(reader, element, transformation)
-    for mediation in design["mediations"]:
-        element = reader.create("Mediation", mediation["id"])
-        if element is None:
-            continue
-        reader.model.connect(system, "mediations", element)
-        for role in ("what", "how", "mediator"):
-            reader.refer(element, role, mediation[role])
+    for component in design["components"]:
+        _read_component(reader, component, system, "components")
+    reader.refer(system, "root", design["root"])
+    for configuration in design.get("configurations", []):
+        element = reader.named("Configuration", configuration, system, "configurations")
+        if element is not None:
+            root = _read_choice(reader, configuration["root"], f"{element.id}#root")
+            if root is not None:
+                reader.model.connect(element, "root", root)
     reader.finish()
     system.model.problems = reader.problems  # type: ignore[attr-defined]
     system.model.attachments = file.get("attachments", [])  # type: ignore[attr-defined]
@@ -241,12 +248,46 @@ def load(path: str | Path) -> System:
     return read(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-def _read_language(reader: _Reader, system: System, json: dict) -> None:
-    language = reader.named("Language", json, system, "languages")
+_IMPORTS = {"components": "importedComponents", "transformations": "importedTransformations", "interactions": "importedInteractions", "mediums": "importedMediums"}
+
+
+def _read_component(reader: _Reader, json: dict, owner: Element, end: str) -> None:
+    component = reader.named("Component", json, owner, end)
+    if component is None:
+        return
+    for id in json["uses"]:
+        reader.refer(component, "uses", id)
+    for key, imported in _IMPORTS.items():
+        for id in json["imports"].get(key, []):
+            reader.refer(component, imported, id)
+    for language in json["languages"]:
+        _read_language(reader, component, language)
+    for transformation in json["transformations"]:
+        _read_transformation(reader, component, transformation)
+    for interaction in json.get("interactions", []):
+        _read_interaction(reader, component, interaction)
+    for medium in json.get("mediums", []):
+        element = reader.named("Medium", medium, component, "mediums")
+        if element is not None:
+            reader.refer(element, "language", medium["language"])
+            reader.refer(element, "call", medium["call"])
+    for deployment in json.get("deployments", []):
+        _read_deployment(reader, component, deployment)
+    for child in json["components"]:
+        _read_component(reader, child, component, "components")
+
+
+def _read_language(reader: _Reader, component: Element, json: dict) -> None:
+    language = reader.named("Language", json, component, "languages")
     if language is None:
         return
+    for id in json["extends"]:
+        reader.refer(language, "extends", id)
     for entity in json["entities"]:
-        reader.named("Entity", entity, language, "entities")
+        element = reader.named("Entity", entity, language, "entities")
+        if element is not None:
+            for id in entity["extends"]:
+                reader.refer(element, "extends", id)
     for relationship in json["relationships"]:
         element = reader.create("Relationship", relationship["id"])
         if element is None:
@@ -267,45 +308,44 @@ def _read_language(reader: _Reader, system: System, json: dict) -> None:
         reader.model.connect(language, "formulas", element)
         if "constrains" in formula:
             reader.refer(element, "constrains", formula["constrains"])
-    for interaction in json.get("interactions", []):
-        element = reader.named("Interaction", interaction, language, "interactions")
-        if element is None:
-            continue
-        previous = None
-        for parameter in interaction["parameters"]:
-            parameter_element = reader.named("Parameter", parameter, element, "parameters")
-            if parameter_element is None:
-                continue
+
+
+def _read_chain(reader: _Reader, owner: Element, members: list[Element]) -> None:
+    for index, member in enumerate(members):
+        if index == 0:
+            reader.model.connect(owner, "first", member)
+        else:
+            reader.model.connect(members[index - 1], "next", member)
+
+
+def _read_interaction(reader: _Reader, component: Element, json: dict) -> None:
+    element = reader.named("Interaction", json, component, "interactions")
+    if element is None:
+        return
+    reader.refer(element, "language", json["language"])
+    parameters = []
+    for parameter in json["parameters"]:
+        parameter_element = reader.named("Parameter", parameter, element, "parameters")
+        if parameter_element is not None:
             reader.refer(parameter_element, "type", parameter["type"])
-            if previous is None:
-                reader.model.connect(element, "first", parameter_element)
-            else:
-                reader.model.connect(previous, "next", parameter_element)
-            previous = parameter_element
-        reader.refer(element, "output", interaction["output"])
-        if interaction.get("primary") is not None:
-            reader.refer(element, "primary", interaction["primary"])
-        for id in interaction.get("compares", []):
-            reader.refer(element, "comparedEntities", id)
+            parameters.append(parameter_element)
+    _read_chain(reader, element, parameters)
+    reader.refer(element, "output", json["output"])
+    if json.get("primary") is not None:
+        reader.refer(element, "primary", json["primary"])
+    for id in json.get("compares", []):
+        reader.refer(element, "comparedEntities", id)
 
 
-def _read_transformation(reader: _Reader, domain: Element, json: dict) -> None:
-    transformation = reader.named("Transformation", json, domain, "transformations")
+def _read_transformation(reader: _Reader, component: Element, json: dict) -> None:
+    transformation = reader.named("Transformation", json, component, "transformations")
     if transformation is None:
         return
     reader.refer(transformation, "source", json["source"])
     reader.refer(transformation, "target", json["target"])
-    if json["reverse"] is not None:
-        reverse = reader.create("Reverse", f"{transformation.id}#reverse")
-        if reverse is not None:
-            reader.model.connect(transformation, "reverse", reverse)
-            for id in json["reverse"]["context"]:
-                reader.refer(reverse, "context", id)
-    for key, entity, prefix in (
-        ("entityMappings", "EntityMapping", "em"),
-        ("relationshipMappings", "RelationshipMapping", "rm"),
-        ("interactionMappings", "InteractionMapping", "im"),
-    ):
+    for id in json["context"]:
+        reader.refer(transformation, "context", id)
+    for key, entity, prefix in (("entityMappings", "EntityMapping", "em"), ("relationshipMappings", "RelationshipMapping", "rm")):
         for index, mapping in enumerate(json.get(key, [])):
             element = reader.create(entity, f"{transformation.id}#{prefix}{index}")
             if element is None:
@@ -319,6 +359,53 @@ def _read_transformation(reader: _Reader, domain: Element, json: dict) -> None:
         if element is None:
             continue
         reader.model.connect(transformation, "deferred", element)
-        for item in ("entity", "relationship", "interaction"):
+        for item in ("entity", "relationship"):
             if item in deferral:
                 reader.refer(element, item, deferral[item])
+
+
+def _read_deployment(reader: _Reader, component: Element, json: dict) -> None:
+    deployment = reader.named("Deployment", json, component, "deployments")
+    if deployment is None:
+        return
+    for instance in json["instances"]:
+        element = reader.named("Instance", instance, deployment, "instances")
+        if element is not None:
+            reader.refer(element, "of", instance["of"])
+    for connection in json["connections"]:
+        element = reader.create("Connection", connection["id"])
+        if element is None:
+            continue
+        reader.model.connect(deployment, "connections", element)
+        reader.refer(element, "from", connection["from"])
+        for end in ("toInstance", "toComponent"):
+            if connection[end] is not None:
+                reader.refer(element, end, connection[end])
+        for id in connection["what"]:
+            reader.refer(element, "what", id)
+        mediations = []
+        for index, mediation in enumerate(connection.get("mediations", [])):
+            mediation_element = reader.create("Mediation", f"{element.id}#m{index}")
+            if mediation_element is None:
+                continue
+            reader.model.connect(element, "mediations", mediation_element)
+            reader.refer(mediation_element, "how", mediation["how"])
+            for end in ("down", "up"):
+                if mediation[end] is not None:
+                    reader.refer(mediation_element, end, mediation[end])
+            mediations.append(mediation_element)
+        _read_chain(reader, element, mediations)
+
+
+def _read_choice(reader: _Reader, json: dict, id: str) -> Element | None:
+    choice = reader.create("Choice", id)
+    if choice is None:
+        return None
+    if json["instance"] is not None:
+        reader.refer(choice, "instance", json["instance"])
+    reader.refer(choice, "deployment", json["deployment"])
+    for index, child in enumerate(json["choices"]):
+        element = _read_choice(reader, child, f"{id}.{index}")
+        if element is not None:
+            reader.model.connect(choice, "choices", element)
+    return choice

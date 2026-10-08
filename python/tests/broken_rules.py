@@ -12,8 +12,8 @@ def explodes(system: System):
 
 @rule(severity=WARNING)
 def finds_core(system: System):
-    """Finds the Core Domain."""
-    yield Violation(system.domain("Core"), "found Core")
+    """Finds the Core Language."""
+    yield Violation(system.language("Core"), "found Core")
 
 
 profile = Profile(explodes, finds_core)

@@ -362,7 +362,11 @@
                   }
                 ],
                 "relationshipMappings": [],
-                "deferred": []
+                "deferred": [
+                  {
+                    "relationship": "combat.chasing"
+                  }
+                ]
               },
               {
                 "id": "game.combat-over-network.up",
@@ -436,7 +440,11 @@
                   }
                 ],
                 "relationshipMappings": [],
-                "deferred": []
+                "deferred": [
+                  {
+                    "relationship": "lib.network.carries"
+                  }
+                ]
               },
               {
                 "id": "game.network-over-wire.up",
@@ -534,7 +542,8 @@
               "components": [
                 "game.physics",
                 "game.combat-over-network",
-                "game.network-over-wire"
+                "game.network-over-wire",
+                "lib.in-process"
               ],
               "transformations": [],
               "interactions": [
@@ -571,7 +580,13 @@
                     "what": [
                       "game.server.attack"
                     ],
-                    "mediations": []
+                    "mediations": [
+                      {
+                        "how": "lib.in-process.in-process",
+                        "down": null,
+                        "up": null
+                      }
+                    ]
                   }
                 ]
               }

@@ -2,33 +2,11 @@
 
 exports[`diagnoser > diagnoses broken/dangling.systemathic.json 1`] = `
 {
-  "found": [
-    {
-      "check": "range",
-      "message": "Mediation combat-over-unity has 0 'how', expected 1..1",
-      "subjects": [
-        "combat-over-unity",
-      ],
-    },
-    {
-      "check": "system",
-      "message": "A Mediation relates only Domains of its own System",
-      "subjects": [
-        "combat-over-unity",
-      ],
-    },
-    {
-      "check": "W6",
-      "message": "Every Mediation is witnessed by a reversible Transformation of its mediator",
-      "subjects": [
-        "combat-over-unity",
-      ],
-    },
-  ],
+  "found": [],
   "problems": [
     {
-      "at": "$.design.mediations[0].how",
-      "message": "refers to 'd.nowhere', which does not exist",
+      "at": "$.design.components[0].components[3].uses[1]",
+      "message": "refers to 'nothing', which does not exist",
     },
   ],
 }
@@ -39,7 +17,7 @@ exports[`diagnoser > diagnoses broken/formula.systemathic.json 1`] = `
   "found": [
     {
       "check": "formula",
-      "message": "the formula does not fit its Language: Monster has no end 'owner'",
+      "message": "the formula does not fit its Language: Monster has no end 'customer'",
       "subjects": [
         "core.no-leadership-cycles",
       ],
@@ -53,33 +31,45 @@ exports[`diagnoser > diagnoses broken/range.systemathic.json 1`] = `
 {
   "found": [
     {
-      "check": "formula",
-      "message": "the formula does not fit its Language: Monster has no end 'leader'",
+      "check": "range",
+      "message": "Medium 'Network' has 0 'call', expected 1..1",
       "subjects": [
-        "core.no-leadership-cycles",
+        "lib.netstack.network",
       ],
     },
     {
-      "check": "range",
-      "message": "Relationship Monster <——> Monster <——> Monster has 3 'ends', expected 2..2",
+      "check": "W11",
+      "message": "A Medium's call is an Interaction of the Component that defines it",
       "subjects": [
-        "core.pack",
+        "lib.netstack.network",
+      ],
+    },
+    {
+      "check": "W11",
+      "message": "A Medium's call is over the Medium's Language",
+      "subjects": [
+        "lib.netstack.network",
       ],
     },
   ],
-  "problems": [],
+  "problems": [
+    {
+      "at": "$.design.components[1].mediums[0].call",
+      "message": "refers to 'nothing', which does not exist",
+    },
+  ],
 }
 `;
 
-exports[`diagnoser > diagnoses broken/w1-interaction.systemathic.json 1`] = `
+exports[`diagnoser > diagnoses broken/w1-extends.systemathic.json 1`] = `
 {
   "found": [
     {
       "check": "W1",
-      "message": "Parameter types are in the Interaction's Language",
+      "message": "An Entity extends only Entities of the Languages its Language extends",
       "subjects": [
-        "combat.attack",
-        "combat.attack.target",
+        "fighting.damage",
+        "fighting.attacker",
       ],
     },
   ],
@@ -92,10 +82,10 @@ exports[`diagnoser > diagnoses broken/w1-relationship.systemathic.json 1`] = `
   "found": [
     {
       "check": "W1",
-      "message": "Relationship ends are in the Relationship's Language",
+      "message": "Relationship ends are in the vocabulary of the Relationship's Language",
       "subjects": [
         "core.hunts",
-        "core.hunts.prey",
+        "core.hunts.hunters",
       ],
     },
   ],
@@ -124,12 +114,25 @@ exports[`diagnoser > diagnoses broken/w3.systemathic.json 1`] = `
   "found": [
     {
       "check": "W3",
-      "message": "From any Entity, the ends reachable across its Relationships have distinct names",
+      "message": "In every Language, from any Entity, the named ends reachable across its vocabulary, its own and those of what it extends, have distinct names",
       "subjects": [
-        "core.hunts.hunters",
-        "core.pack.followers",
+        "combat.combat-monster",
+        "core.monster",
         "core.hunts.prey",
         "core.pack.leader",
+        "core.hunts.hunters",
+        "core.pack.followers",
+      ],
+    },
+    {
+      "check": "W3",
+      "message": "In every Language, from any Entity, the named ends reachable across its vocabulary, its own and those of what it extends, have distinct names",
+      "subjects": [
+        "core.monster",
+        "core.hunts.prey",
+        "core.pack.leader",
+        "core.hunts.hunters",
+        "core.pack.followers",
       ],
     },
   ],
@@ -142,9 +145,16 @@ exports[`diagnoser > diagnoses broken/w4.systemathic.json 1`] = `
   "found": [
     {
       "check": "W4",
-      "message": "A Transformation's source is in scope of its holder",
+      "message": "No Language extends itself, eventually",
       "subjects": [
-        "combat.view",
+        "combat",
+      ],
+    },
+    {
+      "check": "W4",
+      "message": "No Language extends itself, eventually",
+      "subjects": [
+        "core",
       ],
     },
   ],
@@ -156,20 +166,11 @@ exports[`diagnoser > diagnoses broken/w5.systemathic.json 1`] = `
 {
   "found": [
     {
-      "check": "mapping",
-      "message": "Target Relationships join images of the source Relationship's ends",
-      "subjects": [
-        "network-over-transport#rm0",
-        "transport.payload",
-        "transport.payload.payload",
-      ],
-    },
-    {
       "check": "W5",
-      "message": "A Relationship mapping requires both end Entities mapped",
+      "message": "A Component uses only Languages in its scope: its own and its parents', and those of the Components it imports",
       "subjects": [
-        "network-over-transport#rm0",
-        "network.identity.id",
+        "game.server",
+        "lib.network",
       ],
     },
   ],
@@ -182,9 +183,189 @@ exports[`diagnoser > diagnoses broken/w6.systemathic.json 1`] = `
   "found": [
     {
       "check": "W6",
-      "message": "Every Mediation is witnessed by a reversible Transformation of its mediator",
+      "message": "A Transformation's source is a Language its holder uses",
       "subjects": [
-        "combat-over-unity",
+        "game.network-over-wire.up",
+      ],
+    },
+    {
+      "check": "W6",
+      "message": "A Transformation's target is a Language its holder uses",
+      "subjects": [
+        "game.network-over-wire.down",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w7.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "mapping",
+      "message": "Target Relationships join images of the source Relationship's ends",
+      "subjects": [
+        "game.combat-over-network.down#rm0",
+        "lib.network.carries",
+        "lib.network.carries.ids",
+      ],
+    },
+    {
+      "check": "mapping",
+      "message": "Target Relationships join images of the source Relationship's ends",
+      "subjects": [
+        "game.combat-over-network.down#rm0",
+        "lib.network.carries",
+        "lib.network.carries.messages",
+      ],
+    },
+    {
+      "check": "W7",
+      "message": "A Relationship mapping requires both end Entities mapped",
+      "subjects": [
+        "game.combat-over-network.down#rm0",
+        "combat.chasing.chasers",
+      ],
+    },
+    {
+      "check": "W7",
+      "message": "A Relationship mapping requires both end Entities mapped",
+      "subjects": [
+        "game.combat-over-network.down#rm0",
+        "combat.chasing.chasing",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w8.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W8",
+      "message": "Parameter types are in the vocabulary of the Interaction's Language",
+      "subjects": [
+        "game.server.attack",
+        "game.server.attack.target",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w9.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W9",
+      "message": "A Component imports only its siblings, or what a Component it is nested in imports",
+      "subjects": [
+        "game.physics",
+        "game.client.input",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w10.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W10",
+      "message": "The Instance a Connection goes to offers its What",
+      "subjects": [
+        "game.online.client-2-attacks",
+        "game.server.attack",
+        "game.online.client-1",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w11.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W11",
+      "message": "A Medium's call is an Interaction of the Component that defines it",
+      "subjects": [
+        "lib.netstack.network",
+      ],
+    },
+    {
+      "check": "W11",
+      "message": "A Medium's call is over the Medium's Language",
+      "subjects": [
+        "lib.netstack.network",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w12.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W12",
+      "message": "A realization comes up from the Medium's Language",
+      "subjects": [
+        "game.online.client-1-attacks#m0",
+        "game.combat-over-network.down",
+      ],
+    },
+    {
+      "check": "W12",
+      "message": "A realization goes down into the Medium's Language",
+      "subjects": [
+        "game.online.client-1-attacks#m0",
+        "game.combat-over-network.up",
+      ],
+    },
+    {
+      "check": "W12",
+      "message": "The first Mediation's realization comes up to its Connection's What",
+      "subjects": [
+        "game.online.client-1-attacks#m0",
+        "game.combat-over-network.down",
+        "game.online.client-1-attacks",
+        "game.server.attack",
+      ],
+    },
+    {
+      "check": "W12",
+      "message": "The first Mediation's realization goes down from its Connection's What",
+      "subjects": [
+        "game.online.client-1-attacks#m0",
+        "game.combat-over-network.up",
+        "game.online.client-1-attacks",
+        "game.server.attack",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w13.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W13",
+      "message": "A choice is of a Deployment of its Instance's Component",
+      "subjects": [
+        "game.release#root.0",
+        "game.online.server",
       ],
     },
   ],

@@ -123,15 +123,15 @@ def symbols() -> list[dict[str, Any]]:
         add(name, "function", f"{name}{_signature(value)}", _doc(value), "systemathic.core")
     for name in ("System", "Element"):
         add(name, "class", f"class {name}", _doc(getattr(core, name)), "systemathic.core")
-    for name in ("language", "domain", "element", "all"):
+    for name in ("component", "language", "interaction", "medium", "deployment", "element", "all"):
         value = getattr(core.System, name)
         add(name, "method", f"System.{name}{_signature(value)}", _doc(value), "systemathic.core")
-    # Every end a script can navigate, from the schema: `domain.languages`, `end.min`, …
+    # Every end a script can navigate, from the schema: `component.languages`, `end.min`, …
     for _, a, b in RELATIONSHIPS:
         for near, far in ((a, b), (b, a)):
             many = far[3] is None or far[3] > 1
             add(far[0], "property", f"{near[1]}.{far[0]} → {'list of ' if many else ''}{far[1]}", f"From a {near[1]}: {'its' if not many else 'the'} {far[1]}{'s' if many else ''} through `{far[0]}`.", "systemathic.core")
     add("text", "property", "Formula.text → str", "A Formula's text, in the ASCII syntax.", "systemathic.core")
     add("id", "property", "Element.id → str", "The Element's id in the System file.", "systemathic.core")
-    add("kind", "property", "Element.kind → str", "Which Entity of the Systemathic Languages the Element is: 'Domain', 'Language', …", "systemathic.core")
+    add("kind", "property", "Element.kind → str", "Which Entity of the Systemathic Languages the Element is: 'Component', 'Language', …", "systemathic.core")
     return found

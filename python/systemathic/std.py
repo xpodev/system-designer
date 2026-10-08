@@ -7,11 +7,15 @@ the Violations it finds; a **profile** is the set of rules a System is verified 
     from systemathic.std import *
 
     @rule(severity=ERROR)
-    def core_is_pure(system: System):
-        if not pure(system.domain("Core")):
-            yield Violation(system.domain("Core"), "Core must be defined purely in its own terms")
+    def core_is_core(system: System):
+        if not is_core(system.language("Core")):
+            yield Violation(system.language("Core"), "Core must build on nothing")
 
-    profile = Profile(core_is_pure, *standard_rules)
+    profile = Profile(core_is_core, *standard_rules, mediation_primitives("In-process"))
+
+The standard rules are offered, never imposed: a profile has exactly the rules it lists.
+Rules that need arguments — which Mediums are primitive, how deep a stack must go — take
+them explicitly, with no defaults.
 """
 
 from __future__ import annotations
@@ -24,10 +28,12 @@ from .core import Element, System
 
 __all__ = [
     "ERROR", "WARNING", "Rule", "Profile", "Violation", "rule",
-    "langs", "standalone", "pure", "is_projection", "is_mediation", "witnesses",
-    "abstract", "abstract_language", "top_domains", "mediators", "hows", "items",
-    "opacity", "mediation_acyclic", "projection_acyclic", "domain_refs_acyclic", "generic_level",
-    "pure_domain_transformation", "wide_mediator", "top_domains_abstract", "completeness",
+    "vocab", "ancestry", "siblings", "scope", "is_core", "is_extension",
+    "leaf", "self_contained", "pure", "standalone", "shared", "dependencies",
+    "what_language", "ends", "round_trip", "is_projection", "hows", "abstract_language", "abstract", "items",
+    "opacity", "mediation_acyclic", "projection_acyclic", "generic_level", "imports_acyclic",
+    "deployments_complete", "interactions_abstract", "completeness",
+    "mediation_primitives", "mediation_depth", "mediations_realized",
     "standard_rules", "standard",
 ]
 
@@ -98,81 +104,146 @@ class Profile:
         object.__setattr__(self, "rules", tuple(by_name.values()))
 
 
-# -- Domains ------------------------------------------------------------------------------
+# -- Languages ----------------------------------------------------------------------------
 
-def langs(domain: Element) -> set[Element]:
-    """`langs*(D)`: a Domain's own Languages and, transitively, those of the Domains it references."""
-    found: set[Element] = set()
-    seen: set[Element] = set()
-    pending = [domain]
+def vocab(language: Element) -> list[Element]:
+    """`L.*extends`: a Language and every Language it extends, eventually, nearest first."""
+    found: list[Element] = []
+    pending = [language]
     while pending:
-        current = pending.pop()
-        if current in seen:
-            continue
-        seen.add(current)
-        found.update(current.languages)
-        pending.extend(current.references)
+        current = pending.pop(0)
+        if current not in found:
+            found.append(current)
+            pending.extend(current.extends)
     return found
 
 
-def standalone(domain: Element) -> bool:
-    return not domain.references
+def is_core(language: Element) -> bool:
+    """A core Language: it extends nothing of its own Component — nothing at all, or only
+    Languages from the Components it is nested in or imports."""
+    return all(extended.component is not language.component for extended in language.extends)
 
 
-def pure(domain: Element) -> bool:
-    """A Domain defined entirely in terms of one Language."""
-    return len(langs(domain)) == 1
-
-
-# -- Transformations and Mediations ---------------------------------------------------------
-
-def is_projection(transformation: Element) -> bool:
-    return transformation.reverse is None
-
-
-def is_mediation(transformation: Element) -> bool:
-    return transformation.reverse is not None
-
-
-def witnesses(mediation: Element) -> list[Element]:
-    """The mediator's reversible Transformations from the what's Languages to the how's."""
-    what, how, mediator = mediation.what, mediation.how, mediation.mediator
-    if what is None or how is None or mediator is None:
-        return []
-    whats, hows = langs(what), langs(how)
-    return [t for t in mediator.transformations if is_mediation(t) and t.source in whats and t.target in hows]
-
-
-def hows(system: System) -> set[Element]:
-    """The Languages that are the "how" side of some Mediation's witness."""
-    return {t.target for m in system.mediations for t in witnesses(m) if t.target is not None}
-
-
-def abstract_language(language: Element) -> bool:
-    """A Language that is never the "how" side of a Mediation."""
-    return language not in hows(language.system)
-
-
-def abstract(element: Element) -> bool:
-    """A Language that is never the "how" side of a Mediation, or a Domain all of whose Languages are."""
-    if element.kind == "Language":
-        return abstract_language(element)
-    return not (langs(element) & hows(element.system))
-
-
-def mediators(system: System) -> set[Element]:
-    return {m.mediator for m in system.mediations if m.mediator is not None}
-
-
-def top_domains(system: System) -> list[Element]:
-    """The Domains that are neither the how nor the mediator of any Mediation."""
-    below = {m.how for m in system.mediations} | mediators(system)
-    return [d for d in system.domains if d not in below]
+def is_extension(language: Element) -> bool:
+    """An extension: a Language that extends another of its own Component."""
+    return not is_core(language)
 
 
 def items(language: Element) -> list[Element]:
-    """A Language's Entities, Relationships and Interactions."""
-    return [*language.entities, *language.relationships, *language.interactions]
+    """A Language's own Entities and Relationships."""
+    return [*language.entities, *language.relationships]
+
+
+# -- Components ---------------------------------------------------------------------------
+
+def ancestry(component: Element) -> list[Element]:
+    """`C.*parent`: a Component and every Component it is nested in, nearest first."""
+    found: list[Element] = []
+    current: Element | None = component
+    while current is not None and current not in found:
+        found.append(current)
+        current = current.parent
+    return found
+
+
+def siblings(component: Element) -> list[Element]:
+    """The Components beside it: its parent's other children, or the System's other top-level Components."""
+    owner = component.parent or component.system
+    return [] if owner is None else [other for other in owner.components if other is not component]
+
+
+def scope(component: Element) -> list[Element]:
+    """The Languages a Component may use: its own and its parents', and those of the Components it imports."""
+    found: list[Element] = []
+    for owner in [*ancestry(component), *component.importedComponents]:
+        found += [language for language in owner.languages if language not in found]
+    return found
+
+
+def leaf(component: Element) -> bool:
+    return not component.components
+
+
+def self_contained(component: Element) -> bool:
+    """It uses only Languages it owns."""
+    return all(language.component is component for language in component.uses)
+
+
+def pure(component: Element) -> bool:
+    """It imports nothing: it depends only on Languages."""
+    return not (component.importedComponents or component.importedInteractions or component.importedTransformations or component.importedMediums)
+
+
+def dependencies(component: Element) -> list[Element]:
+    """The Components it imports from: those it imports, and those offering what it imports."""
+    found: list[Element] = list(component.importedComponents)
+    owners = [i.component for i in component.importedInteractions] + [t.holder for t in component.importedTransformations] + [m.definer for m in component.importedMediums]
+    found += [owner for owner in owners if owner is not None and owner not in found]
+    return found
+
+
+def standalone(component: Element) -> bool:
+    """It has an Instance in a Deployment of its parent."""
+    return any(instance.deployment is not None and instance.deployment.deployed is component.parent for instance in component.instances)
+
+
+def shared(component: Element) -> bool:
+    """Its siblings import it, to run Instances of their own."""
+    return any(component in sibling.importedComponents for sibling in siblings(component))
+
+
+# -- Connections and Mediations -----------------------------------------------------------
+
+def ends(connection: Element) -> list[Element]:
+    """The Components at a Connection's ends: what it goes from, and what it goes to."""
+    source = getattr(connection, "from")  # `from` is a Python keyword
+    found = [source.of if source is not None else None]
+    found.append(connection.toInstance.of if connection.toInstance is not None else connection.toComponent)
+    return [component for component in found if component is not None]
+
+
+def what_language(mediation: Element) -> Element | None:
+    """The Language a Mediation's What is over: its Connection's What's, or the call's of the Medium above it."""
+    connection = mediation.connection
+    if connection is None:
+        return None
+    stack = connection.mediations
+    position = stack.index(mediation) if mediation in stack else 0
+    if position == 0:
+        return connection.what[0].language if connection.what else None
+    above = stack[position - 1].how
+    return above.language if above is not None else None
+
+
+def round_trip(transformation: Element) -> bool:
+    """Some Transformation leads back from its target to its source."""
+    target = transformation.target
+    return target is not None and any(back.target is transformation.source for back in target.outgoing)
+
+
+def is_projection(transformation: Element) -> bool:
+    """A one-way Transformation: none leads back."""
+    return not round_trip(transformation)
+
+
+def _hows(mediations: Iterable[Element]) -> set[Element]:
+    return {m.how.language for m in mediations if m.how is not None and m.how.language is not None}
+
+
+def hows(system: System) -> set[Element]:
+    """The Languages some Mediation is over: the Languages of the Mediums it passes through."""
+    return _hows(system.all("Mediation"))
+
+
+def abstract_language(language: Element) -> bool:
+    """A Language that is never the how of a Mediation."""
+    return language not in _hows(e for e in language.model.elements.values() if e.kind == "Mediation")
+
+
+def abstract(element: Element) -> bool:
+    """A Language that is never a how, or an Interaction over one."""
+    language = element.language if element.kind == "Interaction" else element
+    return language is not None and abstract_language(language)
 
 
 # -- the standard rules -----------------------------------------------------------------------
@@ -218,70 +289,60 @@ def _names(elements: Iterable[Element]) -> str:
 
 @rule(severity=ERROR)
 def opacity(system: System) -> Iterator[Violation]:
-    """Every Mediation is opaque: the what does not know how it is carried out, and the how does not know what it carries.
+    """Every mediated Connection is opaque: what uses and what offers do not know how they are connected.
 
-    In `D1 / D2`, witnessed by `t: L1 -> L2`, the Language `L2` must not be in scope of
-    `D1`, and `L1` must not be in scope of `D2`. Only the mediator knows both sides.
+    For a Connection mediated over a stack, neither end's Component uses any Language below
+    its What's — the Languages of the Mediums it passes through. They import the realization,
+    and only the Deployment, and the realization, know the how.
 
-    This is what makes a "how" swappable: `Game / Unity` can become `Game / Godot` without
-    touching Game, because Game never learned Unity's vocabulary. A what that references its
-    how is coupled to one implementation; a how that references its what can only ever serve
-    that one what.
+    This is what makes a how swappable: the Connection can move from one Medium to another
+    without touching either end. An end that speaks the Medium's Language is coupled to it.
 
-    To fix it, remove the reference that lets one side see the other, and move whatever
-    needed both into the mediator.
+    To fix it, stop the end using the Medium's Language, and move whatever needed it into the
+    realization.
     """
-    for mediation in system.mediations:
-        for witness in witnesses(mediation):
-            if witness.target in langs(mediation.what):
-                yield Violation([mediation, mediation.what], f"{mediation.what.name} knows {witness.target.name}, the Language it is carried out in")
-            if witness.source in langs(mediation.how):
-                yield Violation([mediation, mediation.how], f"{mediation.how.name} knows {witness.source.name}, the Language it carries")
+    for connection in system.all("Connection"):
+        below = [m.how.language for m in connection.mediations if m.how is not None and m.how.language is not None]
+        for end in ends(connection):
+            spoken = {language for used in end.uses for language in vocab(used)}
+            for language in below:
+                if language in spoken:
+                    yield Violation([connection, end], f"{end.name} knows {language.name}, which its Connection is mediated over")
 
 
 @rule(severity=ERROR)
 def mediation_acyclic(system: System) -> Iterator[Violation]:
-    """No Domain is carried out, eventually, over itself.
+    """No Language is mediated, eventually, over itself.
 
-    Mediations go downward, from intent to implementation: `Game / Unity / Windows`. Following
-    them from a Domain's what to its how must never come back to where it started. A cycle
-    means some Domain is, eventually, its own implementation, and nothing in the cycle is
-    more concrete than anything else.
+    Mediations go downward, from a What to the Medium carrying it: Combat over Network over
+    Wire. Following them from a What's Language to its Medium's must never come back to where
+    it started. A cycle means some Language is, eventually, its own implementation.
 
-    To fix it, find the Mediation in the cycle that points upward, and remove or reverse it.
+    To fix it, find the Mediation in the cycle that points upward, and remove it.
     """
-    for cycle in _cycles(system.domains, lambda d: [m.how for m in d.asWhat if m.how is not None]):
-        yield Violation(cycle, f"carried out over themselves: {_names(cycle)}")
+    edges: dict[Element, list[Element]] = {}
+    for mediation in system.all("Mediation"):
+        what = what_language(mediation)
+        how = mediation.how.language if mediation.how is not None else None
+        if what is not None and how is not None:
+            edges.setdefault(what, []).append(how)
+    for cycle in _cycles(system.all("Language"), lambda l: edges.get(l, [])):
+        yield Violation(cycle, f"mediated over themselves: {_names(cycle)}")
 
 
 @rule(severity=ERROR)
 def projection_acyclic(system: System) -> Iterator[Violation]:
     """No Language is projected, eventually, into itself.
 
-    A projection is a one-way, sideways view: the core is projected into its contexts (a
-    Monster, in Combat, is `Targetable`), and the context knows the core while the core knows
-    no context. If projections lead back to where they began, there is no core: each Language
-    is a view of another, and none is the identity the others are views of.
+    A projection is a one-way Transformation: a view of an identity in another context, from
+    a Language into one that extends it. If one-way Transformations lead back to where they
+    began, there is no core: each Language is a view of another, and none is the identity
+    the others are views of.
 
     To fix it, decide which Language holds the identities, and keep projections out of it.
     """
-    for cycle in _cycles(system.languages, lambda l: [t.target for t in l.outgoing if is_projection(t) and t.target is not None]):
+    for cycle in _cycles(system.all("Language"), lambda l: [t.target for t in l.outgoing if is_projection(t) and t.target is not None]):
         yield Violation(cycle, f"projected into themselves: {_names(cycle)}")
-
-
-@rule(severity=ERROR)
-def domain_refs_acyclic(system: System) -> Iterator[Violation]:
-    """No Domain references itself, eventually.
-
-    A Domain builds on the Domains it references, and may use their Languages. References
-    are layering: a Domain that references itself, through others, is layered on top of
-    itself, and none of the Domains in the cycle can be understood, or replaced, alone.
-
-    To fix it, split what the Domains in the cycle share into a Domain of its own, which they
-    all reference.
-    """
-    for cycle in _cycles(system.domains, lambda d: d.references):
-        yield Violation(cycle, f"reference themselves: {_names(cycle)}")
 
 
 @rule(severity=ERROR)
@@ -293,90 +354,153 @@ def generic_level(system: System) -> Iterator[Violation]:
     inside a single Entity.
 
     A System records no generic instantiations yet, so nothing can violate this rule; it is
-    in the standard profile so that it applies as soon as they are recorded.
+    offered so that it applies as soon as they are recorded.
     """
     return iter(())
 
 
 @rule(severity=WARNING)
-def pure_domain_transformation(system: System) -> Iterator[Violation]:
-    """A pure Domain holds no Transformation.
+def imports_acyclic(system: System) -> Iterator[Violation]:
+    """No Component depends, eventually, on itself through its siblings: no two import from each other.
 
-    A pure Domain is defined entirely in terms of one Language. A Transformation crosses
-    between two Languages, so it needs a Domain that has both in scope; a pure Domain
-    holding one is a sign that its Transformation is out of scope, or that the Domain is
-    doing the job of a mediator or a context.
+    A Component's dependencies are its imports. Two Components importing from each other are
+    two dependencies, not one two-way link, and neither can be understood, replaced or
+    deployed without the other.
 
-    To fix it, move the Transformation into a Domain that references both of its Languages.
+    To fix it, move what both need into a Component of its own, which both import.
     """
-    for domain in system.domains:
-        if pure(domain) and domain.transformations:
-            yield Violation(domain, f"{domain.name} is pure, but holds {len(domain.transformations)} Transformation(s)")
+    def edges(component: Element) -> list[Element]:
+        beside = set(siblings(component))
+        return [other for other in dependencies(component) if other in beside]
 
-
-@rule(severity=WARNING)
-def wide_mediator(system: System) -> Iterator[Violation]:
-    """A mediator references at most two Languages.
-
-    A mediator knows exactly two things: the what's Language and the how's Language, and
-    holds the reversible Transformation between them. A mediator with more Languages in
-    scope is doing more than one mediation, or knows things no mediation needs, and every
-    extra Language is one more reason it has to change.
-
-    To fix it, split it into one mediator per Mediation, each referencing only its two
-    Languages.
-    """
-    for mediator in mediators(system):
-        if len(langs(mediator)) > 2:
-            yield Violation(mediator, f"{mediator.name} is a mediator with {len(langs(mediator))} Languages: {_names(langs(mediator))}")
+    for cycle in _cycles(system.all("Component"), edges):
+        yield Violation(cycle, f"depend on each other: {_names(cycle)}")
 
 
 @rule(severity=ERROR)
-def top_domains_abstract(system: System) -> Iterator[Violation]:
-    """Every top Domain is abstract.
+def deployments_complete(system: System) -> Iterator[Violation]:
+    """In every Deployment, every Interaction an Instance's Component imports is reached by a Connection.
 
-    The top Domains — neither the how nor the mediator of any Mediation — are the System's
-    stable contract: what it is, before how it is carried out. A top Domain that uses an
-    implementation Language (one that is the how of some Mediation) ties the System's
-    purpose to one way of carrying it out, and that way can then never be swapped.
+    An import says a Component needs another's operation. A Deployment that places the
+    Component and connects none of its Instance's needs leaves that need unmet: the
+    Deployment does not say who serves it.
 
-    To fix it, carry the top Domain out over the implementation through a Mediation, instead
-    of referencing the implementation Language directly.
+    To fix it, connect the Instance to an Instance that offers the Interaction, or to the
+    deployed Component.
+    """
+    for deployment in system.all("Deployment"):
+        for instance in deployment.instances:
+            if instance.of is None:
+                continue
+            reached = {interaction for connection in instance.outgoing for interaction in connection.what}
+            for interaction in instance.of.importedInteractions:
+                if interaction not in reached:
+                    yield Violation([deployment, instance, interaction], f"in {deployment.name}, nothing serves {instance.name}'s {interaction.name}")
+
+
+@rule(severity=WARNING)
+def interactions_abstract(system: System) -> Iterator[Violation]:
+    """Every imported Interaction is abstract: no Component is reached through an implementation vocabulary.
+
+    An Interaction over a Language some Mediation is over — a how — ties whoever imports it
+    to one way of carrying things out.
+
+    To fix it, offer the Interaction over the abstract Language, and mediate it over the how.
     """
     implementation = hows(system)
-    for domain in top_domains(system):
-        concrete = langs(domain) & implementation
-        if concrete:
-            yield Violation(domain, f"{domain.name} is a top Domain, but uses implementation Languages: {_names(concrete)}")
+    for component in system.all("Component"):
+        for interaction in component.importedInteractions:
+            if interaction.language in implementation:
+                yield Violation([component, interaction], f"{component.name} imports {interaction.name}, over {interaction.language.name}, which Mediations are over")
 
 
 @rule(severity=WARNING)
 def completeness(system: System) -> Iterator[Violation]:
-    """Every item of a mediation's source Language is mapped or deferred.
+    """Every item of a Mediation's What Language is mapped by its way down, or deferred.
 
-    A mediation says how a what is carried out by a how. An Entity, Relationship or
-    Interaction of the source Language that is neither mapped nor deferred is a gap: the
-    implementation has nothing to say about it, and nobody has said that this is on purpose.
+    A realization says how a What goes into a Medium. An Entity or Relationship of the What's
+    Language that is neither mapped nor deferred is a gap: the implementation has nothing to
+    say about it, and nobody has said that this is on purpose.
 
     To fix it, map the item, or defer it on the Transformation if it is deliberately left
     out; a deferral is kept in exported specifications.
     """
-    for domain in system.domains:
-        for transformation in domain.transformations:
-            if not is_mediation(transformation) or transformation.source is None:
-                continue
-            covered = {m.source for key in ("entityMappings", "relationshipMappings", "interactionMappings") for m in getattr(transformation, key)}
-            for deferral in transformation.deferred:
-                covered.update(x for x in (deferral.entity, deferral.relationship, deferral.interaction) if x is not None)
-            missing = [item for item in items(transformation.source) if item not in covered]
-            if missing:
-                yield Violation([transformation, *missing], f"{transformation.name} leaves {len(missing)} item(s) of {transformation.source.name} neither mapped nor deferred")
+    seen: set[Element] = set()
+    for mediation in system.all("Mediation"):
+        down = mediation.down
+        if down is None or down in seen or down.source is None:
+            continue
+        seen.add(down)
+        covered = {m.source for key in ("entityMappings", "relationshipMappings") for m in getattr(down, key)}
+        for deferral in down.deferred:
+            covered.update(x for x in (deferral.entity, deferral.relationship) if x is not None)
+        missing = [item for item in items(down.source) if item not in covered]
+        if missing:
+            yield Violation([down, *missing], f"{down.name} leaves {len(missing)} item(s) of {down.source.name} neither mapped nor deferred")
+
+
+def _mediums(system: System, names: Sequence[str]) -> set[Element]:
+    return {system.medium(name) for name in names}
+
+
+def mediation_primitives(*mediums: str, severity: str = ERROR) -> Rule:
+    """A rule: every Connection is mediated down to a primitive — its last Mediation is over one of `mediums`, by name."""
+    if not mediums:
+        raise ValueError("mediation_primitives needs the Mediums a script accepts as primitive, by name")
+
+    def mediation_primitives(system: System) -> Iterator[Violation]:
+        """Every Connection is mediated down to a primitive: a Medium the script accepts as trivial.
+
+        Below a primitive, how a Connection passes needs no saying. A Connection with no
+        Mediation, or whose stack stops above a primitive, leaves part of its how unsaid.
+
+        To fix it, mediate the Connection, down to one of the primitive Mediums.
+        """
+        primitive = _mediums(system, mediums)
+        for connection in system.all("Connection"):
+            stack = connection.mediations
+            if not stack or stack[-1].how not in primitive:
+                yield Violation(connection, f"{connection.id} is not mediated down to a primitive ({', '.join(mediums)})")
+
+    return Rule(mediation_primitives, severity)
+
+
+def mediation_depth(levels: int, severity: str = ERROR) -> Rule:
+    """A rule: every Connection has at least `levels` levels of Mediation."""
+    def mediation_depth(system: System) -> Iterator[Violation]:
+        """Every Connection has at least the required levels of Mediation.
+
+        To fix it, mediate the Connection further down.
+        """
+        for connection in system.all("Connection"):
+            if len(connection.mediations) < levels:
+                yield Violation(connection, f"{connection.id} has {len(connection.mediations)} level(s) of Mediation, not {levels}")
+
+    return Rule(mediation_depth, severity)
+
+
+def mediations_realized(*mediums: str, severity: str = ERROR) -> Rule:
+    """A rule: every Mediation over one of `mediums`, by name, is realized."""
+    if not mediums:
+        raise ValueError("mediations_realized needs the Mediums whose Mediations must be realized, by name")
+
+    def mediations_realized(system: System) -> Iterator[Violation]:
+        """Every Mediation over one of the given Mediums is realized: it has a way down and a way up.
+
+        To fix it, realize the Mediation, or create its realization.
+        """
+        required = _mediums(system, mediums)
+        for mediation in system.all("Mediation"):
+            if mediation.how in required and (mediation.down is None or mediation.up is None):
+                yield Violation([mediation.connection, mediation], f"a Mediation of {mediation.connection.id} over {mediation.how.name} is not realized")
+
+    return Rule(mediations_realized, severity)
 
 
 standard_rules: tuple[Rule, ...] = (
-    opacity, mediation_acyclic, projection_acyclic, domain_refs_acyclic, generic_level,
-    pure_domain_transformation, wide_mediator, top_domains_abstract, completeness,
+    opacity, mediation_acyclic, projection_acyclic, generic_level,
+    imports_acyclic, deployments_complete, interactions_abstract, completeness,
 )
 
-#: Every standard rule, at its default severity.
+#: Every standard rule that needs no arguments, at its default severity.
 standard = Profile(*standard_rules)
