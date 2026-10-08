@@ -16,7 +16,7 @@ it. It is identified by `"format": "systemathic/2"`. Files of the previous model
       {
         "id": "game", "name": "Game",
         "uses": [],
-        "imports": { "components": ["lib.netstack"], "transformations": [], "interactions": [], "mediums": [] },
+        "imports": { "components": ["pkg.netstack"], "transformations": [], "interactions": [], "mediums": [] },
         "languages": [
           { "id": "combat", "name": "Combat", "extends": ["core", "fighting"],
             "entities": [{ "id": "combat.combat-monster", "name": "CombatMonster", "extends": ["core.monster"] }],
@@ -37,7 +37,7 @@ it. It is identified by `"format": "systemathic/2"`. Files of the previous model
               { "id": "game.online.client-1-attacks", "from": "game.online.client-1",
                 "toInstance": "game.online.server", "toComponent": null,
                 "what": ["game.server.attack"],
-                "mediations": [{ "how": "lib.netstack.network", "down": "game.combat-over-network.down", "up": "game.combat-over-network.up" }] } ] }
+                "mediations": [{ "id": "game.online.client-1-attacks#m0", "how": "pkg.netstack.medium", "down": "game.combat-over-network.down", "up": "game.combat-over-network.up" }] } ] }
         ],
         "components": [
           { "id": "game.server", "name": "Server", "uses": ["combat"],
@@ -60,8 +60,8 @@ it. It is identified by `"format": "systemathic/2"`. Files of the previous model
     ],
     "configurations": [
       { "id": "game.release", "name": "Release",
-        "root": { "instance": null, "deployment": "game.online", "choices": [
-          { "instance": "game.online.server", "deployment": "game.server.single", "choices": [] } ] } }
+        "root": { "id": "game.release#root", "instance": null, "deployment": "game.online", "choices": [
+          { "id": "game.release#root.0", "instance": "game.online.server", "deployment": "game.server.single", "choices": [] } ] } }
     ]
   },
   "attachments": [{ "owner": "ui", "data": { "any": "JSON" } }]
@@ -79,9 +79,8 @@ it. It is identified by `"format": "systemathic/2"`. Files of the previous model
   it brought in beside the root.
 - **A Component's `imports`** list the Components, Transformations, Interactions and Mediums
   it imports; `uses` lists the Languages it works in.
-- **Ids** are strings, unique in the file. Mappings, deferrals, Mediations and choices have
-  none; they are owned by their Transformation, Connection or Configuration and identified
-  by position.
+- **Ids** are strings, unique in the file. Mappings and deferrals have none; they are owned
+  by their Transformation and identified by position.
 - **Names** are strings. Two things with the same name share one Name, as the Kernel says.
   An end's `name` may be `null`: an unnamed end, which cannot be navigated to.
 - **Ranges**: `min` is a natural number; `max` is a natural number or `"N"` for unbounded.

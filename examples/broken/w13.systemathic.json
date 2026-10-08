@@ -213,11 +213,13 @@
                 ],
                 "mediations": [
                   {
+                    "id": "game.online.client-1-attacks#m0",
                     "how": "pkg.netstack.medium",
                     "down": "game.combat-over-network.down",
                     "up": "game.combat-over-network.up"
                   },
                   {
+                    "id": "game.online.client-1-attacks#m1",
                     "how": "pkg.link.medium",
                     "down": "game.network-over-wire.down",
                     "up": "game.network-over-wire.up"
@@ -234,11 +236,13 @@
                 ],
                 "mediations": [
                   {
+                    "id": "game.online.client-2-attacks#m0",
                     "how": "pkg.netstack.medium",
                     "down": "game.combat-over-network.down",
                     "up": "game.combat-over-network.up"
                   },
                   {
+                    "id": "game.online.client-2-attacks#m1",
                     "how": "pkg.link.medium",
                     "down": "game.network-over-wire.down",
                     "up": "game.network-over-wire.up"
@@ -273,6 +277,7 @@
                 ],
                 "mediations": [
                   {
+                    "id": "game.local.client-attacks#m0",
                     "how": "pkg.in-process.medium",
                     "down": null,
                     "up": null
@@ -582,6 +587,7 @@
                     ],
                     "mediations": [
                       {
+                        "id": "game.client.desktop.input-attacks#m0",
                         "how": "pkg.in-process.medium",
                         "down": null,
                         "up": null
@@ -844,20 +850,24 @@
         "id": "game.release",
         "name": "Release",
         "root": {
+          "id": "game.release#root",
           "instance": null,
           "deployment": "game.online",
           "choices": [
             {
+              "id": "game.release#root.0",
               "instance": "game.online.server",
               "deployment": "game.client.desktop",
               "choices": []
             },
             {
+              "id": "game.release#root.1",
               "instance": "game.online.client-1",
               "deployment": "game.client.desktop",
               "choices": []
             },
             {
+              "id": "game.release#root.2",
               "instance": "game.online.client-2",
               "deployment": "game.client.desktop",
               "choices": []

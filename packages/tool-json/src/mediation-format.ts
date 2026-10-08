@@ -1,8 +1,7 @@
 /**
  * MediationFormat: the Mediums a Component defines and imports, and a Connection's stack of
  * Mediations, as JSON. Mediations are in stack order, the first over the Connection's What;
- * each names its Medium and, if realized, its `down` and `up`, or `null`. They have no ids of
- * their own: they are owned by their Connection and identified by position.
+ * each has its id, names its Medium and, if realized, its `down` and `up`, or `null`.
  */
 import { mediationStack, nameOf, setMediationStack, setName, type Graph } from "@systemathic/core";
 import type { Extension } from "./contexts-format.js";
@@ -10,7 +9,7 @@ import type { ConnectionExtension } from "./deployment-format.js";
 import { array, object, string, type Reader } from "./reader.js";
 
 export interface MediumJson { id: string; name: string; language: string; call: string }
-export interface MediationJson { how: string; down: string | null; up: string | null }
+export interface MediationJson { id: string; how: string; down: string | null; up: string | null }
 
 /** The Mediation layer of a Component: `imports.mediums`, and `mediums`. */
 export const mediums: Extension = {
@@ -47,7 +46,7 @@ export const mediations: ConnectionExtension = {
     array(json.mediations, `${at}.mediations`).forEach((value, index) => {
       const where = `${at}.mediations[${index}]`;
       const mediation = object(value, where);
-      const id = reader.create("Mediation", `${connection}#m${index}`, where);
+      const id = reader.create("Mediation", mediation.id, where);
       if (id === undefined) return;
       ids.push(id);
       reader.refer(id, "how", mediation.how, `${where}.how`);
@@ -58,6 +57,7 @@ export const mediations: ConnectionExtension = {
   },
   writeConnection: (graph: Graph, connection: string) => ({
     mediations: mediationStack(graph, connection).map((id): MediationJson => ({
+      id,
       how: graph.navigate(id, "how")[0] ?? "",
       down: graph.navigate(id, "down")[0] ?? null,
       up: graph.navigate(id, "up")[0] ?? null,

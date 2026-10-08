@@ -234,7 +234,7 @@ def read(file: dict) -> System:
     for configuration in design.get("configurations", []):
         element = reader.named("Configuration", configuration, system, "configurations")
         if element is not None:
-            root = _read_choice(reader, configuration["root"], f"{element.id}#root")
+            root = _read_choice(reader, configuration["root"])
             if root is not None:
                 reader.model.connect(element, "root", root)
     reader.finish()
@@ -385,7 +385,7 @@ def _read_deployment(reader: _Reader, component: Element, json: dict) -> None:
             reader.refer(element, "what", id)
         mediations = []
         for index, mediation in enumerate(connection.get("mediations", [])):
-            mediation_element = reader.create("Mediation", f"{element.id}#m{index}")
+            mediation_element = reader.create("Mediation", mediation["id"])
             if mediation_element is None:
                 continue
             reader.model.connect(element, "mediations", mediation_element)
@@ -397,15 +397,15 @@ def _read_deployment(reader: _Reader, component: Element, json: dict) -> None:
         _read_chain(reader, element, mediations)
 
 
-def _read_choice(reader: _Reader, json: dict, id: str) -> Element | None:
-    choice = reader.create("Choice", id)
+def _read_choice(reader: _Reader, json: dict) -> Element | None:
+    choice = reader.create("Choice", json["id"])
     if choice is None:
         return None
     if json["instance"] is not None:
         reader.refer(choice, "instance", json["instance"])
     reader.refer(choice, "deployment", json["deployment"])
     for index, child in enumerate(json["choices"]):
-        element = _read_choice(reader, child, f"{id}.{index}")
+        element = _read_choice(reader, child)
         if element is not None:
             reader.model.connect(choice, "choices", element)
     return choice
