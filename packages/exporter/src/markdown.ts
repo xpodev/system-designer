@@ -33,7 +33,7 @@ const obligationLine = (o: Obligation) => `- [${o.id}] **${o.kind}** ${o.text} <
 const HEADING = /^(#{2,}) (.*) \{#([^}]+)\}$/;
 const STATEMENT = /^- \[([^\]]+)\] (.*) <!-- ?(.*?) ?-->$/;
 const REQUIREMENT = /^- \[([^\]]+)\] \*\*(error|warning)\*\* `([^`]+)`: (.*) <!-- (.*) -->$/;
-const OBLIGATION = /^- \[([^\]]+)\] \*\*(O[123])\*\* (.*) <!-- ?(.*?) ?-->$/;
+const OBLIGATION = /^- \[([^\]]+)\] \*\*(O[1234])\*\* (.*) <!-- ?(.*?) ?-->$/;
 
 export class MarkdownError extends Error {}
 

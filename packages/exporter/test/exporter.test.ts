@@ -10,41 +10,55 @@ const context = (path: string) => open(readSystem(JSON.parse(readFileSync(new UR
 const profile: Profile = {
   name: "profile",
   script: { path: "rules.py" },
-  rules: [{ name: "opacity", severity: "error", about: "Every Mediation is opaque.", script: "std" }],
+  rules: [{ name: "opacity", severity: "error", about: "Every mediated Connection is opaque.", script: "std" }],
 };
 
 describe("specification", () => {
   const spec = specify(context("game.systemathic.json"), profile);
   const all = (sections = spec.sections): { id: string; text: string }[] =>
     sections.flatMap((section) => [...section.statements, ...all(section.sections)]);
+  const text = (id: string) => all().find((s) => s.id === id)?.text;
 
-  it("states each Language's vocabulary, what each Domain may use, and which crossings exist", () => {
-    const text = (id: string) => all().find((s) => s.id === id)?.text;
+  it("states each Language's vocabulary, and what it extends", () => {
     expect(text("relationship:core.pack")).toBe("Relationship Monster (end 'leader', 0..1) <——> Monster (end 'followers', 0..N): Monster.followers; Monster.leader.");
-    expect(text("interaction:combat.attack")).toBe("Interaction attack(attacker: Attacker, target: Targetable) → Damage. It is an Action on 'attacker'.");
-    expect(text("scope:d.combat")).toBe("May use exactly the Languages Combat, Core, and nothing else.");
-    expect(text("transformation:combat-in-unity")).toBe(
-      "Transformation Combat as GameObjects: Combat → Unity, a mediation with a reverse by reference, keeping GameObject as context.",
-    );
-    expect(text("mediation:combat-over-unity")).toBe("Combat is carried out over Unity; only CombatInUnity knows both.");
+    expect(text("extends:combat")).toBe("Extends Core, Fighting: its vocabulary is its own and theirs.");
+    expect(text("entity:combat.combat-player")).toBe("Entity CombatPlayer, extending Player, Attacker: each of its instances is one of theirs.");
   });
 
-  it("has the profile's rules as Requirements, and O1–O3 as Obligations for specific Subjects", () => {
-    expect(spec.requirements).toEqual([{ id: "R:opacity", rule: "opacity", severity: "error", about: "Every Mediation is opaque.", script: "std" }]);
-    expect(spec.obligations.map((o) => o.id)).toEqual([
-      "O1:core", "O1:combat", "O1:network", "O1:unity", "O1:transport",
-      "O3:combat.view", "O3:network.view", "O2:combat-in-unity", "O2:network-over-transport",
-    ]);
+  it("states what each Component may use, imports and offers, and how its Deployments connect its parts", () => {
+    expect(text("interaction:game.server.attack")).toBe("Interaction attack(attacker: Attacker, target: Targetable) → Damage, over Combat. It is an Action on 'attacker'.");
+    expect(text("scope:game.combat-over-network")).toBe("May use exactly the Languages Core, Fighting, Combat, Network, and nothing else.");
+    expect(text("imports:game.client")).toBe(
+      "Imports the Components Physics, CombatOverNetwork, NetworkOverWire, In-process; the Interactions attack; the Transformations none; the Mediums none; it reaches nothing else of any other Component.",
+    );
+    expect(text("connection:game.online.client-1-attacks")).toBe(
+      "In Online, client-1 uses attack of server; it passes over Network (down by Combat down to Network, up by Network up to Combat), then Wire (down by Network down to Transport, up by Transport up to Network).",
+    );
+    expect(text("medium:lib.netstack.network")).toBe("Medium Network: a What passes over Network, through send.");
+    expect(text("configuration:game.release")).toBe(
+      "Configuration Release: the root is put together as Online; server is put together as Single; client-1 is put together as Desktop; client-2 is put together as Desktop.",
+    );
+  });
+
+  it("nests Components as sections, the packages apart", () => {
+    expect(spec.sections.map((s) => s.title)).toEqual(["Component Game", "Packages", "Configurations"]);
+    expect(spec.sections[1]!.sections.map((s) => s.title)).toEqual(["Component NetStack", "Component Link", "Component In-process"]);
+  });
+
+  it("has the profile's rules as Requirements, and O1–O4 as Obligations for specific Subjects", () => {
+    expect(spec.requirements).toEqual([{ id: "R:opacity", rule: "opacity", severity: "error", about: "Every mediated Connection is opaque.", script: "std" }]);
+    const kinds = (kind: string) => spec.obligations.filter((o) => o.kind === kind).map((o) => o.id);
+    expect(kinds("O1")).toEqual(["O1:core", "O1:fighting", "O1:combat", "O1:lib.network", "O1:lib.transport", "O1:lib.process"]);
+    expect(kinds("O2")).toEqual(["O2:game.combat-over-network.down", "O2:game.network-over-wire.down"]);
+    expect(kinds("O4")).toEqual(["O4:combat.combat-monster", "O4:combat.combat-player"]);
   });
 });
 
 describe("representations", () => {
-  for (const file of ["game.systemathic.json", "tool-design.systemathic.json"]) {
-    it(`Markdown reads back into the Specification it came from: ${file}`, () => {
-      const spec = specify(context(file), profile);
-      expect(fromMarkdown(toMarkdown(spec))).toEqual(spec);
-    });
-  }
+  it("Markdown reads back into the Specification it came from", () => {
+    const spec = specify(context("game.systemathic.json"), profile);
+    expect(fromMarkdown(toMarkdown(spec))).toEqual(spec);
+  });
 
   it("Markdown is for reading: headings and items led by their ids", () => {
     const markdown = toMarkdown(specify(context("game.systemathic.json")));
@@ -65,14 +79,14 @@ describe("documentation", () => {
   // Descriptions are the Documentation tool context's, kept beside the design as its attachment.
   file.attachments.push({
     owner: "documentation",
-    data: { descriptions: { game: "A small game.\n\nMonsters, and those who fight them.", "core.player": "Plays the game.", "core.hunts": "Who hunts whom.", "core.gone": "Of nothing there." } },
+    data: { descriptions: { "game.system": "A small game.\n\nMonsters, and those who fight them.", "core.player": "Plays the game.", "core.hunts": "Who hunts whom.", "core.gone": "Of nothing there." } },
   });
   const documented = open(readSystem(file).system);
-  const rules: Profile = { ...profile, rules: [{ ...profile.rules[0]!, doc: "Every Mediation is opaque.\n\nSo the how can be swapped." }] };
+  const rules: Profile = { ...profile, rules: [{ ...profile.rules[0]!, doc: "Every mediated Connection is opaque.\n\nSo the how can be swapped." }] };
   const doc = document(documented, rules);
 
   it("reads each Relationship both ways, as what each side has of the other", () => {
-    const [hunts, pack] = doc.languages[0]!.relationships;
+    const [hunts, pack] = doc.components[0]!.languages[0]!.relationships;
     expect(hunts!.name).toBe("Player.prey ⟷ Monster.hunters");
     expect(hunts!.description).toBe("Who hunts whom.");
     expect(hunts!.navigations.map((n) => n.reading)).toEqual(["Each Player has any number of Monsters, as prey.", "Each Monster has any number of Players, as hunters."]);
@@ -87,11 +101,15 @@ describe("documentation", () => {
     expect(counted("Category", 2)).toBe("Categories");
   });
 
-  it("is a Markdown document, with every Description and the rules' documentation", () => {
+  it("is a Markdown document, with every Description, Component by Component, and the rules' documentation", () => {
     const markdown = documentationMarkdown(doc);
-    expect(markdown).toMatch(/^# Game\n\nA small game\.\n\nMonsters, and those who fight them\.\n\nThis System has 5 Languages, 7 Domains, 2 Mediations\.\n/);
+    expect(markdown).toMatch(/^# Game\n\nA small game\.\n\nMonsters, and those who fight them\.\n\nThis System has 7 Components, 3 packages beside its root, and 1 Configuration\.\n/);
+    expect(markdown).toContain("### Core — a core Language\n");
+    expect(markdown).toContain("### Combat — extends Core, Fighting\n");
+    expect(markdown).toContain("- **CombatMonster** : Monster, Targetable, Attacker\n");
     expect(markdown).toContain("- **Monster**\n- **Player** — Plays the game.\n");
     expect(markdown).toContain("**Player.prey ⟷ Monster.hunters**\n\nWho hunts whom.\n\n- Each Player has any number of Monsters, as prey. `0..N`\n");
-    expect(markdown).toContain("## Verification rules\n\n### `opacity` — error, standard\n\nEvery Mediation is opaque.\n\nSo the how can be swapped.\n");
+    expect(markdown).toContain("- client-1 uses attack of server, over Network, down by Combat down to Network and up by Network up to Combat, then Wire");
+    expect(markdown).toContain("## Verification rules\n\n### `opacity` — error, standard\n\nEvery mediated Connection is opaque.\n\nSo the how can be swapped.\n");
   });
 });

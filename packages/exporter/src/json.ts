@@ -1,7 +1,7 @@
 /** JsonExport (docs/tool-design.md, `Exporter / JSON`): a Specification as JSON, for a machine; by value. */
 import type { Specification } from "./specification.js";
 
-export const SPEC_FORMAT = "systemathic-specification/1";
+export const SPEC_FORMAT = "systemathic-specification/2";
 
 export interface SpecificationFile extends Specification {
   readonly format: typeof SPEC_FORMAT;

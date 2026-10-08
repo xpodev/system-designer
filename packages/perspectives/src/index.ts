@@ -3,7 +3,7 @@
  * The core's Entities are Subjects here, and Diagnostics are Marks; nothing else of the tool
  * is known. A UI draws a View; an LLM reads the same View as structured data.
  */
-import { coreEntities, describe as describeElement, effectiveLanguages, nameOf, parameters, stdSpec, witnessed, type Graph } from "@systemathic/core";
+import { coreEntities, describe as describeElement, mediationStack, nameOf, parameters, scope, stdSpec, type Graph } from "@systemathic/core";
 import { diagnose, metrics, type Diagnostic } from "@systemathic/diagnoser";
 import type { SystemContext } from "@systemathic/tool";
 import { ViewBuilder, type LinkEnd, type Perspective, type View } from "./view.js";
@@ -14,23 +14,24 @@ export interface PerspectiveInfo {
   readonly perspective: Perspective;
   readonly title: string;
   readonly about: string;
-  /** What else the View needs: the Language a Language view is of. */
-  readonly needs?: "language";
+  /** What else the View needs: the Entity of the Subject it is of — the Language a Language view is of. */
+  readonly needs?: "Language" | "Component" | "Deployment";
 }
 
 export const perspectives: readonly PerspectiveInfo[] = [
-  { perspective: "outline", title: "Outline", about: "Everything in the System, as a tree: Languages and their contents, Domains and their Transformations, Mediations." },
-  { perspective: "language", title: "Language", about: "One Language: its Entities, the Relationships between them, its Interactions and Formulas.", needs: "language" },
-  { perspective: "domain-map", title: "Domain map", about: "Domains, the Languages they use, the Domains they reference, and the Transformations between Languages." },
-  { perspective: "mediation-stack", title: "Mediation stack", about: "Which Domain is carried out over which, through which mediator, by level from the top." },
+  { perspective: "outline", title: "Outline", about: "Everything in the System, as a tree: its Components, nested, each with its Languages, Interactions, Mediums, imports and Deployments; its Configurations." },
+  { perspective: "language", title: "Language", about: "One Language: its Entities and what they extend, the Relationships between them, its Formulas, and the Interactions over it.", needs: "Language" },
+  { perspective: "component", title: "Component", about: "One Component: its Languages and what they extend, its children, the Languages each uses, and what each imports from which.", needs: "Component" },
+  { perspective: "deployment", title: "Deployment", about: "One Deployment: its Instances, and its Connections — each with its What and the Mediums it is mediated over.", needs: "Deployment" },
+  { perspective: "mediation-stack", title: "Mediation stack", about: "Which Language is mediated over which, through which Medium, by level from the top." },
   { perspective: "levels", title: "Levels", about: "The kernel, the Systemathic Languages, and the model made of them." },
   { perspective: "diagnostics", title: "Diagnostics", about: "What is wrong: structural errors, then rule errors, then warnings, with suggestions." },
   { perspective: "statistics", title: "Statistics", about: "Counts, depths, fan-in and fan-out." },
 ];
 
 export interface ViewOptions {
-  /** For the Language perspective: the Language. */
-  readonly language?: string;
+  /** For a Perspective that needs one: the Language, Component or Deployment it is of. */
+  readonly subject?: string;
   /** The Diagnostics to mark the View with; by default, the context's structural ones. */
   readonly diagnostics?: readonly Diagnostic[];
 }
@@ -41,6 +42,10 @@ export function view(context: SystemContext, perspective: Perspective, options: 
   const system = graph.ofEntity("System")[0] ?? "";
   const build = builders[perspective];
   if (!build) throw new Error(`no perspective '${perspective}'`);
+  const needs = perspectives.find((p) => p.perspective === perspective)?.needs;
+  if (needs !== undefined && (options.subject === undefined || !graph.has(options.subject) || graph.get(options.subject).entity !== needs)) {
+    throw new Error(`the ${perspective} perspective needs a ${needs}`);
+  }
   return build(graph, system, { ...options, diagnostics }).mark(diagnostics).build();
 }
 
@@ -53,6 +58,7 @@ const name = (graph: Graph, id: string) =>
 /** How an unnamed end reads where its name would be: there is no way through it. */
 const UNNAMED = "(unnamed)";
 const first = (graph: Graph, id: string, end: string) => graph.navigate(id, end)[0];
+const named = (graph: Graph, id: string | undefined) => (id === undefined || !graph.has(id) ? "?" : name(graph, id));
 
 /** An end's range, as `min..max`. */
 function rangeText(graph: Graph, end: string): string {
@@ -68,8 +74,8 @@ function endLabel(graph: Graph, end: string): string {
 
 /** An end as a Link shows it beside its Entity: its name, if it has one, and its range. */
 function linkEnd(graph: Graph, end: string): LinkEnd {
-  const named = nameOf(graph, end);
-  return named === undefined ? { range: rangeText(graph, end) } : { name: named, range: rangeText(graph, end) };
+  const endName = nameOf(graph, end);
+  return endName === undefined ? { range: rangeText(graph, end) } : { name: endName, range: rangeText(graph, end) };
 }
 
 /** The other end of an end's Relationship. */
@@ -84,8 +90,7 @@ function otherEnd(graph: Graph, end: string): string | undefined {
  */
 function endText(graph: Graph, end: string): string {
   const from = otherEnd(graph, end);
-  const [entity] = from === undefined ? [] : graph.navigate(from, "entity");
-  return `${entity === undefined ? "?" : name(graph, entity)}.${endLabel(graph, end)}`;
+  return `${named(graph, from === undefined ? undefined : first(graph, from, "entity"))}.${endLabel(graph, end)}`;
 }
 
 /** Both ways through a Relationship: `Player.prey 0..N ⟷ Monster.hunters 0..N`. */
@@ -97,100 +102,145 @@ function relationshipText(graph: Graph, relationship: string): string {
 }
 
 function signature(graph: Graph, interaction: string): string {
-  const params = parameters(graph, interaction).map((p) => {
-    const type = first(graph, p, "type");
-    return `${name(graph, p)}: ${type === undefined ? "?" : name(graph, type)}`;
-  });
-  const output = first(graph, interaction, "output");
-  return `${name(graph, interaction)}(${params.join(", ")}) → ${output === undefined ? "?" : name(graph, output)}`;
+  const params = parameters(graph, interaction).map((p) => `${name(graph, p)}: ${named(graph, first(graph, p, "type"))}`);
+  return `${name(graph, interaction)}(${params.join(", ")}) → ${named(graph, first(graph, interaction, "output"))}`;
 }
 
 function mappingText(graph: Graph, mapping: string): string {
-  const source = first(graph, mapping, "source");
   const targets = graph.navigate(mapping, "targets").map((t) => name(graph, t));
-  return `${source === undefined ? "?" : name(graph, source)} ↦ ${targets.join(", ") || "nothing"}`;
+  return `${named(graph, first(graph, mapping, "source"))} ↦ ${targets.join(", ") || "nothing"}`;
 }
 
-function kindOf(graph: Graph, transformation: string): string {
-  return graph.navigate(transformation, "reverse").length > 0 ? "mediation" : "projection";
+/** What an Entity extends, as `: A, B`, or nothing. */
+function extendsText(graph: Graph, item: string): string | undefined {
+  const extended = graph.navigate(item, "extends").map((e) => name(graph, e));
+  return extended.length === 0 ? undefined : `extends ${extended.join(", ")}`;
+}
+
+/** How a Connection is mediated: `over Network, then Wire`, `unstated`, or a broken level by the Medium it lost. */
+export function mediationText(graph: Graph, connection: string): string {
+  const stack = mediationStack(graph, connection);
+  if (stack.length === 0) return "unstated";
+  return `over ${stack.map((m) => named(graph, first(graph, m, "how")) + (graph.navigate(m, "down").length === 0 ? "" : " (realized)")).join(", then ")}`;
+}
+
+/** Where a Connection goes: an Instance, or the deployed Component itself. */
+function connectionTarget(graph: Graph, connection: string): string | undefined {
+  return first(graph, connection, "toInstance") ?? first(graph, connection, "toComponent");
+}
+
+function outlineComponent(graph: Graph, view: ViewBuilder, component: string, parent: string): void {
+  const item = view.item({ subject: component, kind: "Component", label: name(graph, component) }, parent);
+  for (const language of graph.navigate(component, "languages")) {
+    const l = view.item({ subject: language, kind: "Language", label: name(graph, language), detail: extendsText(graph, language) }, item);
+    for (const entity of graph.navigate(language, "entities")) view.item({ subject: entity, kind: "Entity", label: name(graph, entity), detail: extendsText(graph, entity) }, l);
+    for (const relationship of graph.navigate(language, "relationships")) {
+      const r = view.item({ subject: relationship, kind: "Relationship", label: relationshipText(graph, relationship) }, l);
+      for (const end of graph.navigate(relationship, "ends")) view.item({ subject: end, kind: "End", label: name(graph, end), detail: endText(graph, end) }, r);
+    }
+    for (const formula of graph.navigate(language, "formulas")) view.item({ subject: formula, kind: "Formula", label: String(graph.get(formula).value ?? "") }, l);
+  }
+  for (const interaction of graph.navigate(component, "interactions")) {
+    const i = view.item({ subject: interaction, kind: "Interaction", label: name(graph, interaction), detail: `${signature(graph, interaction)}, over ${named(graph, first(graph, interaction, "language"))}` }, item);
+    for (const parameter of parameters(graph, interaction)) view.item({ subject: parameter, kind: "Parameter", label: name(graph, parameter) }, i);
+  }
+  for (const transformation of graph.navigate(component, "transformations")) {
+    const t = view.item(
+      {
+        subject: transformation,
+        kind: "Transformation",
+        label: name(graph, transformation),
+        detail: `${named(graph, first(graph, transformation, "source"))} → ${named(graph, first(graph, transformation, "target"))}`,
+      },
+      item,
+    );
+    for (const end of ["entityMappings", "relationshipMappings"]) {
+      for (const mapping of graph.navigate(transformation, end)) view.item({ subject: mapping, kind: graph.get(mapping).entity, label: mappingText(graph, mapping) }, t);
+    }
+    for (const deferral of graph.navigate(transformation, "deferred")) {
+      const deferredItem = ["entity", "relationship"].flatMap((e) => graph.navigate(deferral, e))[0];
+      view.item({ subject: deferral, kind: "Deferred", label: `deferred: ${deferredItem === undefined ? "?" : describeElement(graph, deferredItem)}` }, t);
+    }
+  }
+  for (const medium of graph.navigate(component, "mediums")) {
+    view.item({ subject: medium, kind: "Medium", label: name(graph, medium), detail: `over ${named(graph, first(graph, medium, "language"))}, call ${named(graph, first(graph, medium, "call"))}` }, item);
+  }
+  for (const end of ["importedComponents", "importedInteractions", "importedTransformations", "importedMediums"]) {
+    for (const imported of graph.navigate(component, end)) {
+      view.item({ id: `${item}/import/${imported}`, subject: imported, kind: "import", label: `imports ${name(graph, imported)}`, detail: graph.get(imported).entity }, item);
+    }
+  }
+  for (const deployment of graph.navigate(component, "deployments")) {
+    const d = view.item({ subject: deployment, kind: "Deployment", label: name(graph, deployment) }, item);
+    for (const instance of graph.navigate(deployment, "instances")) {
+      view.item({ subject: instance, kind: "Instance", label: name(graph, instance), detail: `of ${named(graph, first(graph, instance, "of"))}` }, d);
+    }
+    for (const connection of graph.navigate(deployment, "connections")) {
+      const what = graph.navigate(connection, "what").map((i) => name(graph, i)).join(", ");
+      view.item(
+        {
+          subject: connection,
+          kind: "Connection",
+          label: `${named(graph, first(graph, connection, "from"))} → ${named(graph, connectionTarget(graph, connection))}: ${what}`,
+          detail: mediationText(graph, connection),
+        },
+        d,
+      );
+    }
+  }
+  for (const child of graph.navigate(component, "components")) outlineComponent(graph, view, child, item);
 }
 
 const builders: Readonly<Record<Perspective, Builder>> = {
   outline(graph, system) {
     const view = new ViewBuilder("outline", "Outline");
     const root = view.item({ subject: system, kind: "System", label: name(graph, system) });
-    const languages = view.item({ id: "languages", subject: system, kind: "group", label: "Languages" }, root);
-    for (const language of graph.navigate(system, "languages")) {
-      const item = view.item({ subject: language, kind: "Language", label: name(graph, language) }, languages);
-      for (const entity of graph.navigate(language, "entities")) view.item({ subject: entity, kind: "Entity", label: name(graph, entity) }, item);
-      for (const relationship of graph.navigate(language, "relationships")) {
-        const r = view.item({ subject: relationship, kind: "Relationship", label: relationshipText(graph, relationship) }, item);
-        for (const end of graph.navigate(relationship, "ends")) view.item({ subject: end, kind: "End", label: name(graph, end), detail: endText(graph, end) }, r);
+    const [rootComponent] = graph.navigate(system, "root");
+    const top = graph.navigate(system, "components");
+    for (const component of [...top.filter((c) => c === rootComponent), ...top.filter((c) => c !== rootComponent)]) outlineComponent(graph, view, component, root);
+    const configurations = graph.navigate(system, "configurations");
+    if (configurations.length > 0) {
+      const group = view.item({ id: "configurations", subject: system, kind: "group", label: "Configurations" }, root);
+      const choice = (id: string, parent: string) => {
+        const [instance] = graph.navigate(id, "instance");
+        const c = view.item({ subject: id, kind: "Choice", label: `${instance === undefined ? "root" : name(graph, instance)} ↦ ${named(graph, first(graph, id, "deployment"))}` }, parent);
+        for (const child of graph.navigate(id, "choices")) choice(child, c);
+      };
+      for (const configuration of configurations) {
+        const c = view.item({ subject: configuration, kind: "Configuration", label: name(graph, configuration) }, group);
+        for (const rootChoice of graph.navigate(configuration, "root")) choice(rootChoice, c);
       }
-      for (const interaction of graph.navigate(language, "interactions")) {
-        const i = view.item({ subject: interaction, kind: "Interaction", label: name(graph, interaction), detail: signature(graph, interaction) }, item);
-        for (const parameter of parameters(graph, interaction)) view.item({ subject: parameter, kind: "Parameter", label: name(graph, parameter) }, i);
-      }
-      for (const formula of graph.navigate(language, "formulas")) {
-        view.item({ subject: formula, kind: "Formula", label: String(graph.get(formula).value ?? "") }, item);
-      }
-    }
-    const domains = view.item({ id: "domains", subject: system, kind: "group", label: "Domains" }, root);
-    for (const domain of graph.navigate(system, "domains")) {
-      const item = view.item({ subject: domain, kind: "Domain", label: name(graph, domain) }, domains);
-      for (const transformation of graph.navigate(domain, "transformations")) {
-        const source = first(graph, transformation, "source");
-        const target = first(graph, transformation, "target");
-        const t = view.item(
-          {
-            subject: transformation,
-            kind: "Transformation",
-            label: name(graph, transformation),
-            detail: `${kindOf(graph, transformation)}: ${source === undefined ? "?" : name(graph, source)} → ${target === undefined ? "?" : name(graph, target)}`,
-          },
-          item,
-        );
-        for (const end of ["entityMappings", "relationshipMappings", "interactionMappings"]) {
-          for (const mapping of graph.navigate(transformation, end)) {
-            view.item({ subject: mapping, kind: graph.get(mapping).entity, label: mappingText(graph, mapping) }, t);
-          }
-        }
-        for (const deferral of graph.navigate(transformation, "deferred")) {
-          const item = ["entity", "relationship", "interaction"].flatMap((e) => graph.navigate(deferral, e))[0];
-          view.item({ subject: deferral, kind: "Deferred", label: `deferred: ${item === undefined ? "?" : describeElement(graph, item)}` }, t);
-        }
-      }
-    }
-    const mediations = view.item({ id: "mediations", subject: system, kind: "group", label: "Mediations" }, root);
-    for (const mediation of graph.navigate(system, "mediations")) {
-      const [what, how, mediator] = ["what", "how", "mediator"].map((role) => first(graph, mediation, role));
-      view.item(
-        {
-          subject: mediation,
-          kind: "Mediation",
-          label: `${what === undefined ? "?" : name(graph, what)} / ${how === undefined ? "?" : name(graph, how)}`,
-          detail: `mediator: ${mediator === undefined ? "?" : name(graph, mediator)}`,
-        },
-        mediations,
-      );
     }
     return view;
   },
 
-  language(graph, _system, { language }) {
-    if (language === undefined || !graph.has(language)) throw new Error("the Language perspective needs a Language");
-    const view = new ViewBuilder("language", name(graph, language));
-    for (const entity of graph.navigate(language, "entities")) view.item({ subject: entity, kind: "Entity", label: name(graph, entity) });
-    for (const relationship of graph.navigate(language, "relationships")) {
-      const [a, b] = graph.navigate(relationship, "ends").map((end) => first(graph, end, "entity"));
+  language(graph, _system, { subject: language }) {
+    const view = new ViewBuilder("language", name(graph, language!));
+    const own = new Set(graph.navigate(language!, "entities"));
+    for (const entity of own) view.item({ subject: entity, kind: "Entity", label: name(graph, entity), detail: extendsText(graph, entity) });
+    // What the Language's own Entities extend, and the Entities its Relationships reach, from the Languages it extends.
+    const borrowed = new Set<string>();
+    for (const entity of own) for (const extended of graph.navigate(entity, "extends")) borrowed.add(extended);
+    for (const relationship of graph.navigate(language!, "relationships")) {
+      for (const end of graph.navigate(relationship, "ends")) for (const entity of graph.navigate(end, "entity")) borrowed.add(entity);
+    }
+    for (const entity of borrowed) {
+      if (!own.has(entity)) {
+        view.item({ subject: entity, kind: "Entity", label: name(graph, entity), detail: `of ${named(graph, first(graph, entity, "language"))}`, level: 0 });
+      }
+    }
+    for (const entity of own) for (const extended of graph.navigate(entity, "extends")) view.link(entity, extended, "extends");
+    for (const relationship of graph.navigate(language!, "relationships")) {
       const [ea, eb] = graph.navigate(relationship, "ends");
+      const a = ea === undefined ? undefined : first(graph, ea, "entity");
+      const b = eb === undefined ? undefined : first(graph, eb, "entity");
       if (a !== undefined && b !== undefined && ea !== undefined && eb !== undefined) {
         // From a, the end at b is reached; from b, the end at a. Each end reads beside its own Entity: how many of it, by what name.
         view.link(a, b, "Relationship", `${endLabel(graph, eb)} ⟷ ${endLabel(graph, ea)}`, { ends: { source: linkEnd(graph, ea), target: linkEnd(graph, eb) }, subject: relationship });
       }
     }
-    for (const interaction of graph.navigate(language, "interactions")) {
-      const item = view.item({ subject: interaction, kind: "Interaction", label: name(graph, interaction), detail: signature(graph, interaction) });
+    for (const interaction of graph.navigate(language!, "interactions")) {
+      const item = view.item({ subject: interaction, kind: "Interaction", label: name(graph, interaction), detail: `${signature(graph, interaction)}, of ${named(graph, first(graph, interaction, "component"))}` });
       for (const parameter of parameters(graph, interaction)) {
         const type = first(graph, parameter, "type");
         if (type !== undefined) view.link(item, type, "parameter", name(graph, parameter));
@@ -198,80 +248,115 @@ const builders: Readonly<Record<Perspective, Builder>> = {
       const output = first(graph, interaction, "output");
       if (output !== undefined) view.link(item, output, "output");
     }
-    for (const formula of graph.navigate(language, "formulas")) view.item({ subject: formula, kind: "Formula", label: String(graph.get(formula).value ?? "") });
+    for (const formula of graph.navigate(language!, "formulas")) view.item({ subject: formula, kind: "Formula", label: String(graph.get(formula).value ?? "") });
     return view;
   },
 
-  "domain-map"(graph, system) {
-    const view = new ViewBuilder("domain-map", "Domain map");
-    for (const language of graph.navigate(system, "languages")) view.item({ subject: language, kind: "Language", label: name(graph, language) });
-    for (const domain of graph.navigate(system, "domains")) view.item({ subject: domain, kind: "Domain", label: name(graph, domain) });
-    for (const domain of graph.navigate(system, "domains")) {
-      for (const language of graph.navigate(domain, "languages")) view.link(domain, language, "uses");
-      for (const referenced of graph.navigate(domain, "references")) view.link(domain, referenced, "references");
-      for (const transformation of graph.navigate(domain, "transformations")) {
-        const source = first(graph, transformation, "source");
-        const target = first(graph, transformation, "target");
-        if (source !== undefined && target !== undefined) view.link(source, target, kindOf(graph, transformation), name(graph, transformation));
+  component(graph, _system, { subject: component }) {
+    const view = new ViewBuilder("component", name(graph, component!));
+    const own = graph.navigate(component!, "languages");
+    const visible = scope(graph, component!);
+    const children = graph.navigate(component!, "components");
+    // Levels: what the Component's Languages build on, then its core Languages, its extensions, and its children.
+    for (const language of visible) {
+      const ownLanguage = own.includes(language);
+      const extendsOwn = graph.navigate(language, "extends").some((l) => own.includes(l));
+      view.item({
+        subject: language,
+        kind: "Language",
+        label: name(graph, language),
+        detail: ownLanguage ? (extendsOwn ? "extension" : "core") : `of ${named(graph, first(graph, language, "component"))}`,
+        level: ownLanguage ? (extendsOwn ? 2 : 1) : 0,
+      });
+    }
+    for (const child of children) view.item({ subject: child, kind: "Component", label: name(graph, child), level: 3 });
+    for (const language of own) for (const extended of graph.navigate(language, "extends")) view.link(language, extended, "extends");
+    for (const child of children) {
+      for (const language of graph.navigate(child, "uses")) view.link(child, language, "uses");
+      const offers = new Map<string, string[]>();
+      const record = (owner: string | undefined, what: string) => {
+        if (owner === undefined || owner === child) return;
+        offers.set(owner, [...(offers.get(owner) ?? []), what]);
+      };
+      for (const imported of graph.navigate(child, "importedComponents")) record(imported, name(graph, imported));
+      for (const [end, ownerEnd] of [["importedInteractions", "component"], ["importedTransformations", "holder"], ["importedMediums", "definer"]] as const) {
+        for (const imported of graph.navigate(child, end)) record(first(graph, imported, ownerEnd), name(graph, imported));
+      }
+      for (const [owner, what] of offers) view.link(child, owner, "imports", what.join(", "));
+    }
+    return view;
+  },
+
+  deployment(graph, _system, { subject: deployment }) {
+    const view = new ViewBuilder("deployment", name(graph, deployment!));
+    const [deployed] = graph.navigate(deployment!, "deployed");
+    if (deployed !== undefined) view.item({ subject: deployed, kind: "Component", label: name(graph, deployed), detail: "the deployed Component itself", level: 0 });
+    for (const instance of graph.navigate(deployment!, "instances")) {
+      view.item({ subject: instance, kind: "Instance", label: name(graph, instance), detail: `of ${named(graph, first(graph, instance, "of"))}`, level: 1 });
+    }
+    for (const connection of graph.navigate(deployment!, "connections")) {
+      const from = first(graph, connection, "from");
+      const to = connectionTarget(graph, connection);
+      if (from === undefined || to === undefined) continue;
+      const stack = mediationStack(graph, connection);
+      const kind = stack.length === 0 ? "unstated" : stack.some((m) => graph.navigate(m, "how").length === 0) ? "broken" : "mediated";
+      view.link(from, to, kind, `${graph.navigate(connection, "what").map((i) => name(graph, i)).join(", ")} — ${mediationText(graph, connection)}`, { subject: connection });
+    }
+    return view;
+  },
+
+  "mediation-stack"(graph) {
+    const view = new ViewBuilder("mediation-stack", "Mediation stack");
+    const below = new Map<string, Map<string, Set<string>>>();
+    for (const connection of graph.ofEntity("Connection")) {
+      let what = graph.navigate(first(graph, connection, "what") ?? "", "language")[0];
+      for (const mediation of mediationStack(graph, connection)) {
+        const medium = first(graph, mediation, "how");
+        const how = medium === undefined ? undefined : first(graph, medium, "language");
+        if (what === undefined || how === undefined || medium === undefined) break;
+        const hows = below.get(what) ?? new Map<string, Set<string>>();
+        hows.set(how, (hows.get(how) ?? new Set()).add(medium));
+        below.set(what, hows);
+        what = how;
       }
     }
-    return view;
-  },
-
-  "mediation-stack"(graph, system) {
-    const view = new ViewBuilder("mediation-stack", "Mediation stack");
-    const mediations = graph.navigate(system, "mediations");
-    const below = new Map<string, string[]>();
-    const involved = new Set<string>();
-    for (const mediation of mediations) {
-      const what = first(graph, mediation, "what");
-      const how = first(graph, mediation, "how");
-      if (what === undefined || how === undefined) continue;
-      involved.add(what).add(how);
-      below.set(what, [...(below.get(what) ?? []), how]);
-    }
-    // A Domain's level: the longest chain of whats above it, so a stack reads top to bottom.
+    // A Language's level: the longest chain of Whats above it, so a stack reads top to bottom.
     const levels = new Map<string, number>();
-    const level = (domain: string, path: Set<string>): number => {
-      const known = levels.get(domain);
+    const level = (language: string, path: Set<string>): number => {
+      const known = levels.get(language);
       if (known !== undefined) return known;
-      path.add(domain);
+      path.add(language);
       let deepest = 0;
-      for (const [what, hows] of below) if (hows.includes(domain) && !path.has(what)) deepest = Math.max(deepest, level(what, path) + 1);
-      path.delete(domain);
-      levels.set(domain, deepest);
+      for (const [what, hows] of below) if (hows.has(language) && !path.has(what)) deepest = Math.max(deepest, level(what, path) + 1);
+      path.delete(language);
+      levels.set(language, deepest);
       return deepest;
     };
-    for (const domain of graph.navigate(system, "domains")) {
-      if (involved.has(domain)) view.item({ subject: domain, kind: "Domain", label: name(graph, domain), level: level(domain, new Set()) });
-    }
-    for (const mediation of mediations) {
-      const [what, how, mediator] = ["what", "how", "mediator"].map((role) => first(graph, mediation, role));
-      if (what !== undefined && how !== undefined) {
-        view.link(what, how, witnessed(graph, mediation) ? "mediation" : "unwitnessed mediation", mediator === undefined ? undefined : name(graph, mediator));
-      }
+    const involved = new Set([...below.keys(), ...[...below.values()].flatMap((hows) => [...hows.keys()])]);
+    for (const language of involved) view.item({ subject: language, kind: "Language", label: name(graph, language), level: level(language, new Set()) });
+    for (const [what, hows] of below) {
+      for (const [how, mediums] of hows) view.link(what, how, "mediation", [...mediums].map((m) => name(graph, m)).join(", "));
     }
     return view;
   },
 
   levels(graph, system) {
     const view = new ViewBuilder("levels", "Levels");
+    // The layer that declares an Entity is the first whose Relationships mention it.
     const layerOf = (entity: string) => stdSpec.relationships.find((r) => r.ends.some((end) => end.entity === entity))?.id.split("#")[0] ?? "?";
     const kernel = view.item({ id: "kernel", subject: system, kind: "level", label: "Kernel", detail: "Language, Entity, Relationship, and the logic", level: 0 });
-    for (const entity of coreEntities.filter((e) => layerOf(e) === "Kernel")) {
-      view.item({ id: `kernel/${entity}`, subject: system, kind: "vocabulary", label: entity }, kernel);
-    }
+    for (const entity of coreEntities.filter((e) => layerOf(e) === "Kernel")) view.item({ id: `kernel/${entity}`, subject: system, kind: "vocabulary", label: entity }, kernel);
     const languages = view.item({ id: "languages", subject: system, kind: "level", label: "Systemathic Languages", detail: "the vocabulary every System is made of", level: 1 });
-    for (const layer of ["Contexts", "Operations", "Std"]) {
+    for (const layer of ["Contexts", "Operations", "Deployment", "Mediation", "Configuration", "Std"]) {
       const group = view.item({ id: `languages/${layer}`, subject: system, kind: "layer", label: layer }, languages);
       for (const entity of graph.vocabulary.spec.entities.filter((e) => layerOf(e) === layer)) {
         view.item({ id: `languages/${layer}/${entity}`, subject: system, kind: "vocabulary", label: entity, detail: `${graph.ofEntity(entity).length} in this System` }, group);
       }
     }
     const model = view.item({ id: "model", subject: system, kind: "level", label: "Model", detail: name(graph, system), level: 2 });
-    for (const language of graph.navigate(system, "languages")) {
-      const counts = ["entities", "relationships", "interactions"].map((end) => `${graph.navigate(language, end).length} ${end}`).join(", ");
-      view.item({ subject: language, kind: "Language", label: name(graph, language), detail: counts }, model);
+    for (const component of graph.navigate(system, "components")) {
+      const counts = ["languages", "components", "interactions", "deployments"].map((end) => `${graph.navigate(component, end).length} ${end}`).join(", ");
+      view.item({ subject: component, kind: "Component", label: name(graph, component), detail: counts }, model);
     }
     return view;
   },
@@ -313,14 +398,3 @@ const builders: Readonly<Record<Perspective, Builder>> = {
     return view;
   },
 };
-
-/** The Language perspective needs one; the others take the whole System. */
-export function languagesOf(context: SystemContext): string[] {
-  const graph = context.design;
-  return graph.ofEntity("System").flatMap((system) => graph.navigate(system, "languages"));
-}
-
-/** The effective Languages of a Domain, by name: what a client shows beside a Domain. */
-export function scopeOf(context: SystemContext, domain: string): string[] {
-  return [...effectiveLanguages(context.design, domain)].map((language) => name(context.design, language));
-}

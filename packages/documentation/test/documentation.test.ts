@@ -1,5 +1,5 @@
 import { Target, redo, undo } from "@systemathic/editing";
-import { ArgumentError, LanguageEditor, SystemEditor } from "@systemathic/editors";
+import { ArgumentError, ComponentEditor, LanguageEditor } from "@systemathic/editors";
 import { newSystem, open, save } from "@systemathic/tool";
 import { readSystem, writeSystem } from "@systemathic/tool-json";
 import { describe as group, expect, it } from "vitest";
@@ -8,7 +8,7 @@ import { describe, descriptionOf, descriptions, documentationEditor } from "../s
 function game() {
   const target = new Target(newSystem("Game"));
   const s = target.startSession("test");
-  const core = SystemEditor.addLanguage(s, "system", "Core").elements[0]!;
+  const core = ComponentEditor.addLanguage(s, "system.root", "Core").elements[0]!;
   const monster = LanguageEditor.addEntity(s, core, "Monster").elements[0]!;
   return { target, s, core, monster };
 }

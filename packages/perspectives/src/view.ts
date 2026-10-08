@@ -6,7 +6,7 @@
  */
 import type { Diagnostic, Severity } from "@systemathic/diagnoser";
 
-export type Perspective = "outline" | "language" | "domain-map" | "mediation-stack" | "levels" | "diagnostics" | "statistics";
+export type Perspective = "outline" | "language" | "component" | "deployment" | "mediation-stack" | "levels" | "diagnostics" | "statistics";
 
 export interface Mark {
   readonly severity: Severity;

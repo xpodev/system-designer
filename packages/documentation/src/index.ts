@@ -2,8 +2,9 @@
  * Documentation (docs/tool-design.md): what a System and the things in it are for, in prose. It
  * is a tool context, not part of the design: the core knows nothing of it, and nothing in a
  * design depends on it. The things it describes are its Subjects, by id — the System, its
- * Languages, Entities, Relationships, Formulas, Interactions, Domains, Transformations and
- * Mediations — and it keeps their Descriptions with the System, as its own attachment.
+ * Components, Languages, Entities, Relationships, Formulas, Interactions, Transformations,
+ * Mediums, Deployments, Instances, Connections and Configurations — and it keeps their
+ * Descriptions with the System, as its own attachment.
  *
  * Describing is an Edit like any other: it is on the one History, told to every session, and
  * undone and redone with the rest, because its Effect knows how to revert itself.
@@ -16,7 +17,21 @@ import type { SystemContext } from "@systemathic/tool";
 export const ATTACHMENT_OWNER = "documentation";
 
 /** The Entities of the core whose instances can be described: the projection core → Documentation, `↦ Subject`. */
-export const SUBJECTS: ReadonlySet<string> = new Set(["System", "Language", "Entity", "Relationship", "Formula", "Interaction", "Domain", "Transformation", "Mediation"]);
+export const SUBJECTS: ReadonlySet<string> = new Set([
+  "System",
+  "Component",
+  "Language",
+  "Entity",
+  "Relationship",
+  "Formula",
+  "Interaction",
+  "Transformation",
+  "Medium",
+  "Deployment",
+  "Instance",
+  "Connection",
+  "Configuration",
+]);
 
 interface Stored {
   readonly descriptions: Readonly<Record<string, string>>;
@@ -74,7 +89,7 @@ export const documentationEditor: readonly Operation[] = [
     editor: "DocumentationEditor",
     name: "describe",
     kind: "change",
-    about: "Describes something in the System — the System itself, a Language, Entity, Relationship, Formula, Interaction, Domain, Transformation or Mediation: what it is and what it is for, in prose. Empty text removes the description.",
+    about: "Describes something in the System — the System itself, a Component, Language, Entity, Relationship, Formula, Interaction, Transformation, Medium, Deployment, Instance, Connection or Configuration: what it is and what it is for, in prose. Empty text removes the description.",
     parameters: [
       { name: "subject", kind: "element", of: [...SUBJECTS], about: "what is described" },
       { name: "text", kind: "text", about: "the description, in prose (a little Markdown); empty to remove it" },
