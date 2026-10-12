@@ -6,7 +6,7 @@
     "generate": "tsx scripts/generate-schema.ts && python python/generate.py && tsx scripts/build-catalog.ts",
     "build": "tsc -b && pnpm --filter @systemathic/ui build",
     "test": "vitest run",
-    "check-self": "node packages/cli/dist/index.js check examples/tool-design.systemathic.json && node packages/cli/dist/index.js verify examples/tool-design.systemathic.json examples/tool-design.rules.py",
+    "check-self": "node packages/cli/dist/index.js check docs/system-designer.systemathic.json && node packages/cli/dist/index.js verify docs/system-designer.systemathic.json",
     "test:python": "python -m unittest discover -s python/tests",
     "serve": "node packages/cli/dist/index.js serve",
     "mcp": "node packages/mcp/dist/main.js",

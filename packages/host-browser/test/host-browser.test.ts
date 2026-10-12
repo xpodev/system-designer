@@ -14,12 +14,12 @@ const fresh = () => browserHost({ store: new MemoryStore(), channel });
 
 describe("a browser tab's host", () => {
   it("starts a new visitor with the examples, and carries the catalog and the Python package", async () => {
-    expect(Object.keys(exampleFiles).sort()).toEqual(["examples/game.systemathic.json", "examples/tool-design.rules.py", "examples/tool-design.systemathic.json"]);
+    expect(Object.keys(exampleFiles).sort()).toEqual(["docs/system-designer.rules.py", "docs/system-designer.systemathic.json", "examples/game.systemathic.json"]);
     expect(JSON.parse(exampleFiles["examples/game.systemathic.json"]!).attachments.map((a: { owner: string }) => a.owner)).not.toContain("ui");
     expect(standardCatalog().packages).toHaveLength(11);
     expect(Object.keys(pythonSources)).toEqual(expect.arrayContaining(["core.py", "std.py", "host.py", "assist.py", "_schema.py"]));
     const host = await fresh();
-    expect(await host.files()).toEqual(["examples/game.systemathic.json", "examples/tool-design.systemathic.json"]);
+    expect(await host.files()).toEqual(["docs/system-designer.systemathic.json", "examples/game.systemathic.json"]);
   });
 
   it("names a file one way, however it is written", () => {
@@ -40,11 +40,11 @@ describe("a browser tab's host", () => {
     expect(await host.files()).toContain("mine/game.systemathic.json");
   });
 
-  it.skip("verifies with the tool design's own rules, in WebAssembly (the tool's own design is rewritten in the new model last)", async () => {
+  it("verifies the tool's own design with its own profile, in WebAssembly", async () => {
     const host = await fresh();
-    const { id } = await host.open("examples/tool-design.systemathic.json");
-    const run = await host.verify(id, "examples/tool-design.rules.py");
-    expect(run).toMatchObject({ profile: "profile", rules: 16, errors: 0, failures: [] });
+    const { id } = await host.open("docs/system-designer.systemathic.json");
+    const run = await host.verify(id);
+    expect(run).toMatchObject({ profile: "profile", script: "docs/system-designer.rules.py", rules: 17, errors: 0, warnings: 0, failures: [] });
   }, 120_000);
 
   it("edits a System's script, and checks it as it is written", async () => {

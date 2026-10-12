@@ -4,7 +4,12 @@ Design a system as a precise model — closed vocabularies, the contexts that us
 explicit crossings between them — then verify it against rules and export it as a contract
 for implementers. See [docs/motivation.md](docs/motivation.md), the formal model in
 [docs/foundation.md](docs/foundation.md), and the tool's own design in
-[docs/tool-design.md](docs/tool-design.md), which the tool verifies (`pnpm check-self`).
+[docs/system-designer.md](docs/system-designer.md) — exported from
+[docs/system-designer.systemathic.json](docs/system-designer.systemathic.json), which the tool
+verifies against its own profile, [docs/system-designer.rules.py](docs/system-designer.rules.py)
+(`pnpm check-self`). Its Specification is
+[docs/system-designer.specification.md](docs/system-designer.specification.md), and what it says
+that the tool cannot yet is in [docs/bootstrap.md](docs/bootstrap.md).
 
 ## Build and test
 
@@ -35,7 +40,7 @@ node packages/cli/dist/index.js check examples/game.systemathic.json
 ```
 
 ```bash
-node packages/cli/dist/index.js verify examples/tool-design.systemathic.json examples/tool-design.rules.py
+node packages/cli/dist/index.js verify docs/system-designer.systemathic.json docs/system-designer.rules.py
 ```
 
 ```bash

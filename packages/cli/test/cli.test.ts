@@ -52,10 +52,10 @@ describe("systemathic", () => {
     expect(await run(["new", "blank.json"], fake)).toBe(2);
   });
 
-  it.skip("verify: runs a script's profile and exits 0 when no rule finds an error (the tool's own design is rewritten last)", async () => {
+  it("verify: runs a script's profile and exits 0 when no rule finds an error", async () => {
     const { fake, out } = io();
-    expect(await run(["verify", "examples/tool-design.systemathic.json", "examples/tool-design.rules.py"], fake)).toBe(0);
-    expect(out.at(-1)).toMatch(/^examples\/tool-design.systemathic.json: profile \(16 rules\): 0 errors, \d+ warnings, 0 failed rules$/);
+    expect(await run(["verify", "docs/system-designer.systemathic.json", "docs/system-designer.rules.py"], fake)).toBe(0);
+    expect(out.at(-1)).toBe("docs/system-designer.systemathic.json: profile (17 rules): 0 errors, 0 warnings, 0 failed rules");
   }, 30_000);
 
   it("verify: uses the standard rules when the System names no profile", async () => {

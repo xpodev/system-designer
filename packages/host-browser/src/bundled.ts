@@ -26,11 +26,13 @@ export const pythonSources: Readonly<Record<string, string>> = Object.fromEntrie
 const examples = {
   ...(import.meta.glob("../../../examples/*.systemathic.json", { eager: true, query: "?raw", import: "default" }) as Record<string, string>),
   ...(import.meta.glob("../../../examples/*.rules.py", { eager: true, query: "?raw", import: "default" }) as Record<string, string>),
+  ...(import.meta.glob("../../../docs/*.systemathic.json", { eager: true, query: "?raw", import: "default" }) as Record<string, string>),
+  ...(import.meta.glob("../../../docs/*.rules.py", { eager: true, query: "?raw", import: "default" }) as Record<string, string>),
 };
 
-/** The examples, as `examples/<name>` to their text: the System files and their rule scripts. */
+/** The examples and the tool's own design, by their paths in the repository (`examples/<name>`, `docs/<name>`) to their text: the System files and their rule scripts. */
 export const exampleFiles: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(examples).map(([path, text]) => [`examples/${path.split("/").pop()!}`, withoutLayout(path, text)]),
+  Object.entries(examples).map(([path, text]) => [path.replace(/^(\.\.\/)+/, ""), withoutLayout(path, text)]),
 );
 
 /** An example as it was written, without the layout someone left in it while using the UI. */

@@ -1,6 +1,6 @@
 # The System file format
 
-A System file is `Tool::System / JSON` (see [tool-design.md](tool-design.md)): the tool's
+A System file is `Tool::System / JSON` (see [system-designer.md](system-designer.md)): the tool's
 stored form of a System, in JSON, so that any program in any language can read and write
 it. It is identified by `"format": "systemathic/2"`. Files of the previous model,
 `systemathic/1`, are not read: its concepts do not carry over faithfully.

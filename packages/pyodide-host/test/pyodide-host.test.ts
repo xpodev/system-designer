@@ -24,14 +24,13 @@ const text = (path: string) => readFileSync(new URL(path, root), "utf8");
 const context = (path: string) => open(readSystem(JSON.parse(text(path))).system);
 
 describe("RuleHost in WebAssembly", () => {
-  it.skip("verifies the tool's design against its own profile, as Python does", async () => {
-    const script = { path: "examples/tool-design.rules.py", source: text("examples/tool-design.rules.py") };
+  it("verifies the tool's design against its own profile, as Python does", async () => {
+    const script = { path: "docs/system-designer.rules.py", source: text("docs/system-designer.rules.py") };
     const profile = await verifier.profile(script);
-    expect(profile.rules).toHaveLength(16);
-    const run = await verifier.verify(snapshot(context("examples/tool-design.systemathic.json")), profile);
+    expect(profile.rules).toHaveLength(17);
+    const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
-    expect(run.violations.filter((v) => v.rule.severity === "error")).toEqual([]);
-    expect(run.violations.length).toBeGreaterThan(0);
+    expect(run.violations).toEqual([]);
   }, 120_000);
 
   it("runs the standard rules", async () => {

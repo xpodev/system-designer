@@ -13,13 +13,13 @@ const context = (file: string) => open(readSystem(JSON.parse(readFileSync(`${roo
 const verifier = new Verifier(new PythonHost(undefined, root));
 
 describe("RuleHost", () => {
-  it.skip("(the tool's own design is rewritten in the new model last) verifies the tool's design against its own profile", async () => {
-    const profile = await verifier.profile({ path: "examples/tool-design.rules.py" });
-    expect(profile.rules.map((rule) => rule.name)).toContain("checking_is_not_editing");
-    expect(profile.rules).toHaveLength(16);
-    const run = await verifier.verify(snapshot(context("examples/tool-design.systemathic.json")), profile);
+  it("verifies the tool's design against its own profile", async () => {
+    const profile = await verifier.profile({ path: "docs/system-designer.rules.py" });
+    expect(profile.rules.map((rule) => rule.name)).toContain("readers_dont_edit");
+    expect(profile.rules).toHaveLength(17);
+    const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
-    expect(run.violations.filter((violation) => violation.rule.severity === "error")).toEqual([]);
+    expect(run.violations).toEqual([]);
   }, 30_000);
 
   it("runs the standard rules, and names the Elements a Violation is about", async () => {

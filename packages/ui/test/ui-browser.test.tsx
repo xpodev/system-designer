@@ -35,7 +35,7 @@ describe("the UI, standing alone in the browser", () => {
     window.history.replaceState(null, "", "#");
     render(<App />);
     await screen.findByText(/your Systems are kept in this browser/);
-    expect(await screen.findByText("tool-design.systemathic.json")).toBeTruthy();
+    expect(await screen.findByText("system-designer.systemathic.json")).toBeTruthy();
   });
 
   it("opens an example, edits it, verifies it in Python in WebAssembly, and keeps it", async () => {
