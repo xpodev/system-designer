@@ -274,7 +274,7 @@
                         "id": "system.root.systemathic.kernel.max.max",
                         "name": "max",
                         "entity": "system.root.systemathic.kernel.bound",
-                        "min": 1,
+                        "min": 0,
                         "max": 1
                       }
                     ]
@@ -964,7 +964,7 @@
                         "id": "system.root.systemathic.deployment.placedatmost-max.max",
                         "name": "max",
                         "entity": "system.root.systemathic.kernel.bound",
-                        "min": 1,
+                        "min": 0,
                         "max": 1
                       }
                     ]
@@ -1519,7 +1519,8 @@
                 "system.root.by-value",
                 "system.root.systemathic-metadata",
                 "system.root.systemathic-subjects",
-                "pkg.http"
+                "pkg.http",
+                "system.root.configurations"
               ],
               "transformations": [],
               "interactions": [],
@@ -6491,7 +6492,8 @@
                   "system.root.tool.source.sources",
                   "system.root.tool.systems-editor.systems-editing",
                   "system.root.tool.documentation-store.documentation-editing",
-                  "system.root.tool.by-value-store.by-value-editing"
+                  "system.root.tool.by-value-store.by-value-editing",
+                  "system.root.tool.configuration-store.configuration-editing"
                 ],
                 "imports": {
                   "components": [
@@ -6509,7 +6511,8 @@
                     "system.root.tool.documentation-store",
                     "system.root.tool.by-value-store",
                     "system.root.tool.editing",
-                    "system.root.tool.views"
+                    "system.root.tool.views",
+                    "system.root.tool.configuration-store"
                   ],
                   "transformations": [],
                   "interactions": [],
@@ -6535,7 +6538,8 @@
                   "system.root.tool.source.sources",
                   "system.root.tool.systems-editor.systems-editing",
                   "system.root.tool.documentation-store.documentation-editing",
-                  "system.root.tool.by-value-store.by-value-editing"
+                  "system.root.tool.by-value-store.by-value-editing",
+                  "system.root.tool.configuration-store.configuration-editing"
                 ],
                 "imports": {
                   "components": [
@@ -6553,7 +6557,8 @@
                     "system.root.tool.documentation-store",
                     "system.root.tool.by-value-store",
                     "system.root.tool.editing",
-                    "system.root.tool.views"
+                    "system.root.tool.views",
+                    "system.root.tool.configuration-store"
                   ],
                   "transformations": [],
                   "interactions": [],
@@ -6608,7 +6613,8 @@
                   "system.root.tool.source.sources",
                   "system.root.tool.systems-editor.systems-editing",
                   "system.root.tool.documentation-store.documentation-editing",
-                  "system.root.tool.by-value-store.by-value-editing"
+                  "system.root.tool.by-value-store.by-value-editing",
+                  "system.root.tool.configuration-store.configuration-editing"
                 ],
                 "imports": {
                   "components": [
@@ -6625,13 +6631,270 @@
                     "system.root.tool.views",
                     "system.root.tool.systems-editor",
                     "system.root.tool.documentation-store",
-                    "system.root.tool.by-value-store"
+                    "system.root.tool.by-value-store",
+                    "system.root.tool.configuration-store"
                   ],
                   "transformations": [],
                   "interactions": [],
                   "mediums": []
                 },
                 "languages": [],
+                "transformations": [],
+                "interactions": [],
+                "mediums": [],
+                "deployments": [],
+                "components": []
+              },
+              {
+                "id": "system.root.tool.configuration-store",
+                "name": "Configuration Store",
+                "uses": [
+                  "system.root.configurations.configurations",
+                  "system.root.tool.configuration-store.configuration-editing",
+                  "system.root.tool.editing.editing",
+                  "system.root.systemathic.systems"
+                ],
+                "imports": {
+                  "components": [
+                    "system.root.tool.metadata-provider",
+                    "system.root.systemathic-metadata",
+                    "system.root.configurations",
+                    "system.root.tool.editing",
+                    "system.root.tool.reversible-edit",
+                    "system.root.systemathic"
+                  ],
+                  "transformations": [],
+                  "interactions": [],
+                  "mediums": []
+                },
+                "languages": [
+                  {
+                    "id": "system.root.tool.configuration-store.configuration-editing",
+                    "name": "Configuration Editing",
+                    "extends": [
+                      "system.root.tool.editing.editing",
+                      "system.root.configurations.configurations"
+                    ],
+                    "entities": [
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.addconfiguration",
+                        "name": "AddConfiguration",
+                        "extends": [
+                          "system.root.tool.editing.editing.edit"
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.changeconfiguration",
+                        "name": "ChangeConfiguration",
+                        "extends": [
+                          "system.root.tool.editing.editing.edit"
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.removeconfiguration",
+                        "name": "RemoveConfiguration",
+                        "extends": [
+                          "system.root.tool.editing.editing.edit"
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.addchoice",
+                        "name": "AddChoice",
+                        "extends": [
+                          "system.root.tool.editing.editing.edit"
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.changechoice",
+                        "name": "ChangeChoice",
+                        "extends": [
+                          "system.root.tool.editing.editing.edit"
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.removechoice",
+                        "name": "RemoveChoice",
+                        "extends": [
+                          "system.root.tool.editing.editing.edit"
+                        ]
+                      }
+                    ],
+                    "relationships": [
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-configuration",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-configuration.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.addconfiguration",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-configuration.configuration",
+                            "name": "configuration",
+                            "entity": "system.root.configurations.configurations.configuration",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-subject",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.changeconfiguration",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject.subject",
+                            "name": "subject",
+                            "entity": "system.root.configurations.configurations.configuration",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-to",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-to.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.changeconfiguration",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-to.to",
+                            "name": "to",
+                            "entity": "system.root.configurations.configurations.configuration",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-subject-2",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject-2.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.removeconfiguration",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject-2.subject",
+                            "name": "subject",
+                            "entity": "system.root.configurations.configurations.configuration",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-into",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-into.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.addchoice",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-into.into",
+                            "name": "into",
+                            "entity": "system.root.configurations.configurations.choice",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-choice",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-choice.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.addchoice",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-choice.choice",
+                            "name": "choice",
+                            "entity": "system.root.configurations.configurations.choice",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-subject-3",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject-3.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.changechoice",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject-3.subject",
+                            "name": "subject",
+                            "entity": "system.root.configurations.configurations.choice",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-to-2",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-to-2.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.changechoice",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-to-2.to",
+                            "name": "to",
+                            "entity": "system.root.configurations.configurations.choice",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      },
+                      {
+                        "id": "system.root.tool.configuration-store.configuration-editing.x-subject-4",
+                        "ends": [
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject-4.x",
+                            "name": null,
+                            "entity": "system.root.tool.configuration-store.configuration-editing.removechoice",
+                            "min": 0,
+                            "max": "N"
+                          },
+                          {
+                            "id": "system.root.tool.configuration-store.configuration-editing.x-subject-4.subject",
+                            "name": "subject",
+                            "entity": "system.root.configurations.configurations.choice",
+                            "min": 1,
+                            "max": 1
+                          }
+                        ]
+                      }
+                    ],
+                    "formulas": []
+                  }
+                ],
                 "transformations": [],
                 "interactions": [],
                 "mediums": [],
@@ -7187,6 +7450,212 @@
             "mediums": [],
             "deployments": [],
             "components": []
+          },
+          {
+            "id": "system.root.configurations",
+            "name": "Configurations",
+            "uses": [],
+            "imports": {
+              "components": [
+                "system.root.systemathic-metadata",
+                "system.root.systemathic-subjects",
+                "system.root.systemathic-verifier"
+              ],
+              "transformations": [],
+              "interactions": [],
+              "mediums": []
+            },
+            "languages": [
+              {
+                "id": "system.root.configurations.configurations",
+                "name": "Configurations",
+                "extends": [
+                  "system.root.systemathic-metadata.metadata",
+                  "system.root.systemathic-subjects.systems-subjects",
+                  "system.root.systemathic-verifier.rules"
+                ],
+                "entities": [
+                  {
+                    "id": "system.root.configurations.configurations.configuration",
+                    "name": "Configuration",
+                    "extends": [
+                      "system.root.systemathic-metadata.metadata.custom-metadata"
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.choice",
+                    "name": "Choice",
+                    "extends": []
+                  }
+                ],
+                "relationships": [
+                  {
+                    "id": "system.root.configurations.configurations.x-name",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.x-name.x",
+                        "name": null,
+                        "entity": "system.root.configurations.configurations.configuration",
+                        "min": 0,
+                        "max": "N"
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.x-name.name",
+                        "name": "name",
+                        "entity": "system.root.systemathic.kernel.name",
+                        "min": 1,
+                        "max": 1
+                      }
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.configuration-root",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.configuration-root.configuration",
+                        "name": "configuration",
+                        "entity": "system.root.configurations.configurations.configuration",
+                        "min": 0,
+                        "max": 1
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.configuration-root.root",
+                        "name": "root",
+                        "entity": "system.root.configurations.configurations.choice",
+                        "min": 1,
+                        "max": 1
+                      }
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.x-rules",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.x-rules.x",
+                        "name": null,
+                        "entity": "system.root.configurations.configurations.configuration",
+                        "min": 0,
+                        "max": "N"
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.x-rules.rules",
+                        "name": "rules",
+                        "entity": "system.root.systemathic-verifier.rules.rule",
+                        "min": 0,
+                        "max": "N"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.parent-choices",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.parent-choices.parent",
+                        "name": "parent",
+                        "entity": "system.root.configurations.configurations.choice",
+                        "min": 0,
+                        "max": 1
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.parent-choices.choices",
+                        "name": "choices",
+                        "entity": "system.root.configurations.configurations.choice",
+                        "min": 0,
+                        "max": "N"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.x-instance",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.x-instance.x",
+                        "name": null,
+                        "entity": "system.root.configurations.configurations.choice",
+                        "min": 0,
+                        "max": "N"
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.x-instance.instance",
+                        "name": "instance",
+                        "entity": "system.root.systemathic.deployment.instance",
+                        "min": 0,
+                        "max": 1
+                      }
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.x-component",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.x-component.x",
+                        "name": null,
+                        "entity": "system.root.configurations.configurations.choice",
+                        "min": 0,
+                        "max": "N"
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.x-component.component",
+                        "name": "component",
+                        "entity": "system.root.systemathic.contexts.component",
+                        "min": 1,
+                        "max": 1
+                      }
+                    ]
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.x-deployment",
+                    "ends": [
+                      {
+                        "id": "system.root.configurations.configurations.x-deployment.x",
+                        "name": null,
+                        "entity": "system.root.configurations.configurations.choice",
+                        "min": 0,
+                        "max": "N"
+                      },
+                      {
+                        "id": "system.root.configurations.configurations.x-deployment.deployment",
+                        "name": "deployment",
+                        "entity": "system.root.systemathic.deployment.deployment",
+                        "min": 0,
+                        "max": 1
+                      }
+                    ]
+                  }
+                ],
+                "formulas": [
+                  {
+                    "id": "system.root.configurations.configurations.formula",
+                    "text": "all c in Configuration. no c.root.parent and no c.root.instance"
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.formula-2",
+                    "text": "all h in Choice. some h.parent or some h.configuration"
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.formula-3",
+                    "text": "all h in Choice, p in h.parent. some h.instance and h.instance.deployment == p.deployment"
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.formula-4",
+                    "text": "all h in Choice, i in h.instance. h.component == i.of or i.of in h.component.^implements"
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.formula-5",
+                    "text": "all h in Choice, d in h.deployment. d.component == h.component"
+                  },
+                  {
+                    "id": "system.root.configurations.configurations.formula-6",
+                    "text": "all h in Choice. not h in h.^parent"
+                  }
+                ]
+              }
+            ],
+            "transformations": [],
+            "interactions": [],
+            "mediums": [],
+            "deployments": [],
+            "components": []
           }
         ]
       },
@@ -7617,7 +8086,7 @@
           "system.root.tool.workspace": "The Systems open in the tool. `new` starts an empty one; `open` reads one through the Repository and asks every Metadata Provider to load; `save` writes the design through the Repository and asks every provider to save (order left open for now); `close` lets one go. Each Open System is a Target: clients start Sessions on it through the Editor. It is the only part that knows both the Repository and the providers.",
           "system.root.tool.default": "The Host as a process on this machine: the one authority over every open System. The UI, the MCP server, the CLI and the API each reach it over HTTP — that they do is the design; how each Language is put on HTTP is the mediator's business, left to the implementation. Interface Instances (repository, providers, editKinds, listeners, verifier, perspectiveKinds, formats, sources) are filled by the Configuration.",
           "system.root.systemathic.deployment.instance": "A named place for a Component in a Deployment, with a range of how many occupy it, as an end has: `1..1` by default, `0..1` optional, `0..N` any number. Which Component fills it — the placed Component or one implementing it — is chosen by the Configuration, one choice per occupant. A Connection to a ranged Instance reaches every occupant: that is how one caller informs many (an event) without knowing them.",
-          "system.root.tool.default.documentation": "Range 0..N: every Metadata Provider present (Documentation Store, By Value Store, …), chosen by the Configuration.",
+          "system.root.tool.default.documentation": "Range 0..N: every Metadata Provider present (Documentation Store, By Value Store, Configuration Store, …), chosen by the Configuration.",
           "system.root.tool.editing": "The vocabulary of editing, on its own so that the Editor and every Edit Kind share it without depending on each other. A **Target** is what is edited (an Open System, seen from editing); each has one **History**, a single chain of applied Edits shared by all its **Sessions**. An **Edit** is a change, described as data; once applied it is in a History, records its author Session, and has a **reverse**: another Edit that undoes it, computed when it was applied. Undo is applying an Edit's reverse; redo, applying that one's. *Reversible* is a derived term (`some e.reverse`), and every applied Edit is reversible. Editing knows no concept of the core: the kinds of Edit are Entities extending Edit in the editors' Languages.",
           "system.root.tool.editor": "The one seam every client edits through, and the one authority per Target. `startSession` opens a Session on a Target for one client; `apply` applies an Edit of any kind in a Session — through the Edit Kinds connected to it — and appends the applied Edit, with its reverse, to the History. Edits from all Sessions are applied in one order; history only grows; editing never refuses an ill-formed result.",
           "system.root.tool.reversible-edit": "Interface: the kinds of Edit of one Language. `apply` carries out an Edit of its kinds on a Target and gives back the applied Edit with its reverse. Implemented by each concept editor (one per Systemathic Language) and by each metadata provider that can be edited (Documentation, By Value). Which implementation handles a given Edit is code.",
@@ -7628,7 +8097,7 @@
           "system.root.tool.systems-editor": "Implements Edit Kind for Systems: ChangeSystem (its name), ImportPackage (fetched through a Source and copied in beside the root) and RemovePackage.",
           "system.root.tool.edit-listener": "Interface: told of every Edit applied to a Target, by any Session, in the order of the History — so every client sees every other's work. Implemented by the clients (UI, MCP, …). `applied` gives nothing back.",
           "system.root.tool.default.listeners": "Range 0..N: every connected client.",
-          "system.root.tool.default.editkinds": "Range 0..N: every Edit Kind present — the six concept editors, Documentation Store and By Value Store.",
+          "system.root.tool.default.editkinds": "Range 0..N: every Edit Kind present — the six concept editors, Documentation Store, By Value Store and Configuration Store.",
           "system.root.tool.functions-editor": "Implements Edit Kind for Functions: Parameters (added into a Function, changed — type, name, place — and removed), and any Function — Interaction or Transformation — changed or removed. Functions are added by Contexts, where their owner is.",
           "system.root.tool.contexts-editor": "Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, imports, implements — and removed), and the Languages, Interactions and Transformations added into a Component.",
           "system.root.tool.deployment-editor": "Implements Edit Kind for Deployment: Deployments (into a Component), Instances and Connections (into a Deployment) — each added, changed and removed. Changing an Instance covers its name, what it places and its range; changing a Connection, its ends and its What.",
@@ -7657,7 +8126,13 @@
           "system.root.tool.cli": "The command line, for automation: `new`, `check` (diagnose, with an exit code), `verify`, `export` (a Specification in a Format, or the documentation), and `serve` — starting the Host.",
           "system.root.tool.browser": "The Host in a browser tab, for solo use, with the UI; Python rules run by Pyodide. Nothing to install. How the UI reaches the Host is not stated: it is an implementation detail.",
           "system.root.tool.api": "The tool for programs: every seam — Workspace, Editor, Perspectives, Diagnoser, Exporter, Formats, Documentation Writer, Sources — offered to code, so a script or another tool drives the same Systems as the UI and the MCP server, in a Session of its own. Implements Edit Listener.",
-          "system": "The Systemathic tool, designed in itself. It is defined abstractly, at the seams: every part that could be done more than one way is an interface — Repository, Metadata Provider, Edit Kind, Edit Listener, Perspective Kind, Specification Format, Source, Systemathic Verifier — and its concrete implementations, the tool's own among them, are chosen by Configuration. Anyone can add an implementation the same way the tool does, so the tool and those who extend it are equally first-party. Connections are stated without Mediations unless how they pass matters to the design; a Mediation states only that a What passes over another Language, and how is the mediator's business."
+          "system": "The Systemathic tool, designed in itself. It is defined abstractly, at the seams: every part that could be done more than one way is an interface — Repository, Metadata Provider, Edit Kind, Edit Listener, Perspective Kind, Specification Format, Source, Systemathic Verifier — and its concrete implementations, the tool's own among them, are chosen by Configuration. Anyone can add an implementation the same way the tool does, so the tool and those who extend it are equally first-party. Connections are stated without Mediations unless how they pass matters to the design; a Mediation states only that a What passes over another Language, and how is the mediator's business.",
+          "system.root.configurations": "A metadata type provider: how a System is put together to run, and checked. A **Configuration** is about the System: from its root, it chooses for each Instance occupant the Component that fills it — the placed Component or one implementing it — and, for that Component, the Deployment it runs as; and it names its profile, the Rules it is verified against. Like every provider, it stores and loads its own metadata; the core knows nothing of it.",
+          "system.root.configurations.configurations": "Configurations and their Choices. A Choice is for one occupant of an Instance: an Instance of range `0..N` has as many Choices as it has occupants. The root Choice is for the System's root, and has no Instance.",
+          "system.root.configurations.configurations.configuration": "One way to put the whole System together, and the Rules it must satisfy. Its root Choice is for the System's root Component.",
+          "system.root.configurations.configurations.choice": "Which Component fills one occupant of an Instance (the Instance's own Component, or one implementing it), and which of that Component's Deployments it runs as; the Choices below it are for the Instances of that Deployment. A Component without Deployments is chosen with none.",
+          "system.root.tool.configuration-store": "Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.",
+          "system.root.tool.configuration-store.configuration-editing": "The kinds of Edit of Configurations, in the pattern every editor follows: AddConfiguration (the Configuration, by value), ChangeConfiguration and RemoveConfiguration; AddChoice (into the Choice above it), ChangeChoice and RemoveChoice."
         }
       }
     }

@@ -2,7 +2,7 @@
 
 The Systemathic tool, designed in itself. It is defined abstractly, at the seams: every part that could be done more than one way is an interface — Repository, Metadata Provider, Edit Kind, Edit Listener, Perspective Kind, Specification Format, Source, Systemathic Verifier — and its concrete implementations, the tool's own among them, are chosen by Configuration. Anyone can add an implementation the same way the tool does, so the tool and those who extend it are equally first-party. Connections are stated without Mediations unless how they pass matters to the design; a Mediation states only that a What passes over another Language, and how is the mediator's business.
 
-This System has 49 Components, 1 package beside its root, and 2 Configurations.
+This System has 51 Components, 1 package beside its root, and 2 Configurations.
 
 ## System Designer
 
@@ -79,7 +79,7 @@ No Component uses it yet.
 
 **End.max ⟷ Bound.(unnamed)**
 
-- Each End has exactly one Bound, as max. `1..1`
+- Each End has at most one Bound, as max. `0..1`
 - Each Bound has any number of Ends, but cannot navigate to them. `0..N`
 
 **Language.name ⟷ Name.(unnamed)**
@@ -263,7 +263,7 @@ No Component uses it yet.
 
 **Instance.max ⟷ Bound.(unnamed)**
 
-- Each Instance has exactly one Bound, as max. `1..1`
+- Each Instance has at most one Bound, as max. `0..1`
 - Each Bound has any number of Instances, but cannot navigate to them. `0..N`
 
 #### Mediation — extends Deployment
@@ -325,7 +325,7 @@ No Component uses it yet.
 
 #### Systems — extends Mediation
 
-Used by Metadata Provider, Documentation Store, By Value Store, Workspace.
+Used by Metadata Provider, Documentation Store, By Value Store, Workspace, Configuration Store.
 
 - **System**
 
@@ -419,7 +419,7 @@ Used by Systemathic Verifier, Python Verifier.
 The Systemathic tool. It imports the language package, the Verifier, the StdLib and the metadata providers (Documentation, By Value). Each part is a subcomponent with a core Language and many implementations: Repository (storage of Systems only), Host, Editing and the concept editors, clients (UI, MCP, CLI, API), Perspectives, Diagnostics, Exporter, Catalog and import/export, and Configurations (Deployment choices plus Rules).
 
 - Uses: none
-- Imports: Systemathic (Component), Systemathic Verifier (Component), Systemathic StdLib (Component), Documentation (Component), By Value (Component), Systemathic Metadata (Component), Systemathic Subjects (Component), HTTP (Component)
+- Imports: Systemathic (Component), Systemathic Verifier (Component), Systemathic StdLib (Component), Documentation (Component), By Value (Component), Systemathic Metadata (Component), Systemathic Subjects (Component), HTTP (Component), Configurations (Component)
 
 #### Deployment Local
 
@@ -607,7 +607,7 @@ The vocabulary of editing, on its own so that the Editor and every Edit Kind sha
 
 ##### Editing — a core Language
 
-Used by Documentation Store, By Value Store, Workspace, Editing, Edit Kind, Kernel Editor, Functions Editor, Contexts Editor, Deployment Editor, Mediation Editor, Systems Editor, Editor, Edit Listener, UI, MCP Server, API.
+Used by Documentation Store, By Value Store, Workspace, Editing, Edit Kind, Kernel Editor, Functions Editor, Contexts Editor, Deployment Editor, Mediation Editor, Systems Editor, Editor, Edit Listener, UI, MCP Server, API, Configuration Store.
 
 - **Target**
 - **Session**
@@ -1518,15 +1518,15 @@ Used by Documentation Writer, UI, MCP Server, CLI, API.
 
 The visual editor, for people: Explorer, Graph, the editors' panels, the Script and Documentation tabs. It draws Views (layout is its own business, kept as its own metadata), applies Edits built from gestures, shows Diagnostics with their fixes, and is told of every Edit by any client. Implements Edit Listener.
 
-- Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing
-- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component)
+- Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
+- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component), Configuration Store (Component)
 
 #### MCP Server
 
 The tool for LLMs: every seam as an MCP tool — Views as structured data, every kind of Edit through `apply`, `diagnose`, `specify`. It edits the same Systems as the UI, in a Session of its own, and is told of every Edit. Implements Edit Listener.
 
-- Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing
-- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component)
+- Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
+- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component), Configuration Store (Component)
 
 #### CLI
 
@@ -1539,8 +1539,73 @@ The command line, for automation: `new`, `check` (diagnose, with an exit code), 
 
 The tool for programs: every seam — Workspace, Editor, Perspectives, Diagnoser, Exporter, Formats, Documentation Writer, Sources — offered to code, so a script or another tool drives the same Systems as the UI and the MCP server, in a Session of its own. Implements Edit Listener.
 
-- Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing
-- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Edit Listener (Component), Editing (Component), Views (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component)
+- Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
+- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Edit Listener (Component), Editing (Component), Views (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Configuration Store (Component)
+
+#### Configuration Store
+
+Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.
+
+- Uses: Configurations, Configuration Editing, Editing, Systems
+- Imports: Metadata Provider (Component), Systemathic Metadata (Component), Configurations (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+
+##### Configuration Editing — extends Editing, Configurations
+
+The kinds of Edit of Configurations, in the pattern every editor follows: AddConfiguration (the Configuration, by value), ChangeConfiguration and RemoveConfiguration; AddChoice (into the Choice above it), ChangeChoice and RemoveChoice.
+
+Used by UI, MCP Server, API, Configuration Store.
+
+- **AddConfiguration** : Edit
+- **ChangeConfiguration** : Edit
+- **RemoveConfiguration** : Edit
+- **AddChoice** : Edit
+- **ChangeChoice** : Edit
+- **RemoveChoice** : Edit
+
+**AddConfiguration.configuration ⟷ Configuration.(unnamed)**
+
+- Each AddConfiguration has exactly one Configuration, as configuration. `1..1`
+- Each Configuration has any number of AddConfigurations, but cannot navigate to them. `0..N`
+
+**ChangeConfiguration.subject ⟷ Configuration.(unnamed)**
+
+- Each ChangeConfiguration has exactly one Configuration, as subject. `1..1`
+- Each Configuration has any number of ChangeConfigurations, but cannot navigate to them. `0..N`
+
+**ChangeConfiguration.to ⟷ Configuration.(unnamed)**
+
+- Each ChangeConfiguration has exactly one Configuration, as to. `1..1`
+- Each Configuration has any number of ChangeConfigurations, but cannot navigate to them. `0..N`
+
+**RemoveConfiguration.subject ⟷ Configuration.(unnamed)**
+
+- Each RemoveConfiguration has exactly one Configuration, as subject. `1..1`
+- Each Configuration has any number of RemoveConfigurations, but cannot navigate to them. `0..N`
+
+**AddChoice.into ⟷ Choice.(unnamed)**
+
+- Each AddChoice has exactly one Choice, as into. `1..1`
+- Each Choice has any number of AddChoices, but cannot navigate to them. `0..N`
+
+**AddChoice.choice ⟷ Choice.(unnamed)**
+
+- Each AddChoice has exactly one Choice, as choice. `1..1`
+- Each Choice has any number of AddChoices, but cannot navigate to them. `0..N`
+
+**ChangeChoice.subject ⟷ Choice.(unnamed)**
+
+- Each ChangeChoice has exactly one Choice, as subject. `1..1`
+- Each Choice has any number of ChangeChoices, but cannot navigate to them. `0..N`
+
+**ChangeChoice.to ⟷ Choice.(unnamed)**
+
+- Each ChangeChoice has exactly one Choice, as to. `1..1`
+- Each Choice has any number of ChangeChoices, but cannot navigate to them. `0..N`
+
+**RemoveChoice.subject ⟷ Choice.(unnamed)**
+
+- Each RemoveChoice has exactly one Choice, as subject. `1..1`
+- Each Choice has any number of RemoveChoices, but cannot navigate to them. `0..N`
 
 ### Systemathic Metadata
 
@@ -1703,6 +1768,64 @@ No Component uses it yet.
 - Each System has any number of Subjects, but cannot navigate to them. `0..N`
 
 - Axiom `all s in Subject. (some s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.entity and no s.language and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.relationship and no s.language and no s.entity and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.end and no s.language and no s.entity and no s.relationship and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.formula and no s.language and no s.entity and no s.relationship and no s.end and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.function and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.parameter and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.component and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.deployment and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.instance and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.instance and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.connection and no s.medium and no s.mediation and no s.system) or (some s.connection and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.medium and no s.mediation and no s.system) or (some s.medium and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.mediation and no s.system) or (some s.mediation and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.system) or (some s.system and no s.language and no s.entity and no s.relationship and no s.end and no s.formula and no s.function and no s.parameter and no s.component and no s.deployment and no s.instance and no s.connection and no s.medium and no s.mediation)`
+
+### Configurations
+
+A metadata type provider: how a System is put together to run, and checked. A **Configuration** is about the System: from its root, it chooses for each Instance occupant the Component that fills it — the placed Component or one implementing it — and, for that Component, the Deployment it runs as; and it names its profile, the Rules it is verified against. Like every provider, it stores and loads its own metadata; the core knows nothing of it.
+
+- Uses: none
+- Imports: Systemathic Metadata (Component), Systemathic Subjects (Component), Systemathic Verifier (Component)
+
+#### Configurations — extends Metadata, Systems Subjects, Rules
+
+Configurations and their Choices. A Choice is for one occupant of an Instance: an Instance of range `0..N` has as many Choices as it has occupants. The root Choice is for the System's root, and has no Instance.
+
+Used by Configuration Store.
+
+- **Configuration** : Custom Metadata — One way to put the whole System together, and the Rules it must satisfy. Its root Choice is for the System's root Component.
+- **Choice** — Which Component fills one occupant of an Instance (the Instance's own Component, or one implementing it), and which of that Component's Deployments it runs as; the Choices below it are for the Instances of that Deployment. A Component without Deployments is chosen with none.
+
+**Configuration.name ⟷ Name.(unnamed)**
+
+- Each Configuration has exactly one Name, as name. `1..1`
+- Each Name has any number of Configurations, but cannot navigate to them. `0..N`
+
+**Configuration.root ⟷ Choice.configuration**
+
+- Each Configuration has exactly one Choice, as root. `1..1`
+- Each Choice has at most one Configuration, as configuration. `0..1`
+
+**Configuration.rules ⟷ Rule.(unnamed)**
+
+- Each Configuration has any number of Rules, as rules. `0..N`
+- Each Rule has any number of Configurations, but cannot navigate to them. `0..N`
+
+**Choice.choices ⟷ Choice.parent**
+
+- Each Choice has any number of Choices, as choices. `0..N`
+- Each Choice has at most one Choice, as parent. `0..1`
+
+**Choice.instance ⟷ Instance.(unnamed)**
+
+- Each Choice has at most one Instance, as instance. `0..1`
+- Each Instance has any number of Choices, but cannot navigate to them. `0..N`
+
+**Choice.component ⟷ Component.(unnamed)**
+
+- Each Choice has exactly one Component, as component. `1..1`
+- Each Component has any number of Choices, but cannot navigate to them. `0..N`
+
+**Choice.deployment ⟷ Deployment.(unnamed)**
+
+- Each Choice has at most one Deployment, as deployment. `0..1`
+- Each Deployment has any number of Choices, but cannot navigate to them. `0..N`
+
+- Axiom `all c in Configuration. no c.root.parent and no c.root.instance`
+- Axiom `all h in Choice. some h.parent or some h.configuration`
+- Axiom `all h in Choice, p in h.parent. some h.instance and h.instance.deployment == p.deployment`
+- Axiom `all h in Choice, i in h.instance. h.component == i.of or i.of in h.component.^implements`
+- Axiom `all h in Choice, d in h.deployment. d.component == h.component`
+- Axiom `all h in Choice. not h in h.^parent`
 
 ## Packages
 

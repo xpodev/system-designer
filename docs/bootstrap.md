@@ -19,9 +19,18 @@ Agreed, and not yet in [foundation.md](foundation.md) or `schema/`:
    Languages.
 4. **Instance ranges.** An Instance has a range; `0..N` is a fan-out, which is how events work.
 5. **Systems is the top Language.** It holds System, and ties the layers together.
-6. **Configuration leaves the core.** It is the tool's, not the foundation's.
+6. **Configuration leaves the core.** It is the tool's: **Configurations** is a metadata type
+   provider, like Documentation and By Value, with its Configuration Store in the Tool. A
+   Configuration chooses, per Instance occupant, the Component that fills it (the placed one or
+   an implementer) and its Deployment, and names its profile.
 7. **Std vocabulary is dropped.** Actions and the like are the UI's business only.
 8. **Language packages.** A package of Languages is not a Component.
+9. **Transformations are signatures only.** Entity and Relationship mappings, context Entities
+   and deferrals go, with the axioms over them and the std rule `completeness`. How a
+   Transformation maps is the implementation's business; a round trip is still two
+   Transformations whose signatures lead back.
+10. **The Kernel derives what it can.** What a Formula mentions is parsed from its text, not
+    stored; a Bound is a number, ordered as numbers are; `max` is `0..1`, and absent means N.
 
 ## Stand-ins in the design
 
@@ -29,10 +38,10 @@ What the System holds in place of what it means, and what replaces it:
 
 | The design means | The System holds | Where |
 |---|---|---|
-| `implements` (2) | an import of the interface, and the `IMPLEMENTATIONS` table in the profile | every implementation: JSON File Repository, Documentation Store, By Value Store, the six concept editors, Catalog Source, File Source, the six views, Markdown Format, JSON Format, Python Verifier, UI, MCP Server, API |
+| `implements` (2) | an import of the interface, and the `IMPLEMENTATIONS` table in the profile | every implementation: JSON File Repository, Documentation Store, By Value Store, Configuration Store, the six concept editors, Catalog Source, File Source, the six views, Markdown Format, JSON Format, Python Verifier, UI, MCP Server, API |
 | no output (3) | an output of what was given | Metadata Provider `save` (gives the System), Edit Listener `applied` (gives the Edit) |
 | range `0..N` (4) | a single Instance | `providers`, `editKinds`, `listeners`, `perspectiveKinds` in both Tool Deployments |
-| a Configuration choosing an implementation for each interface Instance | nothing: the choice is in the descriptions | `repository`, `providers`, `editKinds`, `listeners`, `verifier`, `perspectiveKinds`, `formats`, `sources` |
+| Configurations as metadata (6), choosing an implementation for each interface Instance | the core's Configurations, which choose only Deployments; implementation choices are in the descriptions | Configurations Local and Browser; `repository`, `providers`, `editKinds`, `listeners`, `verifier`, `perspectiveKinds`, `formats`, `sources` |
 | a language package (8) | a Component | Systemathic |
 
 ## New tool tasks

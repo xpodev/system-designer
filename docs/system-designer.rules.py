@@ -21,16 +21,16 @@ LAYERS = ["Kernel", "Functions", "Contexts", "Deployment", "Mediation", "Systems
 #: Components that are only a vocabulary: Languages that others share without depending on each other.
 VOCABULARIES = [
     "Systemathic", "Systemathic Subjects", "Systemathic Metadata", "Systemathic Verification",
-    "Systemathic StdLib", "Documentation", "By Value", "Editing", "Views",
+    "Systemathic StdLib", "Documentation", "By Value", "Configurations", "Editing", "Views",
 ]
 
 #: Every seam that could be done more than one way, and the Components that do it.
 IMPLEMENTATIONS = {
     "Repository": ["JSON File Repository"],
-    "Metadata Provider": ["Documentation Store", "By Value Store"],
+    "Metadata Provider": ["Documentation Store", "By Value Store", "Configuration Store"],
     "Edit Kind": [
         "Kernel Editor", "Functions Editor", "Contexts Editor", "Deployment Editor", "Mediation Editor",
-        "Systems Editor", "Documentation Store", "By Value Store",
+        "Systems Editor", "Documentation Store", "By Value Store", "Configuration Store",
     ],
     "Edit Listener": ["UI", "MCP Server", "API"],
     "Source": ["Catalog Source", "File Source"],
@@ -58,7 +58,7 @@ WRITERS = ["Workspace", "Editor", "Edit Kind", "Edit Listener", *IMPLEMENTATIONS
 
 #: Where Systems are stored, and the metadata it must know nothing of.
 STORAGE = ["Repository", *IMPLEMENTATIONS["Repository"]]
-METADATA = ["Systemathic Metadata", "Metadata Provider", "Documentation", "By Value", *IMPLEMENTATIONS["Metadata Provider"]]
+METADATA = ["Systemathic Metadata", "Metadata Provider", "Documentation", "By Value", "Configurations", *IMPLEMENTATIONS["Metadata Provider"]]
 
 CLIENTS = ["UI", "MCP Server", "CLI", "API"]
 
