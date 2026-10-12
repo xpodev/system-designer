@@ -1,0 +1,24 @@
+{
+  "language": "Systems",
+  "description": "Systems: what is opened and saved. A System is a root Component, with the packages beside it that the root and its children may import (catalog content, for instance). The top Language: it ties the layers together. Extends Mediation.",
+  "extends": ["Mediation"],
+  "entities": ["System"],
+  "relationships": [
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": null, "entity": "System", "range": "0..N"}]},
+    {"ends": [{"name": "system", "entity": "System", "range": "0..1"}, {"name": "root", "entity": "Component", "range": "1..1"}]},
+    {"ends": [{"name": "packages", "entity": "Component", "range": "0..N"}, {"name": null, "entity": "System", "range": "0..1"}]}
+  ],
+  "axioms": [
+    {"id": "system", "about": "A System's root and packages are not nested", "formula": "all s in System, c in s.packages. no c.parent and no s.root.parent"},
+    {"id": "system", "about": "A System's root is not one of its packages", "formula": "all s in System. not s.root in s.packages"},
+    {"id": "system", "about": "Every Component is nested, or is the root or a package of a System", "formula": "all c in Component. some c.parent or some c.system or (some s in System. c in s.packages)"},
+    {"id": "W9", "about": "The root imports only packages", "formula": "all s in System, k in s.root.importedComponents. k in s.packages"},
+    {"id": "W9", "about": "A package imports only other packages", "formula": "all s in System, c in s.packages, k in c.importedComponents. k != c and k in s.packages"},
+    {"id": "W9", "about": "The root imports Interactions only from packages", "formula": "all s in System, i in s.root.importedInteractions. i.component in s.packages"},
+    {"id": "W9", "about": "A package imports Interactions only from other packages", "formula": "all s in System, c in s.packages, i in c.importedInteractions. i.component != c and i.component in s.packages"},
+    {"id": "W9", "about": "The root imports Transformations only from packages", "formula": "all s in System, t in s.root.importedTransformations. t.component in s.packages"},
+    {"id": "W9", "about": "A package imports Transformations only from other packages", "formula": "all s in System, c in s.packages, t in c.importedTransformations. t.component != c and t.component in s.packages"},
+    {"id": "W9", "about": "The root imports Mediums only from packages", "formula": "all s in System, m in s.root.importedMediums. m.component in s.packages"},
+    {"id": "W9", "about": "A package imports Mediums only from other packages", "formula": "all s in System, c in s.packages, m in c.importedMediums. m.component != c and m.component in s.packages"}
+  ]
+}

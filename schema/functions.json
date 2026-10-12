@@ -1,0 +1,19 @@
+{
+  "language": "Functions",
+  "description": "Functions: signatures of ordered Parameters, each of some Entity, and at most one output Entity. A Function without an output gives nothing back; there is no Unit, which would have to belong to some Language. Interactions and Transformations are Functions. Extends Kernel.",
+  "extends": ["Kernel"],
+  "entities": ["Function", "Parameter"],
+  "relationships": [
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": null, "entity": "Function", "range": "0..N"}]},
+    {"ends": [{"name": "name", "entity": "Name", "range": "1..1"}, {"name": null, "entity": "Parameter", "range": "0..N"}]},
+    {"ends": [{"name": "function", "entity": "Function", "range": "1..1"}, {"name": "parameters", "entity": "Parameter", "range": "0..N"}]},
+    {"ends": [{"name": "previous", "entity": "Parameter", "range": "0..1"}, {"name": "next", "entity": "Parameter", "range": "0..1"}]},
+    {"ends": [{"name": "type", "entity": "Entity", "range": "1..1"}, {"name": null, "entity": "Parameter", "range": "0..N"}]},
+    {"ends": [{"name": "output", "entity": "Entity", "range": "0..1"}, {"name": null, "entity": "Function", "range": "0..N"}]}
+  ],
+  "axioms": [
+    {"id": "order", "about": "A Parameter's next is a Parameter of the same Function", "formula": "all p in Parameter, n in p.next. n.function == p.function"},
+    {"id": "order", "about": "A Function's Parameters have one first", "formula": "all f in Function, a in f.parameters, b in f.parameters. (no a.previous and no b.previous) => a == b"},
+    {"id": "order", "about": "The Parameter chain has no cycles", "formula": "all p in Parameter. not p in p.^next"}
+  ]
+}
