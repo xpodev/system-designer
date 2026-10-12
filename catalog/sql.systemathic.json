@@ -1,195 +1,191 @@
 {
-  "format": "systemathic/2",
+  "format": "systemathic/3",
   "design": {
     "id": "lib.sql.system",
     "name": "SQL",
-    "root": "pkg.sql",
-    "components": [
-      {
-        "id": "pkg.sql",
-        "name": "SQL",
-        "uses": [
-          "lib.sql"
-        ],
-        "imports": {
-          "components": [],
-          "transformations": [],
-          "interactions": [],
-          "mediums": []
-        },
-        "languages": [
-          {
-            "id": "lib.sql",
-            "name": "SQL",
-            "extends": [],
-            "entities": [
-              {
-                "id": "lib.sql.table",
-                "name": "Table",
-                "extends": []
-              },
-              {
-                "id": "lib.sql.column",
-                "name": "Column",
-                "extends": []
-              },
-              {
-                "id": "lib.sql.row",
-                "name": "Row",
-                "extends": []
-              },
-              {
-                "id": "lib.sql.value",
-                "name": "Value",
-                "extends": []
-              },
-              {
-                "id": "lib.sql.query",
-                "name": "Query",
-                "extends": []
-              },
-              {
-                "id": "lib.sql.result",
-                "name": "Result",
-                "extends": []
-              }
-            ],
-            "relationships": [
-              {
-                "id": "lib.sql.table-columns",
-                "ends": [
-                  {
-                    "id": "lib.sql.table-columns.table",
-                    "name": "table",
-                    "entity": "lib.sql.table",
-                    "min": 1,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.sql.table-columns.columns",
-                    "name": "columns",
-                    "entity": "lib.sql.column",
-                    "min": 1,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.sql.table-rows",
-                "ends": [
-                  {
-                    "id": "lib.sql.table-rows.table",
-                    "name": "table",
-                    "entity": "lib.sql.table",
-                    "min": 1,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.sql.table-rows.rows",
-                    "name": "rows",
-                    "entity": "lib.sql.row",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.sql.row-values",
-                "ends": [
-                  {
-                    "id": "lib.sql.row-values.row",
-                    "name": "row",
-                    "entity": "lib.sql.row",
-                    "min": 1,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.sql.row-values.values",
-                    "name": "values",
-                    "entity": "lib.sql.value",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.sql.column-values",
-                "ends": [
-                  {
-                    "id": "lib.sql.column-values.column",
-                    "name": "column",
-                    "entity": "lib.sql.column",
-                    "min": 1,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.sql.column-values.values",
-                    "name": "values",
-                    "entity": "lib.sql.value",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.sql.result-rows",
-                "ends": [
-                  {
-                    "id": "lib.sql.result-rows.result",
-                    "name": "result",
-                    "entity": "lib.sql.result",
-                    "min": 1,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.sql.result-rows.rows",
-                    "name": "rows",
-                    "entity": "lib.sql.row",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              }
-            ],
-            "formulas": [
-              {
-                "id": "lib.sql.axiom0",
-                "text": "all v in Value. v.row.table == v.column.table"
-              }
-            ]
-          }
-        ],
+    "root": {
+      "id": "pkg.sql",
+      "name": "SQL",
+      "uses": [
+        "lib.sql"
+      ],
+      "imports": {
+        "components": [],
+        "interactions": [],
         "transformations": [],
-        "interactions": [
-          {
-            "id": "pkg.sql.execute",
-            "name": "execute",
-            "language": "lib.sql",
-            "parameters": [
-              {
-                "id": "pkg.sql.execute.query",
-                "name": "query",
-                "type": "lib.sql.query"
-              }
-            ],
-            "output": "lib.sql.result",
-            "primary": null,
-            "compares": []
-          }
-        ],
-        "mediums": [
-          {
-            "id": "pkg.sql.medium",
-            "name": "SQL",
-            "language": "lib.sql",
-            "call": "pkg.sql.execute"
-          }
-        ],
-        "deployments": [],
-        "components": []
-      }
-    ],
-    "configurations": []
+        "mediums": []
+      },
+      "implements": [],
+      "languages": [
+        {
+          "id": "lib.sql",
+          "name": "SQL",
+          "extends": [],
+          "entities": [
+            {
+              "id": "lib.sql.table",
+              "name": "Table",
+              "extends": []
+            },
+            {
+              "id": "lib.sql.column",
+              "name": "Column",
+              "extends": []
+            },
+            {
+              "id": "lib.sql.row",
+              "name": "Row",
+              "extends": []
+            },
+            {
+              "id": "lib.sql.value",
+              "name": "Value",
+              "extends": []
+            },
+            {
+              "id": "lib.sql.query",
+              "name": "Query",
+              "extends": []
+            },
+            {
+              "id": "lib.sql.result",
+              "name": "Result",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "lib.sql.table-columns",
+              "ends": [
+                {
+                  "id": "lib.sql.table-columns.table",
+                  "name": "table",
+                  "entity": "lib.sql.table",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "id": "lib.sql.table-columns.columns",
+                  "name": "columns",
+                  "entity": "lib.sql.column",
+                  "min": 1,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.sql.table-rows",
+              "ends": [
+                {
+                  "id": "lib.sql.table-rows.table",
+                  "name": "table",
+                  "entity": "lib.sql.table",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "id": "lib.sql.table-rows.rows",
+                  "name": "rows",
+                  "entity": "lib.sql.row",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.sql.row-values",
+              "ends": [
+                {
+                  "id": "lib.sql.row-values.row",
+                  "name": "row",
+                  "entity": "lib.sql.row",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "id": "lib.sql.row-values.values",
+                  "name": "values",
+                  "entity": "lib.sql.value",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.sql.column-values",
+              "ends": [
+                {
+                  "id": "lib.sql.column-values.column",
+                  "name": "column",
+                  "entity": "lib.sql.column",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "id": "lib.sql.column-values.values",
+                  "name": "values",
+                  "entity": "lib.sql.value",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.sql.result-rows",
+              "ends": [
+                {
+                  "id": "lib.sql.result-rows.result",
+                  "name": "result",
+                  "entity": "lib.sql.result",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "id": "lib.sql.result-rows.rows",
+                  "name": "rows",
+                  "entity": "lib.sql.row",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            }
+          ],
+          "formulas": [
+            {
+              "id": "lib.sql.axiom0",
+              "text": "all v in Value. v.row.table == v.column.table"
+            }
+          ]
+        }
+      ],
+      "interactions": [
+        {
+          "id": "pkg.sql.execute",
+          "name": "execute",
+          "language": "lib.sql",
+          "parameters": [
+            {
+              "id": "pkg.sql.execute.query",
+              "name": "query",
+              "type": "lib.sql.query"
+            }
+          ],
+          "output": "lib.sql.result"
+        }
+      ],
+      "transformations": [],
+      "mediums": [
+        {
+          "id": "pkg.sql.medium",
+          "name": "SQL",
+          "language": "lib.sql",
+          "call": "pkg.sql.execute"
+        }
+      ],
+      "deployments": [],
+      "components": []
+    },
+    "packages": []
   },
   "attachments": [
     {

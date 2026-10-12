@@ -1,133 +1,127 @@
 {
-  "format": "systemathic/2",
+  "format": "systemathic/3",
   "design": {
     "id": "lib.bytes.system",
     "name": "Bytes",
-    "root": "pkg.bytes",
-    "components": [
-      {
-        "id": "pkg.bytes",
-        "name": "Bytes",
-        "uses": [
-          "lib.bytes"
-        ],
-        "imports": {
-          "components": [],
-          "transformations": [],
-          "interactions": [],
-          "mediums": []
-        },
-        "languages": [
-          {
-            "id": "lib.bytes",
-            "name": "Bytes",
-            "extends": [],
-            "entities": [
-              {
-                "id": "lib.bytes.byte",
-                "name": "Byte",
-                "extends": []
-              },
-              {
-                "id": "lib.bytes.bytestring",
-                "name": "ByteString",
-                "extends": []
-              }
-            ],
-            "relationships": [
-              {
-                "id": "lib.bytes.string-bytes",
-                "ends": [
-                  {
-                    "id": "lib.bytes.string-bytes.string",
-                    "name": "string",
-                    "entity": "lib.bytes.bytestring",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "lib.bytes.string-bytes.bytes",
-                    "name": "bytes",
-                    "entity": "lib.bytes.byte",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.bytes.previous-next",
-                "ends": [
-                  {
-                    "id": "lib.bytes.previous-next.previous",
-                    "name": "previous",
-                    "entity": "lib.bytes.byte",
-                    "min": 0,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.bytes.previous-next.next",
-                    "name": "next",
-                    "entity": "lib.bytes.byte",
-                    "min": 0,
-                    "max": 1
-                  }
-                ]
-              }
-            ],
-            "formulas": []
-          }
-        ],
+    "root": {
+      "id": "pkg.bytes",
+      "name": "Bytes",
+      "uses": [
+        "lib.bytes"
+      ],
+      "imports": {
+        "components": [],
+        "interactions": [],
         "transformations": [],
-        "interactions": [
-          {
-            "id": "pkg.bytes.concat",
-            "name": "concat",
-            "language": "lib.bytes",
-            "parameters": [
-              {
-                "id": "pkg.bytes.concat.first",
-                "name": "first",
-                "type": "lib.bytes.bytestring"
-              },
-              {
-                "id": "pkg.bytes.concat.second",
-                "name": "second",
-                "type": "lib.bytes.bytestring"
-              }
-            ],
-            "output": "lib.bytes.bytestring",
-            "primary": null,
-            "compares": []
-          },
-          {
-            "id": "pkg.bytes.transfer",
-            "name": "transfer",
-            "language": "lib.bytes",
-            "parameters": [
-              {
-                "id": "pkg.bytes.transfer.data",
-                "name": "data",
-                "type": "lib.bytes.bytestring"
-              }
-            ],
-            "output": "lib.bytes.bytestring",
-            "primary": null,
-            "compares": []
-          }
-        ],
-        "mediums": [
-          {
-            "id": "pkg.bytes.medium",
-            "name": "Bytes",
-            "language": "lib.bytes",
-            "call": "pkg.bytes.transfer"
-          }
-        ],
-        "deployments": [],
-        "components": []
-      }
-    ],
-    "configurations": []
+        "mediums": []
+      },
+      "implements": [],
+      "languages": [
+        {
+          "id": "lib.bytes",
+          "name": "Bytes",
+          "extends": [],
+          "entities": [
+            {
+              "id": "lib.bytes.byte",
+              "name": "Byte",
+              "extends": []
+            },
+            {
+              "id": "lib.bytes.bytestring",
+              "name": "ByteString",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "lib.bytes.string-bytes",
+              "ends": [
+                {
+                  "id": "lib.bytes.string-bytes.string",
+                  "name": "string",
+                  "entity": "lib.bytes.bytestring",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "lib.bytes.string-bytes.bytes",
+                  "name": "bytes",
+                  "entity": "lib.bytes.byte",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.bytes.previous-next",
+              "ends": [
+                {
+                  "id": "lib.bytes.previous-next.previous",
+                  "name": "previous",
+                  "entity": "lib.bytes.byte",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "lib.bytes.previous-next.next",
+                  "name": "next",
+                  "entity": "lib.bytes.byte",
+                  "min": 0,
+                  "max": 1
+                }
+              ]
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "interactions": [
+        {
+          "id": "pkg.bytes.concat",
+          "name": "concat",
+          "language": "lib.bytes",
+          "parameters": [
+            {
+              "id": "pkg.bytes.concat.first",
+              "name": "first",
+              "type": "lib.bytes.bytestring"
+            },
+            {
+              "id": "pkg.bytes.concat.second",
+              "name": "second",
+              "type": "lib.bytes.bytestring"
+            }
+          ],
+          "output": "lib.bytes.bytestring"
+        },
+        {
+          "id": "pkg.bytes.transfer",
+          "name": "transfer",
+          "language": "lib.bytes",
+          "parameters": [
+            {
+              "id": "pkg.bytes.transfer.data",
+              "name": "data",
+              "type": "lib.bytes.bytestring"
+            }
+          ],
+          "output": "lib.bytes.bytestring"
+        }
+      ],
+      "transformations": [],
+      "mediums": [
+        {
+          "id": "pkg.bytes.medium",
+          "name": "Bytes",
+          "language": "lib.bytes",
+          "call": "pkg.bytes.transfer"
+        }
+      ],
+      "deployments": [],
+      "components": []
+    },
+    "packages": []
   },
   "attachments": [
     {

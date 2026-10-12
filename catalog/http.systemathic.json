@@ -1,233 +1,229 @@
 {
-  "format": "systemathic/2",
+  "format": "systemathic/3",
   "design": {
     "id": "lib.http.system",
     "name": "HTTP",
-    "root": "pkg.http",
-    "components": [
-      {
-        "id": "pkg.http",
-        "name": "HTTP",
-        "uses": [
-          "lib.http"
-        ],
-        "imports": {
-          "components": [],
-          "transformations": [],
-          "interactions": [],
-          "mediums": []
-        },
-        "languages": [
-          {
-            "id": "lib.http",
-            "name": "HTTP",
-            "extends": [],
-            "entities": [
-              {
-                "id": "lib.http.request",
-                "name": "Request",
-                "extends": []
-              },
-              {
-                "id": "lib.http.response",
-                "name": "Response",
-                "extends": []
-              },
-              {
-                "id": "lib.http.method",
-                "name": "Method",
-                "extends": []
-              },
-              {
-                "id": "lib.http.target",
-                "name": "Target",
-                "extends": []
-              },
-              {
-                "id": "lib.http.header",
-                "name": "Header",
-                "extends": []
-              },
-              {
-                "id": "lib.http.body",
-                "name": "Body",
-                "extends": []
-              },
-              {
-                "id": "lib.http.status",
-                "name": "Status",
-                "extends": []
-              }
-            ],
-            "relationships": [
-              {
-                "id": "lib.http.requests-method",
-                "ends": [
-                  {
-                    "id": "lib.http.requests-method.requests",
-                    "name": "requests",
-                    "entity": "lib.http.request",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "lib.http.requests-method.method",
-                    "name": "method",
-                    "entity": "lib.http.method",
-                    "min": 1,
-                    "max": 1
-                  }
-                ]
-              },
-              {
-                "id": "lib.http.requests-target",
-                "ends": [
-                  {
-                    "id": "lib.http.requests-target.requests",
-                    "name": "requests",
-                    "entity": "lib.http.request",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "lib.http.requests-target.target",
-                    "name": "target",
-                    "entity": "lib.http.target",
-                    "min": 1,
-                    "max": 1
-                  }
-                ]
-              },
-              {
-                "id": "lib.http.request-headers",
-                "ends": [
-                  {
-                    "id": "lib.http.request-headers.request",
-                    "name": "request",
-                    "entity": "lib.http.request",
-                    "min": 0,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.http.request-headers.headers",
-                    "name": "headers",
-                    "entity": "lib.http.header",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.http.request-body",
-                "ends": [
-                  {
-                    "id": "lib.http.request-body.request",
-                    "name": "request",
-                    "entity": "lib.http.request",
-                    "min": 0,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.http.request-body.body",
-                    "name": "body",
-                    "entity": "lib.http.body",
-                    "min": 0,
-                    "max": 1
-                  }
-                ]
-              },
-              {
-                "id": "lib.http.responses-status",
-                "ends": [
-                  {
-                    "id": "lib.http.responses-status.responses",
-                    "name": "responses",
-                    "entity": "lib.http.response",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "lib.http.responses-status.status",
-                    "name": "status",
-                    "entity": "lib.http.status",
-                    "min": 1,
-                    "max": 1
-                  }
-                ]
-              },
-              {
-                "id": "lib.http.response-headers",
-                "ends": [
-                  {
-                    "id": "lib.http.response-headers.response",
-                    "name": "response",
-                    "entity": "lib.http.response",
-                    "min": 0,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.http.response-headers.headers",
-                    "name": "headers",
-                    "entity": "lib.http.header",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "lib.http.response-body",
-                "ends": [
-                  {
-                    "id": "lib.http.response-body.response",
-                    "name": "response",
-                    "entity": "lib.http.response",
-                    "min": 0,
-                    "max": 1
-                  },
-                  {
-                    "id": "lib.http.response-body.body",
-                    "name": "body",
-                    "entity": "lib.http.body",
-                    "min": 0,
-                    "max": 1
-                  }
-                ]
-              }
-            ],
-            "formulas": []
-          }
-        ],
+    "root": {
+      "id": "pkg.http",
+      "name": "HTTP",
+      "uses": [
+        "lib.http"
+      ],
+      "imports": {
+        "components": [],
+        "interactions": [],
         "transformations": [],
-        "interactions": [
-          {
-            "id": "pkg.http.exchange",
-            "name": "exchange",
-            "language": "lib.http",
-            "parameters": [
-              {
-                "id": "pkg.http.exchange.request",
-                "name": "request",
-                "type": "lib.http.request"
-              }
-            ],
-            "output": "lib.http.response",
-            "primary": null,
-            "compares": []
-          }
-        ],
-        "mediums": [
-          {
-            "id": "pkg.http.medium",
-            "name": "HTTP",
-            "language": "lib.http",
-            "call": "pkg.http.exchange"
-          }
-        ],
-        "deployments": [],
-        "components": []
-      }
-    ],
-    "configurations": []
+        "mediums": []
+      },
+      "implements": [],
+      "languages": [
+        {
+          "id": "lib.http",
+          "name": "HTTP",
+          "extends": [],
+          "entities": [
+            {
+              "id": "lib.http.request",
+              "name": "Request",
+              "extends": []
+            },
+            {
+              "id": "lib.http.response",
+              "name": "Response",
+              "extends": []
+            },
+            {
+              "id": "lib.http.method",
+              "name": "Method",
+              "extends": []
+            },
+            {
+              "id": "lib.http.target",
+              "name": "Target",
+              "extends": []
+            },
+            {
+              "id": "lib.http.header",
+              "name": "Header",
+              "extends": []
+            },
+            {
+              "id": "lib.http.body",
+              "name": "Body",
+              "extends": []
+            },
+            {
+              "id": "lib.http.status",
+              "name": "Status",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "lib.http.requests-method",
+              "ends": [
+                {
+                  "id": "lib.http.requests-method.requests",
+                  "name": "requests",
+                  "entity": "lib.http.request",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "lib.http.requests-method.method",
+                  "name": "method",
+                  "entity": "lib.http.method",
+                  "min": 1,
+                  "max": 1
+                }
+              ]
+            },
+            {
+              "id": "lib.http.requests-target",
+              "ends": [
+                {
+                  "id": "lib.http.requests-target.requests",
+                  "name": "requests",
+                  "entity": "lib.http.request",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "lib.http.requests-target.target",
+                  "name": "target",
+                  "entity": "lib.http.target",
+                  "min": 1,
+                  "max": 1
+                }
+              ]
+            },
+            {
+              "id": "lib.http.request-headers",
+              "ends": [
+                {
+                  "id": "lib.http.request-headers.request",
+                  "name": "request",
+                  "entity": "lib.http.request",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "lib.http.request-headers.headers",
+                  "name": "headers",
+                  "entity": "lib.http.header",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.http.request-body",
+              "ends": [
+                {
+                  "id": "lib.http.request-body.request",
+                  "name": "request",
+                  "entity": "lib.http.request",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "lib.http.request-body.body",
+                  "name": "body",
+                  "entity": "lib.http.body",
+                  "min": 0,
+                  "max": 1
+                }
+              ]
+            },
+            {
+              "id": "lib.http.responses-status",
+              "ends": [
+                {
+                  "id": "lib.http.responses-status.responses",
+                  "name": "responses",
+                  "entity": "lib.http.response",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "lib.http.responses-status.status",
+                  "name": "status",
+                  "entity": "lib.http.status",
+                  "min": 1,
+                  "max": 1
+                }
+              ]
+            },
+            {
+              "id": "lib.http.response-headers",
+              "ends": [
+                {
+                  "id": "lib.http.response-headers.response",
+                  "name": "response",
+                  "entity": "lib.http.response",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "lib.http.response-headers.headers",
+                  "name": "headers",
+                  "entity": "lib.http.header",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "lib.http.response-body",
+              "ends": [
+                {
+                  "id": "lib.http.response-body.response",
+                  "name": "response",
+                  "entity": "lib.http.response",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "lib.http.response-body.body",
+                  "name": "body",
+                  "entity": "lib.http.body",
+                  "min": 0,
+                  "max": 1
+                }
+              ]
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "interactions": [
+        {
+          "id": "pkg.http.exchange",
+          "name": "exchange",
+          "language": "lib.http",
+          "parameters": [
+            {
+              "id": "pkg.http.exchange.request",
+              "name": "request",
+              "type": "lib.http.request"
+            }
+          ],
+          "output": "lib.http.response"
+        }
+      ],
+      "transformations": [],
+      "mediums": [
+        {
+          "id": "pkg.http.medium",
+          "name": "HTTP",
+          "language": "lib.http",
+          "call": "pkg.http.exchange"
+        }
+      ],
+      "deployments": [],
+      "components": []
+    },
+    "packages": []
   },
   "attachments": [
     {

@@ -1,69 +1,65 @@
 {
-  "format": "systemathic/2",
+  "format": "systemathic/3",
   "design": {
     "id": "lib.in-process.system",
     "name": "In-process",
-    "root": "pkg.in-process",
-    "components": [
-      {
-        "id": "pkg.in-process",
-        "name": "In-process",
-        "uses": [
-          "lib.in-process"
-        ],
-        "imports": {
-          "components": [],
-          "transformations": [],
-          "interactions": [],
-          "mediums": []
-        },
-        "languages": [
-          {
-            "id": "lib.in-process",
-            "name": "In-process",
-            "extends": [],
-            "entities": [
-              {
-                "id": "lib.in-process.reference",
-                "name": "Reference",
-                "extends": []
-              }
-            ],
-            "relationships": [],
-            "formulas": []
-          }
-        ],
+    "root": {
+      "id": "pkg.in-process",
+      "name": "In-process",
+      "uses": [
+        "lib.in-process"
+      ],
+      "imports": {
+        "components": [],
+        "interactions": [],
         "transformations": [],
-        "interactions": [
-          {
-            "id": "pkg.in-process.pass",
-            "name": "pass",
-            "language": "lib.in-process",
-            "parameters": [
-              {
-                "id": "pkg.in-process.pass.reference",
-                "name": "reference",
-                "type": "lib.in-process.reference"
-              }
-            ],
-            "output": "lib.in-process.reference",
-            "primary": null,
-            "compares": []
-          }
-        ],
-        "mediums": [
-          {
-            "id": "pkg.in-process.medium",
-            "name": "In-process",
-            "language": "lib.in-process",
-            "call": "pkg.in-process.pass"
-          }
-        ],
-        "deployments": [],
-        "components": []
-      }
-    ],
-    "configurations": []
+        "mediums": []
+      },
+      "implements": [],
+      "languages": [
+        {
+          "id": "lib.in-process",
+          "name": "In-process",
+          "extends": [],
+          "entities": [
+            {
+              "id": "lib.in-process.reference",
+              "name": "Reference",
+              "extends": []
+            }
+          ],
+          "relationships": [],
+          "formulas": []
+        }
+      ],
+      "interactions": [
+        {
+          "id": "pkg.in-process.pass",
+          "name": "pass",
+          "language": "lib.in-process",
+          "parameters": [
+            {
+              "id": "pkg.in-process.pass.reference",
+              "name": "reference",
+              "type": "lib.in-process.reference"
+            }
+          ],
+          "output": "lib.in-process.reference"
+        }
+      ],
+      "transformations": [],
+      "mediums": [
+        {
+          "id": "pkg.in-process.medium",
+          "name": "In-process",
+          "language": "lib.in-process",
+          "call": "pkg.in-process.pass"
+        }
+      ],
+      "deployments": [],
+      "components": []
+    },
+    "packages": []
   },
   "attachments": [
     {
