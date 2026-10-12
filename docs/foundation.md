@@ -607,12 +607,12 @@ belongs to the layer whose vocabulary it is about.
 | W3 | **End names.** In every Language, from every Entity, the named ends reachable across its vocabulary have distinct names. | Kernel |
 | W4 | **No cycles.** No Language and no Entity extends itself, eventually. | Kernel |
 | W5 | **Scope.** Every Language a Component uses, and every Language a Language defined in it extends, is in its scope. | Contexts |
-| W6 | **Transformations.** A Transformation has an output; its inputs are all of one Language and its output of another, and its Component uses both. | Contexts |
+| W6 | **Transformations.** A Transformation has an output; its inputs are all of one Language and its output of another, each in the vocabulary of a Language its Component uses. | Contexts |
 | W8 | **Purity.** Every Interaction is over a Language its Component uses, and its Parameters and output belong to that Language's vocabulary. | Contexts |
 | W9 | **Imports.** Every Interaction, Transformation, Medium and Component a Component imports is in its `iscope`; every imported Interaction is over a Language it uses. | Contexts; Systems for the root and packages; Mediation for Mediums |
 | W10 | **Placement.** Every Instance of a Deployment is of a child of the deployed Component, or of a Component it imports, and no two Instances of a Deployment share a name; every Connection goes from an Instance of the same Deployment, for Interactions over one Language that its Component has access to, to an Instance of the same Deployment whose Component offers them, or to the deployed Component, which offers or imports them. | Deployment |
 | W11 | **Mediums.** Every Medium's call is an Interaction of the Component that defines the Medium, over the Medium's Language. | Mediation |
-| W12 | **Mediations.** Every Mediation has a Medium the deployed Component has access to. A realization, if given, is `down: L → H` and `up: H → L`, where `L` is the What's Language and `H` the Medium's, both accessible to the Components at both ends. A Connection's top Mediation mediates its What; each one below, the call of the Medium above it. | Mediation |
+| W12 | **Mediations.** Every Mediation has a Medium the deployed Component has access to. A realization, if given, is `down: L → H` and `up: H → L`, where `L` is the What's Language and `H` the Medium's — read as their vocabularies — both accessible to the Components at both ends. A Connection's top Mediation mediates its What; each one below, the call of the Medium above it. | Mediation |
 | W14 | **Implementations.** No Component implements itself, eventually; a Component imports what it implements, and uses the Language of each of its Interactions. | Contexts |
 
 W7 (mappings) and W13 (Configurations) belonged to earlier versions of the core, and their
