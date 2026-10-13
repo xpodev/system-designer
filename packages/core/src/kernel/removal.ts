@@ -60,7 +60,7 @@ export function cascade(graph: Graph, roots: readonly string[], rules: Compositi
       for (const other of graph.navigate(id, end)) {
         const otherEntity = graph.get(other).entity;
         if (ownedEnds.includes(end)) owned.push(other);
-        else if ((rules.owning.get(otherEntity) ?? []).includes(back)) continue; // `other` owns `id`
+        else if (back !== null && (rules.owning.get(otherEntity) ?? []).includes(back)) continue; // `other` owns `id`
         else if (rules.dependents.has(otherEntity)) dependents.push(other);
       }
     }

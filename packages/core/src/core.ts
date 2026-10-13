@@ -1,40 +1,31 @@
-/** The core vocabulary — every core layer together — Std on top, and graphs over them. */
-import { configurationComposition } from "./configuration/composition.js";
+/** The core vocabulary — every core layer together — and graphs over it. */
 import { contextsComposition } from "./contexts/composition.js";
 import { deploymentComposition } from "./deployment/composition.js";
-import { coreSpec, stdSpec } from "./generated/schema.js";
+import { functionsComposition } from "./functions/composition.js";
+import { coreSpec } from "./generated/schema.js";
 import { copyInto } from "./kernel/copy.js";
 import { Graph } from "./kernel/graph.js";
 import { compose, kernelComposition, removeAll } from "./kernel/removal.js";
 import { Vocabulary } from "./kernel/vocabulary.js";
 import { mediationComposition } from "./mediation/composition.js";
-import { operationsComposition } from "./operations/composition.js";
-import { stdComposition } from "./std/composition.js";
+import { systemsComposition } from "./systems/composition.js";
 
+/** The vocabulary a System is a model of: the six core Languages together. */
 export const coreVocabulary = new Vocabulary(coreSpec);
-
-/** The vocabulary a System is kept in: the core, with Std on top. */
-export const systemVocabulary = new Vocabulary(stdSpec);
 
 /** An empty model of the core Languages. */
 export function coreGraph(): Graph {
   return new Graph(coreVocabulary);
 }
 
-/** An empty System model: the core Languages and Std. */
-export function systemGraph(): Graph {
-  return new Graph(systemVocabulary);
-}
-
 /** What every layer owns, what depends on what, and what each thing requires. */
 export const systemComposition = compose(
   kernelComposition,
+  functionsComposition,
   contextsComposition,
-  operationsComposition,
   deploymentComposition,
   mediationComposition,
-  configurationComposition,
-  stdComposition,
+  systemsComposition,
 );
 
 /** Removes `ids` and everything the foundation says goes with them; returns every removed id. */

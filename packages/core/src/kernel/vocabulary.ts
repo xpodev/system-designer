@@ -7,7 +7,8 @@
  */
 
 export interface EndSpec {
-  readonly name: string;
+  /** `null` is an unnamed end: it cannot be navigated to. */
+  readonly name: string | null;
   readonly entity: string;
   readonly min: number;
   /** `null` is unbounded (N). */
@@ -61,6 +62,7 @@ export class Vocabulary {
   }
 
   private addStep(entity: string, step: Step): void {
+    if (step.end.name === null) return;
     let table = this.steps.get(entity);
     if (!table) this.steps.set(entity, (table = new Map()));
     const existing = table.get(step.end.name);

@@ -2,7 +2,7 @@
  * Names and Bounds are Entities of the Kernel, but what they stand for is text and numbers.
  * This is the part of the mediation into a programming language that maps them: one Name
  * instance per distinct text, so comparing names is comparing identities, and one Bound
- * instance per natural number used, linked by `successor`, so ranges can be compared.
+ * instance per natural number used, ordered as numbers are.
  */
 import type { Graph } from "./graph.js";
 
@@ -24,19 +24,12 @@ export function setName(graph: Graph, id: string, text: string): void {
   graph.connect(id, "name", nameInstance(graph, text));
 }
 
-/** The Bound for `n`, materializing `0..n` and their successor links as needed. */
+/** The Bound for `n`. */
 export function boundInstance(graph: Graph, n: number): string {
   if (!Number.isInteger(n) || n < 0) throw new Error(`a Bound is a natural number, not ${n}`);
-  let previous: string | undefined;
-  for (let k = 0; k <= n; k++) {
-    const id = `bound:${k}`;
-    if (!graph.has(id)) {
-      graph.add("Bound", id, k);
-      if (previous !== undefined) graph.connect(previous, "successor", id);
-    }
-    previous = id;
-  }
-  return `bound:${n}`;
+  const id = `bound:${n}`;
+  if (!graph.has(id)) graph.add("Bound", id, n);
+  return id;
 }
 
 export function boundOf(graph: Graph, id: string, end: "min" | "max"): number | undefined {

@@ -59,6 +59,7 @@ export function typecheck(formula: Formula, vocabulary: Vocabulary): Mentions {
       case "compare": {
         const left = path(f.left, env);
         const right = path(f.right, env);
+        if ((f.op === "<" || f.op === "<=") && !(left === "Bound" && right === "Bound")) throw new FormulaError(`orders ${left} and ${right}; only Bounds are ordered`);
         if (!vocabulary.conforms(left, right) && !vocabulary.conforms(right, left)) throw new FormulaError(`compares ${left} with ${right}`);
         return;
       }

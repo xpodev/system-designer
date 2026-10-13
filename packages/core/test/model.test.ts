@@ -5,16 +5,16 @@ import {
   coreGraph,
   coreSpec,
   counterexamples,
+  analyzeFormula,
+  boundInstance,
   importableInteractions,
-  linkMentions,
   mediationStack,
   parse,
   remove,
   scope,
   setMediationStack,
   setName,
-  stdSpec,
-  systemGraph,
+  setParameters,
 } from "../src/index.js";
 
 group("extension", () => {
@@ -48,19 +48,19 @@ group("extension", () => {
     const graph = extended();
     graph.add("Formula", "f", "all m in CombatMonster. not m in m.^leader");
     graph.connect("combat", "formulas", "f");
-    expect(linkMentions(graph, "f")).toMatchObject({ ok: true });
-    expect(graph.navigate("f", "mentionedEntities").sort()).toEqual(["fighter", "monster"]);
-    expect(graph.navigate("f", "mentionedEnds")).toEqual(["leader"]);
+    const analysis = analyzeFormula(graph, "f");
+    expect(analysis.ok && [...analysis.entities].sort()).toEqual(["fighter", "monster"]);
+    expect(analysis.ok && analysis.ends).toEqual(["leader"]);
   });
 
   it("compares a projection with what it extends, and stays inside the Language's vocabulary", () => {
     const graph = extended();
     graph.add("Formula", "ok", "all f in CombatMonster, m in Monster. f == m => f in m.followers");
     graph.connect("combat", "formulas", "ok");
-    expect(linkMentions(graph, "ok")).toMatchObject({ ok: true });
+    expect(analyzeFormula(graph, "ok")).toMatchObject({ ok: true });
     graph.add("Formula", "outside", "all f in CombatMonster. f == f");
     graph.connect("core", "formulas", "outside");
-    expect(linkMentions(graph, "outside")).toEqual({ ok: false, error: "unbound name 'CombatMonster'" });
+    expect(analyzeFormula(graph, "outside")).toEqual({ ok: false, error: "unbound name 'CombatMonster'" });
   });
 
   it("finds an Entity extending one of its own Language's (W1), and an extension cycle (W4)", () => {
@@ -79,7 +79,7 @@ group("extension", () => {
 
 /** A System: a root with two children, a Language at the root, and an Interaction of one child imported by the other. */
 function system(): Graph {
-  const graph = systemGraph();
+  const graph = coreGraph();
   const component = (id: string, parent?: string) => {
     graph.add("Component", id);
     setName(graph, id, id);
@@ -88,7 +88,6 @@ function system(): Graph {
   graph.add("System", "s");
   setName(graph, "s", "S");
   component("root");
-  graph.connect("s", "components", "root");
   graph.connect("s", "root", "root");
   component("server", "root");
   component("client", "root");
@@ -109,7 +108,7 @@ function system(): Graph {
 }
 
 function violated(graph: Graph): string[] {
-  return stdSpec.axioms.filter((axiom) => counterexamples(parse(axiom.formula), graph).length > 0).map((axiom) => axiom.about);
+  return coreSpec.axioms.filter((axiom) => counterexamples(parse(axiom.formula), graph).length > 0).map((axiom) => axiom.about);
 }
 
 group("components", () => {
@@ -139,33 +138,59 @@ group("components", () => {
     expect(violated(graph)).toEqual(
       expect.arrayContaining([
         "A Component uses only Languages in its scope: its own and its parents', and those of the Components it imports",
-        "A Component imports an Interaction only from its siblings, or from what a Component it is nested in imports",
+        "A nested Component imports an Interaction only from its siblings, or from what a Component it is nested in imports",
       ]),
     );
   });
 });
 
 group("deletion", () => {
-  it("removes a Transformation with its source Language, but keeps one that was already missing it", () => {
+  it("removes a Parameter with its type, and keeps its Transformation, ill-formed, for the diagnoser", () => {
     const graph = system();
     graph.add("Language", "net");
     setName(graph, "net", "Net");
     graph.connect("root", "languages", "net");
-    for (const id of ["down", "orphan"]) {
-      graph.add("Transformation", id);
-      setName(graph, id, id);
-      graph.connect(id, "holder", "root");
-      graph.connect(id, "target", "net");
-    }
-    graph.connect("down", "source", "combat");
-    expect(remove(graph, "combat")).toEqual(expect.arrayContaining(["combat", "target", "attack", "down"]));
-    expect(graph.has("orphan")).toBe(true);
+    graph.add("Entity", "id");
+    setName(graph, "id", "Id");
+    graph.connect("net", "entities", "id");
+    graph.add("Transformation", "down");
+    setName(graph, "down", "down");
+    graph.connect("down", "component", "root");
+    graph.add("Parameter", "p");
+    setName(graph, "p", "target");
+    graph.connect("p", "type", "target");
+    setParameters(graph, "down", ["p"]);
+    graph.connect("down", "output", "id");
+    expect(remove(graph, "combat")).toEqual(expect.arrayContaining(["combat", "target", "attack", "p"]));
+    expect(graph.has("down")).toBe(true);
+    expect(graph.navigate("down", "parameters")).toEqual([]);
+  });
+
+  it("finds an implementation that does not import what it implements (W14)", () => {
+    const graph = system();
+    graph.connect("client", "implements", "server");
+    expect(violated(graph)).toContain("A Component imports what it implements");
+    graph.connect("client", "importedComponents", "server");
+    expect(violated(graph)).not.toContain("A Component imports what it implements");
+  });
+
+  it("finds an Instance whose range is out of order (W2)", () => {
+    const graph = system();
+    graph.add("Deployment", "d");
+    graph.connect("d", "component", "root");
+    graph.add("Instance", "i");
+    setName(graph, "i", "i");
+    graph.connect("i", "of", "server");
+    graph.connect("d", "instances", "i");
+    graph.connect("i", "min", boundInstance(graph, 2));
+    graph.connect("i", "max", boundInstance(graph, 1));
+    expect(violated(graph)).toContain("An Instance's min <= max, where max is present");
   });
 
   it("removes a Connection with its last Interaction, and keeps a Mediation whose Medium goes", () => {
     const graph = system();
     graph.add("Deployment", "d");
-    graph.connect("d", "deployed", "root");
+    graph.connect("d", "component", "root");
     for (const [id, of] of [["c1", "client"], ["s1", "server"]] as const) {
       graph.add("Instance", id);
       setName(graph, id, id);
@@ -175,10 +200,10 @@ group("deletion", () => {
     graph.add("Connection", "wire");
     graph.connect("d", "connections", "wire");
     graph.connect("wire", "from", "c1");
-    graph.connect("wire", "toInstance", "s1");
+    graph.connect("wire", "to", "s1");
     graph.connect("wire", "what", "attack");
     graph.add("Medium", "http");
-    graph.connect("http", "definer", "root");
+    graph.connect("http", "component", "root");
     graph.add("Mediation", "m");
     graph.connect("m", "how", "http");
     setMediationStack(graph, "wire", ["m"]);

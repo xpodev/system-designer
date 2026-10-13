@@ -1,5 +1,5 @@
 /** Interactions in scope (docs/foundation.md, *Import*): what a Component may import, and what it has access to. */
-import { access, importable } from "../contexts/scope.js";
+import { access, importable } from "./scope.js";
 import type { Graph } from "../kernel/graph.js";
 
 /** The Interactions a Component may import. */

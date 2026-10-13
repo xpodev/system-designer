@@ -1,7 +1,7 @@
 /**
  * Evaluating a formula on a finite model (docs/foundation.md, "The logic"). Paths denote sets
  * of instances; `==` is equality of those sets (identity, on single instances), `in` is
- * inclusion, and `some`/`no` test emptiness. Evaluation always terminates.
+ * inclusion, `<` and `<=` order Bounds as numbers, and `some`/`no` test emptiness. Evaluation always terminates.
  */
 import type { Graph } from "../graph.js";
 import type { Formula, Path } from "./parse.js";
@@ -34,6 +34,11 @@ export function holds(formula: Formula, graph: Graph, env: Environment = new Map
     case "compare": {
       const left = evaluate(formula.left, graph, env);
       const right = evaluate(formula.right, graph, env);
+      if (formula.op === "<" || formula.op === "<=") {
+        // Bounds compare as the numbers they stand for; every pair must be in order.
+        const number = (id: string) => Number(graph.get(id).value);
+        return [...left].every((a) => [...right].every((b) => (formula.op === "<" ? number(a) < number(b) : number(a) <= number(b))));
+      }
       const included = [...left].every((id) => right.has(id));
       if (formula.op === "in") return included;
       const equal = included && left.size === right.size;

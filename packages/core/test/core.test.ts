@@ -11,7 +11,7 @@ import {
   counterexamples,
   invert,
   holds,
-  linkMentions,
+  analyzeFormula,
   nameInstance,
   nameOf,
   parameters,
@@ -28,9 +28,10 @@ group("generated schema", () => {
   });
 
   it("holds the union of every core layer", () => {
-    expect(coreSpec.entities).toHaveLength(21);
-    expect(coreSpec.relationships).toHaveLength(73);
-    expect(coreSpec.axioms).toHaveLength(70);
+    expect(coreSpec.entities).toHaveLength(18);
+    expect(coreSpec.relationships).toHaveLength(54);
+    expect(coreSpec.axioms).toHaveLength(68);
+    expect(coreSpec.extends).toEqual({ Interaction: ["Function"], Transformation: ["Function"] });
   });
 });
 
@@ -46,7 +47,9 @@ group("logic", () => {
       ["all r in Relationship, e in r.ends. e.entity.langauge == r.language", "has no end 'langauge'"],
       ["all i in Interaction. i.output == i.language", "compares Entity with Language"],
       ["all i in Interaction. j.output.language == i.language", "unbound name 'j'"],
-      ["all t in Transformation. t.source in t.^holder.languages", "closure over Transformation.holder"],
+      ["all t in Transformation. t in t.^component.languages", "closure over Transformation.component"],
+      ["all e in End. e.name <= e.name", "only Bounds are ordered"],
+      ["all c in Connection. some c.toInstance", "has no end 'toInstance'"],
       ["all x in", "expected"],
     ] as const;
     for (const [text, message] of bad) {
@@ -91,11 +94,11 @@ group("graph", () => {
     graph.add("Parameter", "p2");
     graph.connect("p1", "next", "p2");
     expect(graph.navigate("p1", "next")).toEqual(["p2"]);
-    expect(graph.navigate("p2", "prev")).toEqual(["p1"]);
-    expect(graph.clone().navigate("p2", "prev")).toEqual(["p1"]);
+    expect(graph.navigate("p2", "previous")).toEqual(["p1"]);
+    expect(graph.clone().navigate("p2", "previous")).toEqual(["p1"]);
   });
 
-  it("keeps parameters in order through the first/next chain", () => {
+  it("keeps parameters in order through the previous/next chain, on any Function", () => {
     const graph = coreGraph();
     graph.add("Interaction", "i");
     for (const id of ["x", "y", "z"]) graph.add("Parameter", id);
@@ -103,6 +106,20 @@ group("graph", () => {
     expect(parameters(graph, "i")).toEqual(["y", "x", "z"]);
     setParameters(graph, "i", ["z", "y"]);
     expect(parameters(graph, "i")).toEqual(["z", "y"]);
+    graph.add("Transformation", "t");
+    setParameters(graph, "t", ["x"]);
+    expect(parameters(graph, "t")).toEqual(["x"]);
+    expect(graph.ofEntity("Function").sort()).toEqual(["i", "t"]);
+  });
+
+  it("puts an instance of an extending Entity at an end, and nothing else", () => {
+    const graph = coreGraph();
+    graph.add("Interaction", "i");
+    graph.add("Parameter", "p");
+    graph.connect("p", "function", "i");
+    expect(graph.navigate("i", "parameters")).toEqual(["p"]);
+    graph.add("Component", "c");
+    expect(() => graph.connect("p", "function", "c")).toThrow("end 'function' is Function");
   });
 });
 
@@ -152,7 +169,7 @@ group("values", () => {
     expect(nameOf(graph, "e2")).toBe("Order");
   });
 
-  it("materializes bounds so the ranges axiom can compare them", () => {
+  it("orders bounds as numbers, so the ranges axiom can compare them", () => {
     const graph = coreGraph();
     graph.add("End", "good");
     graph.add("End", "bad");
@@ -191,9 +208,9 @@ group("formulas", () => {
     const graph = orders();
     graph.add("Formula", "f", "all o in Order, l in o.lines. l.order == o");
     graph.connect("commerce", "formulas", "f");
-    expect(linkMentions(graph, "f")).toMatchObject({ ok: true });
-    expect(graph.navigate("f", "mentionedEntities").sort()).toEqual(["line", "order"]);
-    expect(graph.navigate("f", "mentionedEnds").sort()).toEqual(["end-lines", "end-order"]);
+    const analysis = analyzeFormula(graph, "f");
+    expect(analysis.ok && [...analysis.entities].sort()).toEqual(["line", "order"]);
+    expect(analysis.ok && [...analysis.ends].sort()).toEqual(["end-lines", "end-order"]);
   });
 
   it("derives mentions whatever characters the ids contain", () => {
@@ -212,15 +229,13 @@ group("formulas", () => {
     }
     graph.add("Formula", "f:A#0", "all n in Node. not n in n.^next");
     graph.connect("lang:A", "formulas", "f:A#0");
-    expect(linkMentions(graph, "f:A#0")).toMatchObject({ ok: true });
-    expect(graph.navigate("f:A#0", "mentionedEnds")).toEqual(["rel:A#0.next"]);
+    expect(analyzeFormula(graph, "f:A#0")).toEqual({ ok: true, entities: ["ent:A.Node"], ends: ["rel:A#0.next"] });
   });
 
   it("reports a formula that leaves its Language", () => {
     const graph = orders();
     graph.add("Formula", "f", "all o in Order. o.customer == o");
     graph.connect("commerce", "formulas", "f");
-    expect(linkMentions(graph, "f")).toEqual({ ok: false, error: "Order has no end 'customer'" });
-    expect(graph.navigate("f", "mentionedEntities")).toEqual([]);
+    expect(analyzeFormula(graph, "f")).toEqual({ ok: false, error: "Order has no end 'customer'" });
   });
 });

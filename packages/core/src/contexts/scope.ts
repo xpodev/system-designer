@@ -16,12 +16,15 @@ export function ancestry(graph: Graph, component: string): string[] {
   return found;
 }
 
-/** The Components beside `component`: its parent's other children, or the System's other top-level Components. */
+/** The Components beside `component`: its parent's other children; for the root and the packages, each other. */
 export function siblings(graph: Graph, component: string): string[] {
   const [parent] = graph.navigate(component, "parent");
-  const [system] = graph.navigate(component, "system");
-  const all = parent !== undefined ? graph.navigate(parent, "components") : system !== undefined ? graph.navigate(system, "components") : [];
-  return all.filter((id) => id !== component);
+  return (parent !== undefined ? graph.navigate(parent, "components") : topLevel(graph)).filter((id) => id !== component);
+}
+
+/** The Components nested in none: every System's root and packages. */
+export function topLevel(graph: Graph): string[] {
+  return graph.ofEntity("System").flatMap((system) => [...graph.navigate(system, "root"), ...graph.navigate(system, "packages")]);
 }
 
 /** `scope(C) = (C.*parent).languages ∪ C.importedComponents.languages`: the Languages a Component may use. */

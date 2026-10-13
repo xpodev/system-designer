@@ -3,7 +3,7 @@ import { access, importable } from "../contexts/scope.js";
 import { chain, setChain, type ChainEnds } from "../kernel/chain.js";
 import type { Graph } from "../kernel/graph.js";
 
-const STACK: ChainEnds = { members: "mediations", first: "first", next: "next" };
+const STACK: ChainEnds = { members: "mediations", previous: "above", next: "below" };
 
 /** The Mediums a Component may import. */
 export function importableMediums(graph: Graph, component: string): string[] {
@@ -15,7 +15,7 @@ export function accessibleMediums(graph: Graph, component: string): string[] {
   return access(graph, component, "mediums", "importedMediums");
 }
 
-/** A Connection's Mediations, from the first — over its What — down. */
+/** A Connection's Mediations, from the top — over its What — down. */
 export function mediationStack(graph: Graph, connection: string): string[] {
   return chain(graph, connection, STACK);
 }

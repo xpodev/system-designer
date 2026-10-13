@@ -13,6 +13,6 @@ export const deploymentComposition = composition(
   [],
   {
     Instance: [["of"]],
-    Connection: [["from"], ["toInstance", "toComponent"], ["what"]],
+    Connection: [["from"], ["to", "toComponent"], ["what"]],
   },
 );

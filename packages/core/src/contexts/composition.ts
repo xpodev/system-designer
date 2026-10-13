@@ -1,17 +1,14 @@
 /**
- * What Contexts owns, and what depends on what it refers to: a System its top-level
- * Components, a Component its children, Languages and Transformations, a Transformation its
- * mappings. A mapping exists only while what it maps does; a Transformation only while both
- * its Languages do.
+ * What Contexts owns: a Component its children, Languages, Interactions and Transformations.
+ * An Interaction exists only while its Language does. A Transformation without an output stays,
+ * ill-formed, for the diagnoser to show.
  */
 import { composition } from "../kernel/removal.js";
 
 export const contextsComposition = composition(
   {
-    System: ["components"],
-    Component: ["components", "languages", "transformations"],
-    Transformation: ["entityMappings", "relationshipMappings"],
+    Component: ["components", "languages", "interactions", "transformations"],
   },
-  ["EntityMapping", "RelationshipMapping"],
-  { Transformation: [["source"], ["target"]] },
+  [],
+  { Interaction: [["language"]] },
 );

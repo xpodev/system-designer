@@ -7,7 +7,7 @@
  *   conjunction := unary ( "and" unary )*
  *   unary       := "not" unary | "no" path | "some" path
  *                | ( "all" | "some" ) binding ( "," binding )* "." formula
- *                | "(" formula ")" | path ( "==" | "!=" | "in" ) path
+ *                | "(" formula ")" | path ( "==" | "!=" | "in" | "<" | "<=" ) path
  *   binding     := name "in" path
  *   path        := name ( "." ( "^" | "*" )? name )*
  *
@@ -34,12 +34,12 @@ export type Formula =
   | { readonly kind: "all" | "some"; readonly bindings: readonly Binding[]; readonly body: Formula }
   | { readonly kind: "not"; readonly operand: Formula }
   | { readonly kind: "and" | "or" | "implies"; readonly left: Formula; readonly right: Formula }
-  | { readonly kind: "compare"; readonly op: "==" | "!=" | "in"; readonly left: Path; readonly right: Path }
+  | { readonly kind: "compare"; readonly op: "==" | "!=" | "in" | "<" | "<="; readonly left: Path; readonly right: Path }
   | { readonly kind: "nonempty" | "empty"; readonly path: Path };
 
 export class FormulaError extends Error {}
 
-const TOKEN = /\s*(?:(=>|==|!=)|(\.(?=[A-Za-z^*]))|(\.)|([(),^*])|([A-Za-z_]\w*))/y;
+const TOKEN = /\s*(?:(=>|==|!=|<=|<)|(\.(?=[A-Za-z^*]))|(\.)|([(),^*])|([A-Za-z_]\w*))/y;
 const KEYWORDS = new Set(["all", "some", "no", "in", "and", "or", "not"]);
 const STEP = "\u0000step";
 const SEPARATOR = "\u0000sep";
@@ -133,7 +133,7 @@ export function parse(text: string): Formula {
     }
     const left = path();
     const op = take();
-    if (op !== "==" && op !== "!=" && op !== "in") throw new FormulaError(`expected ==, != or in, got ${describe(op)}`);
+    if (op !== "==" && op !== "!=" && op !== "in" && op !== "<" && op !== "<=") throw new FormulaError(`expected ==, !=, in, < or <=, got ${describe(op)}`);
     return { kind: "compare", op, left, right: path() };
   };
 

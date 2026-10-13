@@ -146,8 +146,11 @@ export class Graph {
     return this.instances.values();
   }
 
+  /** The instances of `entity`, and of every Entity extending it. */
   ofEntity(entity: string): string[] {
-    return [...(this.byEntity.get(entity) ?? [])];
+    const found: string[] = [];
+    for (const [kind, ids] of this.byEntity) if (this.vocabulary.conforms(kind, entity)) found.push(...ids);
+    return found;
   }
 
   /**
@@ -159,7 +162,7 @@ export class Graph {
     if (!relationship) throw new Error(`unknown Relationship ${relationshipId}`);
     for (const [id, end] of [[a, relationship.ends[0]], [b, relationship.ends[1]]] as const) {
       const entity = this.get(id).entity;
-      if (entity !== end?.entity) throw new Error(`${id} is ${entity}, but end '${end?.name}' is ${end?.entity}`);
+      if (end === undefined || !this.vocabulary.conforms(entity, end.entity)) throw new Error(`${id} is ${entity}, but end '${end?.name}' is ${end?.entity}`);
     }
     if (!insert(this.forward, relationshipId, a, b, at?.[0])) return;
     insert(this.backward, relationshipId, b, a, at?.[1]);
