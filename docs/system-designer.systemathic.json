@@ -1557,8 +1557,8 @@
                   "id": "system.root.tool.default.documentation",
                   "name": "providers",
                   "of": "system.root.tool.metadata-provider",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.default.editor",
@@ -1571,15 +1571,15 @@
                   "id": "system.root.tool.default.editkinds",
                   "name": "editKinds",
                   "of": "system.root.tool.reversible-edit",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.default.listeners",
                   "name": "listeners",
                   "of": "system.root.tool.edit-listener",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.default.verifier",
@@ -1606,8 +1606,8 @@
                   "id": "system.root.tool.default.perspectivekinds",
                   "name": "perspectiveKinds",
                   "of": "system.root.tool.perspective-kind",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.default.exporter",
@@ -1620,8 +1620,8 @@
                   "id": "system.root.tool.default.formats",
                   "name": "formats",
                   "of": "system.root.tool.specification-format",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.default.writer",
@@ -1634,8 +1634,8 @@
                   "id": "system.root.tool.default.sources",
                   "name": "sources",
                   "of": "system.root.tool.source",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.default.ui",
@@ -2291,8 +2291,8 @@
                   "id": "system.root.tool.browser.providers",
                   "name": "providers",
                   "of": "system.root.tool.metadata-provider",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.browser.editor",
@@ -2305,15 +2305,15 @@
                   "id": "system.root.tool.browser.editkinds",
                   "name": "editKinds",
                   "of": "system.root.tool.reversible-edit",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.browser.listeners",
                   "name": "listeners",
                   "of": "system.root.tool.edit-listener",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.browser.verifier",
@@ -2340,8 +2340,8 @@
                   "id": "system.root.tool.browser.perspectivekinds",
                   "name": "perspectiveKinds",
                   "of": "system.root.tool.perspective-kind",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.browser.exporter",
@@ -2354,8 +2354,8 @@
                   "id": "system.root.tool.browser.formats",
                   "name": "formats",
                   "of": "system.root.tool.specification-format",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.browser.writer",
@@ -2368,8 +2368,8 @@
                   "id": "system.root.tool.browser.sources",
                   "name": "sources",
                   "of": "system.root.tool.source",
-                  "min": 1,
-                  "max": 1
+                  "min": 0,
+                  "max": "N"
                 },
                 {
                   "id": "system.root.tool.browser.ui",
@@ -2645,7 +2645,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.repository"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -2695,7 +2697,7 @@
                       "type": "system.root.systemathic.systems.system"
                     }
                   ],
-                  "output": "system.root.systemathic.systems.system"
+                  "output": null
                 }
               ],
               "transformations": [],
@@ -2725,7 +2727,10 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.metadata-provider",
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.documentation-store.documentation-editing",
@@ -2821,7 +2826,10 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.metadata-provider",
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.by-value-store.by-value-editing",
@@ -3360,7 +3368,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.source"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -3382,7 +3392,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.source"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -3407,7 +3419,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.kernel-editor.kernel-editing",
@@ -3866,7 +3880,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.functions-editor.functions-editing",
@@ -4093,7 +4109,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.contexts-editor.contexts-editing",
@@ -4384,7 +4402,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.deployment-editor.deployment-editing",
@@ -4772,7 +4792,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.mediation-editor.mediation-editing",
@@ -5046,7 +5068,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.systems-editor.systems-editing",
@@ -5249,7 +5273,7 @@
                       "type": "system.root.tool.editing.editing.edit"
                     }
                   ],
-                  "output": "system.root.tool.editing.editing.edit"
+                  "output": null
                 }
               ],
               "transformations": [],
@@ -5939,7 +5963,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.perspective-kind"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -5963,7 +5989,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.perspective-kind"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -5987,7 +6015,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.perspective-kind"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6011,7 +6041,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.perspective-kind"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6035,7 +6067,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.perspective-kind"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6059,7 +6093,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.perspective-kind"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6440,7 +6476,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.specification-format"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6463,7 +6501,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.specification-format"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6485,7 +6525,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.systemathic-verifier"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6583,7 +6625,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.edit-listener"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6630,7 +6674,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.edit-listener"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6706,7 +6752,9 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.edit-listener"
+              ],
               "languages": [],
               "interactions": [],
               "transformations": [],
@@ -6736,7 +6784,10 @@
                 "transformations": [],
                 "mediums": []
               },
-              "implements": [],
+              "implements": [
+                "system.root.tool.metadata-provider",
+                "system.root.tool.reversible-edit"
+              ],
               "languages": [
                 {
                   "id": "system.root.tool.configuration-store.configuration-editing",
@@ -8194,7 +8245,267 @@
                   "instance": "system.root.product.tool",
                   "component": "system.root.tool",
                   "deployment": "system.root.tool.default",
-                  "choices": []
+                  "choices": [
+                    {
+                      "id": "system.local#root.choice.workspace",
+                      "instance": "system.root.tool.default.workspace",
+                      "component": "system.root.tool.workspace",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.repository",
+                      "instance": "system.root.tool.default.repository",
+                      "component": "system.root.tool.json-file-repository",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.providers",
+                      "instance": "system.root.tool.default.documentation",
+                      "component": "system.root.tool.documentation-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.providers-2",
+                      "instance": "system.root.tool.default.documentation",
+                      "component": "system.root.tool.by-value-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.providers-3",
+                      "instance": "system.root.tool.default.documentation",
+                      "component": "system.root.tool.configuration-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editor",
+                      "instance": "system.root.tool.default.editor",
+                      "component": "system.root.tool.editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.kernel-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-2",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.functions-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-3",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.contexts-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-4",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.deployment-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-5",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.mediation-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-6",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.systems-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-7",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.documentation-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-8",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.by-value-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.editKinds-9",
+                      "instance": "system.root.tool.default.editkinds",
+                      "component": "system.root.tool.configuration-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.listeners",
+                      "instance": "system.root.tool.default.listeners",
+                      "component": "system.root.tool.ui",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.listeners-2",
+                      "instance": "system.root.tool.default.listeners",
+                      "component": "system.root.tool.mcp-server",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.listeners-3",
+                      "instance": "system.root.tool.default.listeners",
+                      "component": "system.root.tool.api",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.verifier",
+                      "instance": "system.root.tool.default.verifier",
+                      "component": "system.root.tool.python-verifier",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.diagnoser",
+                      "instance": "system.root.tool.default.diagnoser",
+                      "component": "system.root.tool.diagnoser",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectives",
+                      "instance": "system.root.tool.default.perspectives",
+                      "component": "system.root.tool.perspectives",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectiveKinds",
+                      "instance": "system.root.tool.default.perspectivekinds",
+                      "component": "system.root.tool.outline-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectiveKinds-2",
+                      "instance": "system.root.tool.default.perspectivekinds",
+                      "component": "system.root.tool.language-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectiveKinds-3",
+                      "instance": "system.root.tool.default.perspectivekinds",
+                      "component": "system.root.tool.component-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectiveKinds-4",
+                      "instance": "system.root.tool.default.perspectivekinds",
+                      "component": "system.root.tool.deployment-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectiveKinds-5",
+                      "instance": "system.root.tool.default.perspectivekinds",
+                      "component": "system.root.tool.mediation-stack-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.perspectiveKinds-6",
+                      "instance": "system.root.tool.default.perspectivekinds",
+                      "component": "system.root.tool.statistics-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.exporter",
+                      "instance": "system.root.tool.default.exporter",
+                      "component": "system.root.tool.exporter",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.formats",
+                      "instance": "system.root.tool.default.formats",
+                      "component": "system.root.tool.markdown-format",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.formats-2",
+                      "instance": "system.root.tool.default.formats",
+                      "component": "system.root.tool.json-format",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.writer",
+                      "instance": "system.root.tool.default.writer",
+                      "component": "system.root.tool.documentation-writer",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.sources",
+                      "instance": "system.root.tool.default.sources",
+                      "component": "system.root.tool.catalog-source",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.sources-2",
+                      "instance": "system.root.tool.default.sources",
+                      "component": "system.root.tool.file-source",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.ui",
+                      "instance": "system.root.tool.default.ui",
+                      "component": "system.root.tool.ui",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.mcp",
+                      "instance": "system.root.tool.default.mcp",
+                      "component": "system.root.tool.mcp-server",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.cli",
+                      "instance": "system.root.tool.default.cli",
+                      "component": "system.root.tool.cli",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.local#root.choice.api",
+                      "instance": "system.root.tool.default.api",
+                      "component": "system.root.tool.api",
+                      "deployment": null,
+                      "choices": []
+                    }
+                  ]
                 }
               ]
             }
@@ -8214,7 +8525,232 @@
                   "instance": "system.root.product.tool",
                   "component": "system.root.tool",
                   "deployment": "system.root.tool.browser",
-                  "choices": []
+                  "choices": [
+                    {
+                      "id": "system.browser#root.choice.workspace",
+                      "instance": "system.root.tool.browser.workspace",
+                      "component": "system.root.tool.workspace",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.repository",
+                      "instance": "system.root.tool.browser.repository",
+                      "component": "system.root.tool.json-file-repository",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.providers",
+                      "instance": "system.root.tool.browser.providers",
+                      "component": "system.root.tool.documentation-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.providers-2",
+                      "instance": "system.root.tool.browser.providers",
+                      "component": "system.root.tool.by-value-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.providers-3",
+                      "instance": "system.root.tool.browser.providers",
+                      "component": "system.root.tool.configuration-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editor",
+                      "instance": "system.root.tool.browser.editor",
+                      "component": "system.root.tool.editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.kernel-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-2",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.functions-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-3",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.contexts-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-4",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.deployment-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-5",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.mediation-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-6",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.systems-editor",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-7",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.documentation-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-8",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.by-value-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.editKinds-9",
+                      "instance": "system.root.tool.browser.editkinds",
+                      "component": "system.root.tool.configuration-store",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.listeners",
+                      "instance": "system.root.tool.browser.listeners",
+                      "component": "system.root.tool.ui",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.verifier",
+                      "instance": "system.root.tool.browser.verifier",
+                      "component": "system.root.tool.python-verifier",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.diagnoser",
+                      "instance": "system.root.tool.browser.diagnoser",
+                      "component": "system.root.tool.diagnoser",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectives",
+                      "instance": "system.root.tool.browser.perspectives",
+                      "component": "system.root.tool.perspectives",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectiveKinds",
+                      "instance": "system.root.tool.browser.perspectivekinds",
+                      "component": "system.root.tool.outline-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectiveKinds-2",
+                      "instance": "system.root.tool.browser.perspectivekinds",
+                      "component": "system.root.tool.language-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectiveKinds-3",
+                      "instance": "system.root.tool.browser.perspectivekinds",
+                      "component": "system.root.tool.component-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectiveKinds-4",
+                      "instance": "system.root.tool.browser.perspectivekinds",
+                      "component": "system.root.tool.deployment-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectiveKinds-5",
+                      "instance": "system.root.tool.browser.perspectivekinds",
+                      "component": "system.root.tool.mediation-stack-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.perspectiveKinds-6",
+                      "instance": "system.root.tool.browser.perspectivekinds",
+                      "component": "system.root.tool.statistics-view",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.exporter",
+                      "instance": "system.root.tool.browser.exporter",
+                      "component": "system.root.tool.exporter",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.formats",
+                      "instance": "system.root.tool.browser.formats",
+                      "component": "system.root.tool.markdown-format",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.formats-2",
+                      "instance": "system.root.tool.browser.formats",
+                      "component": "system.root.tool.json-format",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.writer",
+                      "instance": "system.root.tool.browser.writer",
+                      "component": "system.root.tool.documentation-writer",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.sources",
+                      "instance": "system.root.tool.browser.sources",
+                      "component": "system.root.tool.catalog-source",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.sources-2",
+                      "instance": "system.root.tool.browser.sources",
+                      "component": "system.root.tool.file-source",
+                      "deployment": null,
+                      "choices": []
+                    },
+                    {
+                      "id": "system.browser#root.choice.ui",
+                      "instance": "system.root.tool.browser.ui",
+                      "component": "system.root.tool.ui",
+                      "deployment": null,
+                      "choices": []
+                    }
+                  ]
                 }
               ]
             }

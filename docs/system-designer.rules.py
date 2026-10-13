@@ -4,11 +4,7 @@
 
 Every standard rule, plus the design's own: what the descriptions of the System say about its
 shape, stated so that a change that breaks it is found. Names of Components are this design's;
-the rules are its, not the tool's.
-
-Until the tool can edit `implements`, an implementation imports its interface, and which
-Component implements which is written here, in IMPLEMENTATIONS. When it can, IMPLEMENTATIONS
-goes, and `implementations` reads `implements` instead.
+the rules are its, not the tool's. What implements each seam is read from the design.
 """
 
 from systemathic.core import *
@@ -24,23 +20,11 @@ VOCABULARIES = [
     "Systemathic StdLib", "Documentation", "By Value", "Configurations", "Editing", "Views",
 ]
 
-#: Every seam that could be done more than one way, and the Components that do it.
-IMPLEMENTATIONS = {
-    "Repository": ["JSON File Repository"],
-    "Metadata Provider": ["Documentation Store", "By Value Store", "Configuration Store"],
-    "Edit Kind": [
-        "Kernel Editor", "Functions Editor", "Contexts Editor", "Deployment Editor", "Mediation Editor",
-        "Systems Editor", "Documentation Store", "By Value Store", "Configuration Store",
-    ],
-    "Edit Listener": ["UI", "MCP Server", "API"],
-    "Source": ["Catalog Source", "File Source"],
-    "Perspective Kind": [
-        "Outline View", "Language View", "Component View", "Deployment View", "Mediation Stack View",
-        "Statistics View",
-    ],
-    "Specification Format": ["Markdown Format", "JSON Format"],
-    "Systemathic Verifier": ["Python Verifier"],
-}
+#: Every seam that could be done more than one way: the interfaces the design implements.
+INTERFACES = [
+    "Repository", "Metadata Provider", "Edit Kind", "Edit Listener", "Source", "Perspective Kind",
+    "Specification Format", "Systemathic Verifier",
+]
 
 #: The concept editors, bottom up, each with the Systemathic Language it edits.
 EDITORS = [
@@ -48,24 +32,29 @@ EDITORS = [
     ("Deployment Editor", "Deployment"), ("Mediation Editor", "Mediation"), ("Systems Editor", "Systems"),
 ]
 
-#: The parts that read a System, and what reading must never reach.
+#: The parts that read a System, and what reading must never reach — each with its implementations.
 READERS = [
-    "Views", "Perspective Kind", *IMPLEMENTATIONS["Perspective Kind"], "Perspectives", "Diagnoser",
-    "Exporter", "Specification Format", *IMPLEMENTATIONS["Specification Format"], "Documentation Writer",
-    "Systemathic Verifier", *IMPLEMENTATIONS["Systemathic Verifier"],
+    "Views", "Perspective Kind", "Perspectives", "Diagnoser", "Exporter", "Specification Format",
+    "Documentation Writer", "Systemathic Verifier",
 ]
-WRITERS = ["Workspace", "Editor", "Edit Kind", "Edit Listener", *IMPLEMENTATIONS["Edit Kind"]]
+WRITERS = ["Workspace", "Editor", "Edit Kind", "Edit Listener"]
 
-#: Where Systems are stored, and the metadata it must know nothing of.
-STORAGE = ["Repository", *IMPLEMENTATIONS["Repository"]]
-METADATA = ["Systemathic Metadata", "Metadata Provider", "Documentation", "By Value", "Configurations", *IMPLEMENTATIONS["Metadata Provider"]]
+#: Where Systems are stored, and the metadata it must know nothing of — each with its implementations.
+STORAGE = ["Repository"]
+METADATA = ["Systemathic Metadata", "Metadata Provider", "Documentation", "By Value", "Configurations"]
 
 CLIENTS = ["UI", "MCP Server", "CLI", "API"]
 
 
-def implementations(system: System, interface: Element) -> list[Element]:
-    """The Components that implement an interface."""
-    return [system.component(name) for name in IMPLEMENTATIONS.get(interface.name, [])]
+def with_implementations(system: System, names: list[str]) -> list[Element]:
+    """The named Components, and every Component implementing any of them."""
+    found: list[Element] = []
+    for name in names:
+        component = system.component(name)
+        for each in [component, *implementations(component)]:
+            if each not in found:
+                found.append(each)
+    return found
 
 
 def reach(component: Element) -> list[Element]:
@@ -81,12 +70,11 @@ def reach(component: Element) -> list[Element]:
 
 
 def _unreachable(system: System, sources: list[str], forbidden: list[str], why: str):
-    banned = {system.component(name) for name in forbidden}
-    for name in sources:
-        component = system.component(name)
+    banned = set(with_implementations(system, forbidden))
+    for component in with_implementations(system, sources):
         for found in reach(component):
             if found in banned:
-                yield Violation([component, found], f"{name} reaches {found.name}: {why}")
+                yield Violation([component, found], f"{component.name} reaches {found.name}: {why}")
 
 
 @rule(severity=ERROR)
@@ -194,28 +182,30 @@ def clients_are_hows(system: System):
 
 @rule(severity=ERROR)
 def every_interface_implemented(system: System):
-    """Every interface offers Interactions and has an implementation; each implementation imports it and uses the Languages of its Interactions.
+    """Every seam offers Interactions and has an implementation; each implementation uses the Languages of its Interactions; and only the seams are implemented.
 
     The tool is defined at its seams, and its own implementations plug in the way anyone else's
-    would. An interface nobody implements is a hole; an implementation that cannot speak its
-    interface's Languages is not one.
+    would. A seam nobody implements is a hole; an implementation that cannot speak its
+    interface's Languages is not one; a Component implemented but not named a seam here is a
+    seam this profile does not know of.
     """
-    for name in IMPLEMENTATIONS:
-        interface = system.component(name)
+    seams = [system.component(name) for name in INTERFACES]
+    for interface in seams:
         if not interface.interactions:
-            yield Violation(interface, f"{name} is an interface, but offers no Interaction")
-        found = implementations(system, interface)
+            yield Violation(interface, f"{interface.name} is an interface, but offers no Interaction")
+        found = interface.implementations
         if not found:
-            yield Violation(interface, f"{name} is an interface nobody implements")
+            yield Violation(interface, f"{interface.name} is an interface nobody implements")
         languages = {i.language for i in interface.interactions if i.language is not None}
         for implementation in found:
-            if interface not in implementation.importedComponents:
-                yield Violation([implementation, interface], f"{implementation.name} implements {name}, but does not import it")
             spoken = {l for used in implementation.uses for l in vocab(used)}
             for language in languages - spoken:
-                yield Violation([implementation, language], f"{implementation.name} implements {name}, but does not use {language.name}")
+                yield Violation([implementation, language], f"{implementation.name} implements {interface.name}, but does not use {language.name}")
             if implementation in reach(interface):
-                yield Violation([interface, implementation], f"{name} depends on its implementation {implementation.name}")
+                yield Violation([interface, implementation], f"{interface.name} depends on its implementation {implementation.name}")
+    for component in system.all("Component"):
+        if component.implementations and component not in seams:
+            yield Violation(component, f"{component.name} is implemented, but is not one of the design's seams")
 
 
 @rule(severity=ERROR)
@@ -233,6 +223,8 @@ def editors_follow_layers(system: System):
             yield Violation(editor, f"{editor_name} must hold exactly one Language, its kinds of Edit")
             continue
         language = own[0]
+        if system.component("Edit Kind") not in editor.implements:
+            yield Violation(editor, f"{editor_name} must implement Edit Kind")
         if below not in language.extends:
             yield Violation([language, below], f"{language.name} must extend {below.name}")
         if system.language(layer_name) not in vocab(language):

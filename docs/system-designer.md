@@ -2,7 +2,7 @@
 
 The Systemathic tool, designed in itself. It is defined abstractly, at the seams: every part that could be done more than one way is an interface — Repository, Metadata Provider, Edit Kind, Edit Listener, Perspective Kind, Specification Format, Source, Systemathic Verifier — and its concrete implementations, the tool's own among them, are chosen by Configuration. Anyone can add an implementation the same way the tool does, so the tool and those who extend it are equally first-party. Connections are stated without Mediations unless how they pass matters to the design; a Mediation states only that a What passes over another Language, and how is the mediator's business.
 
-This System has 51 Components, 1 package beside its root, and 2 Configurations.
+This System has 51 Components, and 1 package beside its root.
 
 ## System Designer
 
@@ -412,7 +412,7 @@ Used by Systemathic Verifier, Python Verifier.
 
 #### Interactions
 
-- `verify(system: System, rules: Rule) → Verification Result, over Rules`
+- `verify(system: System, rules: Rule): Verification Result, over Rules`
 
 ### Tool
 
@@ -425,7 +425,7 @@ The Systemathic tool. It imports the language package, the Verifier, the StdLib 
 
 The Host as a process on this machine: the one authority over every open System. The UI, the MCP server, the CLI and the API each reach it over HTTP — that they do is the design; how each Language is put on HTTP is the mediator's business, left to the implementation. Interface Instances (repository, providers, editKinds, listeners, verifier, perspectiveKinds, formats, sources) are filled by the Configuration.
 
-- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider), editor (Editor), editKinds (Edit Kind), listeners (Edit Listener), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind), exporter (Exporter), formats (Specification Format), writer (Documentation Writer), sources (Source), ui (UI), mcp (MCP Server), cli (CLI), api (API)
+- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider, 0..N), editor (Editor), editKinds (Edit Kind, 0..N), listeners (Edit Listener, 0..N), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind, 0..N), exporter (Exporter), formats (Specification Format, 0..N), writer (Documentation Writer), sources (Source, 0..N), ui (UI), mcp (MCP Server), cli (CLI), api (API)
 - workspace uses open, save of repository, how it passes is left to the implementation
 - workspace uses load, save of providers, how it passes is left to the implementation
 - workspace uses startSession of editor, how it passes is left to the implementation
@@ -469,7 +469,7 @@ The Host as a process on this machine: the one authority over every open System.
 
 The Host in a browser tab, for solo use, with the UI; Python rules run by Pyodide. Nothing to install. How the UI reaches the Host is not stated: it is an implementation detail.
 
-- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider), editor (Editor), editKinds (Edit Kind), listeners (Edit Listener), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind), exporter (Exporter), formats (Specification Format), writer (Documentation Writer), sources (Source), ui (UI)
+- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider, 0..N), editor (Editor), editKinds (Edit Kind, 0..N), listeners (Edit Listener, 0..N), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind, 0..N), exporter (Exporter), formats (Specification Format, 0..N), writer (Documentation Writer), sources (Source, 0..N), ui (UI)
 - workspace uses open, save of repository, how it passes is left to the implementation
 - workspace uses load, save of providers, how it passes is left to the implementation
 - workspace uses startSession of editor, how it passes is left to the implementation
@@ -503,8 +503,8 @@ Used by Repository, JSON File Repository, Workspace.
 
 ##### Interactions
 
-- `open(location: Location) → System, over Repository`
-- `save(system: System, location: Location) → Location, over Repository`
+- `open(location: Location): System, over Repository`
+- `save(system: System, location: Location): Location, over Repository`
 
 #### JSON File Repository
 
@@ -512,6 +512,7 @@ Implements Repository: a System as a JSON file, and a Location as its path. Writ
 
 - Uses: Repository
 - Imports: Repository (Component)
+- Implements: Repository
 
 #### Metadata Provider
 
@@ -522,8 +523,8 @@ Interface: a provider of one kind of metadata. It loads its metadata for a Syste
 
 ##### Interactions
 
-- `load(system: System) → System, over Systems`
-- `save(system: System) → System, over Systems`
+- `load(system: System): System, over Systems`
+- `save(system: System), over Systems`
 
 #### Documentation Store
 
@@ -531,6 +532,7 @@ Implements Metadata Provider for Documentation (loads and saves Descriptions, it
 
 - Uses: Documentation, Documentation Editing, Editing, Systems
 - Imports: Metadata Provider (Component), Systemathic Metadata (Component), Documentation (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Implements: Metadata Provider, Edit Kind
 
 ##### Documentation Editing — extends Editing, Documentation
 
@@ -555,6 +557,7 @@ Implements Metadata Provider for By Value (loads and saves which Entities are by
 
 - Uses: By Value, By Value Editing, Editing, Systems
 - Imports: Metadata Provider (Component), Systemathic Metadata (Component), By Value (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Implements: Metadata Provider, Edit Kind
 
 ##### By Value Editing — extends Editing, By Value
 
@@ -593,10 +596,10 @@ Used by Workspace, UI, MCP Server, CLI, API.
 
 ##### Interactions
 
-- `new(name: Name) → Open System, over Workspace`
-- `open(location: Location) → Open System, over Workspace`
-- `save(system: Open System, location: Location) → Location, over Workspace`
-- `close(system: Open System) → Open System, over Workspace`
+- `new(name: Name): Open System, over Workspace`
+- `open(location: Location): Open System, over Workspace`
+- `save(system: Open System, location: Location): Location, over Workspace`
+- `close(system: Open System): Open System, over Workspace`
 
 #### Editing
 
@@ -657,7 +660,7 @@ Interface: the kinds of Edit of one Language. `apply` carries out an Edit of its
 
 ##### Interactions
 
-- `apply(target: Target, edit: Edit) → Edit, over Editing`
+- `apply(target: Target, edit: Edit): Edit, over Editing`
 
 #### Source
 
@@ -685,8 +688,8 @@ Used by Source, Catalog Source, File Source, Systems Editor, UI, MCP Server, API
 
 ##### Interactions
 
-- `contents() → Listing, over Sources`
-- `fetch(package: Package) → System, over Sources`
+- `contents(): Listing, over Sources`
+- `fetch(package: Package): System, over Sources`
 
 #### Catalog Source
 
@@ -694,6 +697,7 @@ Implements Source: the standard catalog (JSON, HTTP, TCP, SQL, …).
 
 - Uses: Sources
 - Imports: Source (Component)
+- Implements: Source
 
 #### File Source
 
@@ -701,6 +705,7 @@ Implements Source: a System file, whose Components are its Packages.
 
 - Uses: Sources
 - Imports: Source (Component)
+- Implements: Source
 
 #### Kernel Editor
 
@@ -708,6 +713,7 @@ Implements Edit Kind for Kernel. Every editor's kinds follow one pattern, per th
 
 - Uses: Kernel Editing, Editing
 - Imports: Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Implements: Edit Kind
 
 ##### Kernel Editing — extends Editing, Kernel
 
@@ -821,6 +827,7 @@ Implements Edit Kind for Functions: Parameters (added into a Function, changed �
 
 - Uses: Functions Editing, Editing
 - Imports: Kernel Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Implements: Edit Kind
 
 ##### Functions Editing — extends Kernel Editing, Functions
 
@@ -878,6 +885,7 @@ Implements Edit Kind for Contexts: Components (added into a parent; changed — 
 
 - Uses: Contexts Editing, Editing
 - Imports: Functions Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Implements: Edit Kind
 
 ##### Contexts Editing — extends Functions Editing, Contexts
 
@@ -951,6 +959,7 @@ Implements Edit Kind for Deployment: Deployments (into a Component), Instances a
 
 - Uses: Deployment Editing, Editing
 - Imports: Contexts Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Implements: Edit Kind
 
 ##### Deployment Editing — extends Contexts Editing, Deployment
 
@@ -1047,6 +1056,7 @@ Implements Edit Kind for Mediation: Mediums (into a Component) and Mediations (i
 
 - Uses: Mediation Editing, Editing
 - Imports: Deployment Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Implements: Edit Kind
 
 ##### Mediation Editing — extends Deployment Editing, Mediation
 
@@ -1115,6 +1125,7 @@ Implements Edit Kind for Systems: ChangeSystem (its name), ImportPackage (fetche
 
 - Uses: Systems Editing, Sources, Editing
 - Imports: Source (Component), Mediation Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Implements: Edit Kind
 
 ##### Systems Editing — extends Mediation Editing, Sources
 
@@ -1153,8 +1164,8 @@ The one seam every client edits through, and the one authority per Target. `star
 
 ##### Interactions
 
-- `startSession(target: Target) → Session, over Editing`
-- `apply(session: Session, edit: Edit) → Edit, over Editing`
+- `startSession(target: Target): Session, over Editing`
+- `apply(session: Session, edit: Edit): Edit, over Editing`
 
 #### Edit Listener
 
@@ -1165,7 +1176,7 @@ Interface: told of every Edit applied to a Target, by any Session, in the order 
 
 ##### Interactions
 
-- `applied(edit: Edit) → Edit, over Editing`
+- `applied(edit: Edit), over Editing`
 
 #### Views
 
@@ -1317,7 +1328,7 @@ Used by Diagnoser, Perspectives, Exporter, UI, MCP Server, CLI, API.
 
 ##### Interactions
 
-- `diagnose(system: System, rules: Rule) → Report, over Diagnostics`
+- `diagnose(system: System, rules: Rule): Report, over Diagnostics`
 
 #### Perspective Kind
 
@@ -1328,7 +1339,7 @@ Interface: one point of view on a System. `view` gives the View a Perspective as
 
 ##### Interactions
 
-- `view(system: System, perspective: Perspective) → View, over Views`
+- `view(system: System, perspective: Perspective): View, over Views`
 
 #### Perspectives
 
@@ -1339,7 +1350,7 @@ The one seam clients read a System through. `view` asks the Perspective Kind for
 
 ##### Interactions
 
-- `view(system: System, perspective: Perspective) → View, over Views`
+- `view(system: System, perspective: Perspective): View, over Views`
 
 #### Outline View
 
@@ -1347,6 +1358,7 @@ Implements Perspective Kind: Everything in the System as a tree: its Components,
 
 - Uses: Views
 - Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Implements: Perspective Kind
 
 #### Language View
 
@@ -1354,6 +1366,7 @@ Implements Perspective Kind: One Language: its Entities and what they extend, th
 
 - Uses: Views
 - Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Implements: Perspective Kind
 
 #### Component View
 
@@ -1361,6 +1374,7 @@ Implements Perspective Kind: One Component: its Languages and what they extend, 
 
 - Uses: Views
 - Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Implements: Perspective Kind
 
 #### Deployment View
 
@@ -1368,6 +1382,7 @@ Implements Perspective Kind: One Deployment: its Instances, with their ranges, a
 
 - Uses: Views
 - Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Implements: Perspective Kind
 
 #### Mediation Stack View
 
@@ -1375,6 +1390,7 @@ Implements Perspective Kind: Which Language is mediated over which, through whic
 
 - Uses: Views
 - Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Implements: Perspective Kind
 
 #### Statistics View
 
@@ -1382,6 +1398,7 @@ Implements Perspective Kind: Counts, depths, fan-in and fan-out.
 
 - Uses: Views
 - Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Implements: Perspective Kind
 
 #### Exporter
 
@@ -1465,7 +1482,7 @@ Used by Exporter, Specification Format, Markdown Format, JSON Format, UI, MCP Se
 
 ##### Interactions
 
-- `specify(system: System, rules: Rule) → Specification, over Specification`
+- `specify(system: System, rules: Rule): Specification, over Specification`
 
 #### Specification Format
 
@@ -1476,7 +1493,7 @@ Interface: one representation of a Specification. `render` writes it as a Docume
 
 ##### Interactions
 
-- `render(specification: Specification) → Document, over Specification`
+- `render(specification: Specification): Document, over Specification`
 
 #### Markdown Format
 
@@ -1484,6 +1501,7 @@ Implements Specification Format: Markdown, for a person or an LLM: Sections as h
 
 - Uses: Specification
 - Imports: Specification Format (Component), Exporter (Component)
+- Implements: Specification Format
 
 #### JSON Format
 
@@ -1491,6 +1509,7 @@ Implements Specification Format: JSON, for a machine.
 
 - Uses: Specification
 - Imports: Specification Format (Component), Exporter (Component)
+- Implements: Specification Format
 
 #### Python Verifier
 
@@ -1498,6 +1517,7 @@ Implements Systemathic Verifier: Rules and Assertions as Python, over the genera
 
 - Uses: Rules
 - Imports: Systemathic Verifier (Component)
+- Implements: Systemathic Verifier
 
 #### Documentation Writer
 
@@ -1512,7 +1532,7 @@ Used by Documentation Writer, UI, MCP Server, CLI, API.
 
 ##### Interactions
 
-- `write(system: System) → Document, over Written Documentation`
+- `write(system: System): Document, over Written Documentation`
 
 #### UI
 
@@ -1520,6 +1540,7 @@ The visual editor, for people: Explorer, Graph, the editors' panels, the Script 
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
 - Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component), Configuration Store (Component)
+- Implements: Edit Listener
 
 #### MCP Server
 
@@ -1527,6 +1548,7 @@ The tool for LLMs: every seam as an MCP tool — Views as structured data, every
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
 - Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component), Configuration Store (Component)
+- Implements: Edit Listener
 
 #### CLI
 
@@ -1541,6 +1563,7 @@ The tool for programs: every seam — Workspace, Editor, Perspectives, Diagnoser
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
 - Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Edit Listener (Component), Editing (Component), Views (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Configuration Store (Component)
+- Implements: Edit Listener
 
 #### Configuration Store
 
@@ -1548,6 +1571,7 @@ Implements Metadata Provider for Configurations (loads and saves them, its own w
 
 - Uses: Configurations, Configuration Editing, Editing, Systems
 - Imports: Metadata Provider (Component), Systemathic Metadata (Component), Configurations (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Implements: Metadata Provider, Edit Kind
 
 ##### Configuration Editing — extends Editing, Configurations
 
@@ -1883,23 +1907,11 @@ Used by HTTP.
 
 #### Interactions
 
-- `exchange(request: Request) → Response, over HTTP`
+- `exchange(request: Request): Response, over HTTP`
 
 #### Mediums
 
 - **HTTP**: over HTTP, through `exchange`
-
-## Configurations
-
-### Local
-
-- the root ↦ Product
-- tool ↦ Local
-
-### Browser
-
-- the root ↦ Product
-- tool ↦ Browser
 
 ## Verification rules
 
@@ -1979,17 +1991,6 @@ to one way of carrying things out.
 
 To fix it, offer the Interaction over the abstract Language, and mediate it over the how.
 
-### `completeness` — warning, standard
-
-Every item of a Mediation's What Language is mapped by its way down, or deferred.
-
-A realization says how a What goes into a Medium. An Entity or Relationship of the What's
-Language that is neither mapped nor deferred is a gap: the implementation has nothing to
-say about it, and nobody has said that this is on purpose.
-
-To fix it, map the item, or defer it on the Transformation if it is deliberately left
-out; a deferral is kept in exported specifications.
-
 ### `core_is_pure` — error
 
 The language package imports and uses nothing, and its Languages are one chain, Kernel to Systems.
@@ -2043,11 +2044,12 @@ Listeners, an interface they implement; nothing calls a client by name.
 
 ### `every_interface_implemented` — error
 
-Every interface offers Interactions and has an implementation; each implementation imports it and uses the Languages of its Interactions.
+Every seam offers Interactions and has an implementation; each implementation uses the Languages of its Interactions; and only the seams are implemented.
 
 The tool is defined at its seams, and its own implementations plug in the way anyone else's
-would. An interface nobody implements is a hole; an implementation that cannot speak its
-interface's Languages is not one.
+would. A seam nobody implements is a hole; an implementation that cannot speak its
+interface's Languages is not one; a Component implemented but not named a seam here is a
+seam this profile does not know of.
 
 ### `editors_follow_layers` — error
 

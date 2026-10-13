@@ -8,7 +8,8 @@ new tool is done when it opens its own design with none of them, and the profile
 
 ## Foundation changes
 
-Agreed, and not yet in [foundation.md](foundation.md) or `schema/`:
+Agreed, and now in [foundation.md](foundation.md) and `schema/`, which
+[`schema/design.py`](../schema/design.py) keeps to the design's vocabulary:
 
 1. **Functions.** A layer between Kernel and Contexts holding **Function** and **Parameter**.
    Interaction and Transformation are Functions. A Transformation takes inputs in one Language
@@ -34,23 +35,29 @@ Agreed, and not yet in [foundation.md](foundation.md) or `schema/`:
 
 ## Stand-ins in the design
 
-What the System holds in place of what it means, and what replaces it:
+What the System holds in place of what it means:
 
 | The design means | The System holds | Where |
 |---|---|---|
-| `implements` (2) | an import of the interface, and the `IMPLEMENTATIONS` table in the profile | every implementation: JSON File Repository, Documentation Store, By Value Store, Configuration Store, the six concept editors, Catalog Source, File Source, the six views, Markdown Format, JSON Format, Python Verifier, UI, MCP Server, API |
-| no output (3) | an output of what was given | Metadata Provider `save` (gives the System), Edit Listener `applied` (gives the Edit) |
-| range `0..N` (4) | a single Instance | `providers`, `editKinds`, `listeners`, `perspectiveKinds` in both Tool Deployments |
-| Configurations as metadata (6), choosing an implementation for each interface Instance | the core's Configurations, which choose only Deployments; implementation choices are in the descriptions | Configurations Local and Browser; `repository`, `providers`, `editKinds`, `listeners`, `verifier`, `perspectiveKinds`, `formats`, `sources` |
 | a language package (8) | a Component | Systemathic |
+
+The others are gone: every implementation `implements` its interface (the profile reads it
+from the design), the fan-outs have range `0..N`, Metadata Provider `save` and Edit Listener
+`applied` give nothing back, and the Configurations Local and Browser are kept as metadata,
+each choosing what fills every Instance of the Tool.
 
 ## New tool tasks
 
 Beyond the foundation changes, the tool itself:
 
-- Edit `implements`, ranges, no-output Interactions and Configurations choosing implementations,
-  through the Edit Kinds of the [design](system-designer.systemathic.json) (Contexts and
-  Deployment Editors).
+- ~~Edit `implements`, ranges, no-output Interactions and Configurations choosing
+  implementations~~: done, through ComponentEditor, DeploymentEditor, FunctionEditor and the
+  configurations package's ConfigurationEditor.
+- The UI, on the new core and format: the packages beneath it are rebuilt; the UI is not yet.
+- The tool's own architecture as the design draws it: Edits as data with a single
+  `Editor.apply`, Readers that take a System, structural errors as StdLib Formula Assertions,
+  and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
+  the current shape (Effects on a History; the Host holding open Systems).
 - Removing a thing removes what depends on it, metadata included. Today removing an Entity leaves
   its Relationships dangling, and removing a Component leaves its Description behind, where the
   Documentation editor cannot reach it.
