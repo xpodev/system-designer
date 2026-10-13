@@ -1,10 +1,10 @@
 /**
- * The Tool Language (docs/tool-design.md): Systems as the tool keeps them, and the contexts
- * they are open in. A Tool::System is a design — a Contexts::System — plus attachments the
- * tool carries without interpreting. A SystemContext is a System open in the tool, the unit
+ * Systems as the tool keeps them, and the contexts they are open in. A stored System is a
+ * design — a model of the core Languages — plus attachments: what the tool keeps about it
+ * outside the core (descriptions, Configurations, layout), each with its owner. A SystemContext is a System open in the tool, the unit
  * everything else works on.
  */
-import { setName, systemGraph, type Graph } from "@systemathic/core";
+import { coreGraph, setName, type Graph } from "@systemathic/core";
 
 export interface Attachment {
   /** Who the attachment belongs to: a client, a feature. The tool never interprets `data`. */
@@ -54,13 +54,12 @@ export class SystemContext {
 
 /** `new() → SystemContext`: an empty, well-formed System: a System and its root Component, of one name. */
 export function newSystem(name = "Untitled", id = "system"): SystemContext {
-  const design = systemGraph();
+  const design = coreGraph();
   design.add("System", id);
   setName(design, id, name);
   const root = `${id}.root`;
   design.add("Component", root);
   setName(design, root, name);
-  design.connect(id, "components", root);
   design.connect(id, "root", root);
   return new SystemContext(design);
 }

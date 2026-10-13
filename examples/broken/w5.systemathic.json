@@ -1,629 +1,584 @@
 {
-  "format": "systemathic/2",
+  "format": "systemathic/3",
   "design": {
     "id": "game.system",
     "name": "Game",
-    "root": "game",
-    "components": [
-      {
-        "id": "game",
-        "name": "Game",
-        "uses": [],
-        "imports": {
-          "components": [
-            "pkg.netstack",
-            "pkg.link",
-            "pkg.in-process"
-          ],
-          "transformations": [],
-          "interactions": [],
-          "mediums": []
-        },
-        "languages": [
-          {
-            "id": "core",
-            "name": "Core",
-            "extends": [],
-            "entities": [
-              {
-                "id": "core.monster",
-                "name": "Monster",
-                "extends": []
-              },
-              {
-                "id": "core.player",
-                "name": "Player",
-                "extends": []
-              }
-            ],
-            "relationships": [
-              {
-                "id": "core.hunts",
-                "ends": [
-                  {
-                    "id": "core.hunts.hunters",
-                    "name": "hunters",
-                    "entity": "core.player",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "core.hunts.prey",
-                    "name": "prey",
-                    "entity": "core.monster",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              },
-              {
-                "id": "core.pack",
-                "ends": [
-                  {
-                    "id": "core.pack.leader",
-                    "name": "leader",
-                    "entity": "core.monster",
-                    "min": 0,
-                    "max": 1
-                  },
-                  {
-                    "id": "core.pack.followers",
-                    "name": "followers",
-                    "entity": "core.monster",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              }
-            ],
-            "formulas": [
-              {
-                "id": "core.no-leadership-cycles",
-                "text": "all m in Monster. not m in m.^leader",
-                "constrains": "core.pack"
-              }
-            ]
-          },
-          {
-            "id": "fighting",
-            "name": "Fighting",
-            "extends": [],
-            "entities": [
-              {
-                "id": "fighting.targetable",
-                "name": "Targetable",
-                "extends": []
-              },
-              {
-                "id": "fighting.attacker",
-                "name": "Attacker",
-                "extends": []
-              },
-              {
-                "id": "fighting.damage",
-                "name": "Damage",
-                "extends": []
-              }
-            ],
-            "relationships": [
-              {
-                "id": "fighting.engages",
-                "ends": [
-                  {
-                    "id": "fighting.engages.attackers",
-                    "name": "attackers",
-                    "entity": "fighting.attacker",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "fighting.engages.targets",
-                    "name": "targets",
-                    "entity": "fighting.targetable",
-                    "min": 0,
-                    "max": "N"
-                  }
-                ]
-              }
-            ],
-            "formulas": []
-          },
-          {
-            "id": "combat",
-            "name": "Combat",
-            "extends": [
-              "core",
-              "fighting"
-            ],
-            "entities": [
-              {
-                "id": "combat.combat-monster",
-                "name": "CombatMonster",
-                "extends": [
-                  "core.monster",
-                  "fighting.targetable",
-                  "fighting.attacker"
-                ]
-              },
-              {
-                "id": "combat.combat-player",
-                "name": "CombatPlayer",
-                "extends": [
-                  "core.player",
-                  "fighting.attacker"
-                ]
-              }
-            ],
-            "relationships": [
-              {
-                "id": "combat.chasing",
-                "ends": [
-                  {
-                    "id": "combat.chasing.chasers",
-                    "name": "chasers",
-                    "entity": "core.monster",
-                    "min": 0,
-                    "max": "N"
-                  },
-                  {
-                    "id": "combat.chasing.chasing",
-                    "name": "chasing",
-                    "entity": "core.player",
-                    "min": 0,
-                    "max": 1
-                  }
-                ]
-              }
-            ],
-            "formulas": []
-          }
-        ],
-        "transformations": [],
-        "interactions": [],
-        "mediums": [],
-        "deployments": [
-          {
-            "id": "game.online",
-            "name": "Online",
-            "instances": [
-              {
-                "id": "game.online.server",
-                "name": "server",
-                "of": "game.server"
-              },
-              {
-                "id": "game.online.client-1",
-                "name": "client-1",
-                "of": "game.client"
-              },
-              {
-                "id": "game.online.client-2",
-                "name": "client-2",
-                "of": "game.client"
-              }
-            ],
-            "connections": [
-              {
-                "id": "game.online.client-1-attacks",
-                "from": "game.online.client-1",
-                "toInstance": "game.online.server",
-                "toComponent": null,
-                "what": [
-                  "game.server.attack"
-                ],
-                "mediations": [
-                  {
-                    "id": "game.online.client-1-attacks#m0",
-                    "how": "pkg.netstack.medium",
-                    "down": "game.combat-over-network.down",
-                    "up": "game.combat-over-network.up"
-                  },
-                  {
-                    "id": "game.online.client-1-attacks#m1",
-                    "how": "pkg.link.medium",
-                    "down": "game.network-over-wire.down",
-                    "up": "game.network-over-wire.up"
-                  }
-                ]
-              },
-              {
-                "id": "game.online.client-2-attacks",
-                "from": "game.online.client-2",
-                "toInstance": "game.online.server",
-                "toComponent": null,
-                "what": [
-                  "game.server.attack"
-                ],
-                "mediations": [
-                  {
-                    "id": "game.online.client-2-attacks#m0",
-                    "how": "pkg.netstack.medium",
-                    "down": "game.combat-over-network.down",
-                    "up": "game.combat-over-network.up"
-                  },
-                  {
-                    "id": "game.online.client-2-attacks#m1",
-                    "how": "pkg.link.medium",
-                    "down": "game.network-over-wire.down",
-                    "up": "game.network-over-wire.up"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "game.local",
-            "name": "Local",
-            "instances": [
-              {
-                "id": "game.local.server",
-                "name": "server",
-                "of": "game.server"
-              },
-              {
-                "id": "game.local.client",
-                "name": "client",
-                "of": "game.client"
-              }
-            ],
-            "connections": [
-              {
-                "id": "game.local.client-attacks",
-                "from": "game.local.client",
-                "toInstance": "game.local.server",
-                "toComponent": null,
-                "what": [
-                  "game.server.attack"
-                ],
-                "mediations": [
-                  {
-                    "id": "game.local.client-attacks#m0",
-                    "how": "pkg.in-process.medium",
-                    "down": null,
-                    "up": null
-                  }
-                ]
-              }
-            ]
-          }
-        ],
+    "root": {
+      "id": "game",
+      "name": "Game",
+      "uses": [],
+      "imports": {
         "components": [
-          {
-            "id": "game.physics",
-            "name": "Physics",
-            "uses": [
-              "core"
-            ],
-            "imports": {
-              "components": [],
-              "transformations": [],
-              "interactions": [],
-              "mediums": []
+          "pkg.netstack",
+          "pkg.link",
+          "pkg.in-process"
+        ],
+        "interactions": [],
+        "transformations": [],
+        "mediums": []
+      },
+      "implements": [],
+      "languages": [
+        {
+          "id": "core",
+          "name": "Core",
+          "extends": [],
+          "entities": [
+            {
+              "id": "core.monster",
+              "name": "Monster",
+              "extends": []
             },
-            "languages": [],
-            "transformations": [],
-            "interactions": [
-              {
-                "id": "game.physics.step",
-                "name": "step",
-                "language": "core",
-                "parameters": [
-                  {
-                    "id": "game.physics.step.monster",
-                    "name": "monster",
-                    "type": "core.monster"
-                  }
-                ],
-                "output": "core.monster",
-                "primary": null,
-                "compares": []
-              }
-            ],
-            "mediums": [],
-            "deployments": [],
-            "components": []
-          },
-          {
-            "id": "game.combat-over-network",
-            "name": "CombatOverNetwork",
-            "uses": [
-              "combat",
-              "lib.network"
-            ],
-            "imports": {
-              "components": [
-                "pkg.netstack"
-              ],
-              "transformations": [],
-              "interactions": [],
-              "mediums": []
+            {
+              "id": "core.player",
+              "name": "Player",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "core.hunts",
+              "ends": [
+                {
+                  "id": "core.hunts.hunters",
+                  "name": "hunters",
+                  "entity": "core.player",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "core.hunts.prey",
+                  "name": "prey",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
             },
-            "languages": [],
-            "transformations": [
-              {
-                "id": "game.combat-over-network.down",
-                "name": "Combat down to Network",
-                "source": "combat",
-                "target": "lib.network",
-                "context": [],
-                "entityMappings": [
-                  {
-                    "source": "combat.combat-monster",
-                    "targets": [
-                      "lib.network.entity-id"
-                    ]
-                  },
-                  {
-                    "source": "combat.combat-player",
-                    "targets": [
-                      "lib.network.entity-id"
-                    ]
-                  },
-                  {
-                    "source": "fighting.damage",
-                    "targets": [
-                      "lib.network.message"
-                    ]
-                  }
-                ],
-                "relationshipMappings": [],
-                "deferred": [
-                  {
-                    "relationship": "combat.chasing"
-                  }
-                ]
-              },
-              {
-                "id": "game.combat-over-network.up",
-                "name": "Network up to Combat",
-                "source": "lib.network",
-                "target": "combat",
-                "context": [
-                  "combat.combat-monster"
-                ],
-                "entityMappings": [
-                  {
-                    "source": "lib.network.entity-id",
-                    "targets": [
-                      "combat.combat-monster",
-                      "combat.combat-player"
-                    ]
-                  },
-                  {
-                    "source": "lib.network.message",
-                    "targets": [
-                      "fighting.damage"
-                    ]
-                  }
-                ],
-                "relationshipMappings": [],
-                "deferred": []
-              }
-            ],
-            "interactions": [],
-            "mediums": [],
-            "deployments": [],
-            "components": []
-          },
-          {
-            "id": "game.network-over-wire",
-            "name": "NetworkOverWire",
-            "uses": [
-              "lib.network",
-              "lib.transport"
-            ],
-            "imports": {
-              "components": [
-                "pkg.netstack",
-                "pkg.link"
-              ],
-              "transformations": [],
-              "interactions": [],
-              "mediums": []
+            {
+              "id": "core.pack",
+              "ends": [
+                {
+                  "id": "core.pack.leader",
+                  "name": "leader",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "core.pack.followers",
+                  "name": "followers",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            }
+          ],
+          "formulas": [
+            {
+              "id": "core.no-leadership-cycles",
+              "text": "all m in Monster. not m in m.^leader"
+            }
+          ]
+        },
+        {
+          "id": "fighting",
+          "name": "Fighting",
+          "extends": [],
+          "entities": [
+            {
+              "id": "fighting.targetable",
+              "name": "Targetable",
+              "extends": []
             },
-            "languages": [],
-            "transformations": [
-              {
-                "id": "game.network-over-wire.down",
-                "name": "Network down to Transport",
-                "source": "lib.network",
-                "target": "lib.transport",
-                "context": [],
-                "entityMappings": [
-                  {
-                    "source": "lib.network.message",
-                    "targets": [
-                      "lib.transport.packet",
-                      "lib.transport.bytes"
-                    ]
-                  },
-                  {
-                    "source": "lib.network.entity-id",
-                    "targets": [
-                      "lib.transport.bytes"
-                    ]
-                  }
-                ],
-                "relationshipMappings": [],
-                "deferred": [
-                  {
-                    "relationship": "lib.network.carries"
-                  }
-                ]
-              },
-              {
-                "id": "game.network-over-wire.up",
-                "name": "Transport up to Network",
-                "source": "lib.transport",
-                "target": "lib.network",
-                "context": [],
-                "entityMappings": [
-                  {
-                    "source": "lib.transport.packet",
-                    "targets": [
-                      "lib.network.message"
-                    ]
-                  },
-                  {
-                    "source": "lib.transport.bytes",
-                    "targets": [
-                      "lib.network.entity-id"
-                    ]
-                  }
-                ],
-                "relationshipMappings": [],
-                "deferred": []
-              }
-            ],
-            "interactions": [],
-            "mediums": [],
-            "deployments": [],
-            "components": []
-          },
-          {
-            "id": "game.server",
-            "name": "Server",
-            "uses": [
-              "combat",
-              "lib.network"
-            ],
-            "imports": {
-              "components": [
-                "game.physics",
-                "game.combat-over-network",
-                "game.network-over-wire"
-              ],
-              "transformations": [],
-              "interactions": [],
-              "mediums": []
+            {
+              "id": "fighting.attacker",
+              "name": "Attacker",
+              "extends": []
             },
-            "languages": [],
-            "transformations": [],
-            "interactions": [
-              {
-                "id": "game.server.attack",
-                "name": "attack",
-                "language": "combat",
-                "parameters": [
-                  {
-                    "id": "game.server.attack.attacker",
-                    "name": "attacker",
-                    "type": "fighting.attacker"
-                  },
-                  {
-                    "id": "game.server.attack.target",
-                    "name": "target",
-                    "type": "fighting.targetable"
-                  }
-                ],
-                "output": "fighting.damage",
-                "primary": "game.server.attack.attacker",
-                "compares": []
-              }
-            ],
-            "mediums": [],
-            "deployments": [
-              {
-                "id": "game.server.single",
-                "name": "Single",
-                "instances": [
-                  {
-                    "id": "game.server.single.physics",
-                    "name": "physics",
-                    "of": "game.physics"
-                  }
-                ],
-                "connections": []
-              }
-            ],
-            "components": []
-          },
-          {
-            "id": "game.client",
-            "name": "Client",
-            "uses": [
-              "combat"
-            ],
-            "imports": {
-              "components": [
-                "game.physics",
-                "game.combat-over-network",
-                "game.network-over-wire",
-                "pkg.in-process"
-              ],
-              "transformations": [],
-              "interactions": [
+            {
+              "id": "fighting.damage",
+              "name": "Damage",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "fighting.engages",
+              "ends": [
+                {
+                  "id": "fighting.engages.attackers",
+                  "name": "attackers",
+                  "entity": "fighting.attacker",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "fighting.engages.targets",
+                  "name": "targets",
+                  "entity": "fighting.targetable",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "id": "combat",
+          "name": "Combat",
+          "extends": [
+            "core",
+            "fighting"
+          ],
+          "entities": [
+            {
+              "id": "combat.combat-monster",
+              "name": "CombatMonster",
+              "extends": [
+                "core.monster",
+                "fighting.targetable",
+                "fighting.attacker"
+              ]
+            },
+            {
+              "id": "combat.combat-player",
+              "name": "CombatPlayer",
+              "extends": [
+                "core.player",
+                "fighting.attacker"
+              ]
+            }
+          ],
+          "relationships": [
+            {
+              "id": "combat.chasing",
+              "ends": [
+                {
+                  "id": "combat.chasing.chasers",
+                  "name": "chasers",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "combat.chasing.chasing",
+                  "name": "chasing",
+                  "entity": "core.player",
+                  "min": 0,
+                  "max": 1
+                }
+              ]
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "interactions": [],
+      "transformations": [],
+      "mediums": [],
+      "deployments": [
+        {
+          "id": "game.online",
+          "name": "Online",
+          "instances": [
+            {
+              "id": "game.online.server",
+              "name": "server",
+              "of": "game.server",
+              "min": 1,
+              "max": 1
+            },
+            {
+              "id": "game.online.client-1",
+              "name": "client-1",
+              "of": "game.client",
+              "min": 1,
+              "max": 1
+            },
+            {
+              "id": "game.online.client-2",
+              "name": "client-2",
+              "of": "game.client",
+              "min": 1,
+              "max": 1
+            }
+          ],
+          "connections": [
+            {
+              "id": "game.online.client-1-attacks",
+              "from": "game.online.client-1",
+              "to": "game.online.server",
+              "toComponent": null,
+              "what": [
                 "game.server.attack"
               ],
-              "mediums": []
+              "mediations": [
+                {
+                  "id": "game.online.client-1-attacks#m0",
+                  "how": "pkg.netstack.medium",
+                  "down": "game.combat-over-network.down",
+                  "up": "game.combat-over-network.up"
+                },
+                {
+                  "id": "game.online.client-1-attacks#m1",
+                  "how": "pkg.link.medium",
+                  "down": "game.network-over-wire.down",
+                  "up": "game.network-over-wire.up"
+                }
+              ]
             },
-            "languages": [],
-            "transformations": [],
+            {
+              "id": "game.online.client-2-attacks",
+              "from": "game.online.client-2",
+              "to": "game.online.server",
+              "toComponent": null,
+              "what": [
+                "game.server.attack"
+              ],
+              "mediations": [
+                {
+                  "id": "game.online.client-2-attacks#m0",
+                  "how": "pkg.netstack.medium",
+                  "down": "game.combat-over-network.down",
+                  "up": "game.combat-over-network.up"
+                },
+                {
+                  "id": "game.online.client-2-attacks#m1",
+                  "how": "pkg.link.medium",
+                  "down": "game.network-over-wire.down",
+                  "up": "game.network-over-wire.up"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "game.local",
+          "name": "Local",
+          "instances": [
+            {
+              "id": "game.local.server",
+              "name": "server",
+              "of": "game.server",
+              "min": 1,
+              "max": 1
+            },
+            {
+              "id": "game.local.client",
+              "name": "client",
+              "of": "game.client",
+              "min": 1,
+              "max": 1
+            }
+          ],
+          "connections": [
+            {
+              "id": "game.local.client-attacks",
+              "from": "game.local.client",
+              "to": "game.local.server",
+              "toComponent": null,
+              "what": [
+                "game.server.attack"
+              ],
+              "mediations": [
+                {
+                  "id": "game.local.client-attacks#m0",
+                  "how": "pkg.in-process.medium",
+                  "down": null,
+                  "up": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "components": [
+        {
+          "id": "game.physics",
+          "name": "Physics",
+          "uses": [
+            "core"
+          ],
+          "imports": {
+            "components": [],
             "interactions": [],
-            "mediums": [],
-            "deployments": [
-              {
-                "id": "game.client.desktop",
-                "name": "Desktop",
-                "instances": [
-                  {
-                    "id": "game.client.desktop.physics",
-                    "name": "physics",
-                    "of": "game.physics"
-                  },
-                  {
-                    "id": "game.client.desktop.input",
-                    "name": "input",
-                    "of": "game.client.input"
-                  }
-                ],
-                "connections": [
-                  {
-                    "id": "game.client.desktop.input-attacks",
-                    "from": "game.client.desktop.input",
-                    "toInstance": null,
-                    "toComponent": "game.client",
-                    "what": [
-                      "game.server.attack"
-                    ],
-                    "mediations": [
-                      {
-                        "id": "game.client.desktop.input-attacks#m0",
-                        "how": "pkg.in-process.medium",
-                        "down": null,
-                        "up": null
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
+            "transformations": [],
+            "mediums": []
+          },
+          "implements": [],
+          "languages": [],
+          "interactions": [
+            {
+              "id": "game.physics.step",
+              "name": "step",
+              "language": "core",
+              "parameters": [
+                {
+                  "id": "game.physics.step.monster",
+                  "name": "monster",
+                  "type": "core.monster"
+                }
+              ],
+              "output": "core.monster"
+            }
+          ],
+          "transformations": [],
+          "mediums": [],
+          "deployments": [],
+          "components": []
+        },
+        {
+          "id": "game.combat-over-network",
+          "name": "CombatOverNetwork",
+          "uses": [
+            "combat",
+            "lib.network"
+          ],
+          "imports": {
             "components": [
-              {
-                "id": "game.client.input",
-                "name": "Input",
-                "uses": [
-                  "combat"
-                ],
-                "imports": {
-                  "components": [],
-                  "transformations": [],
-                  "interactions": [
+              "pkg.netstack"
+            ],
+            "interactions": [],
+            "transformations": [],
+            "mediums": []
+          },
+          "implements": [],
+          "languages": [],
+          "interactions": [],
+          "transformations": [
+            {
+              "id": "game.combat-over-network.down",
+              "name": "Combat down to Network",
+              "parameters": [
+                {
+                  "id": "game.combat-over-network.down.monster",
+                  "name": "monster",
+                  "type": "combat.combat-monster"
+                }
+              ],
+              "output": "lib.network.entity-id"
+            },
+            {
+              "id": "game.combat-over-network.up",
+              "name": "Network up to Combat",
+              "parameters": [
+                {
+                  "id": "game.combat-over-network.up.id",
+                  "name": "id",
+                  "type": "lib.network.entity-id"
+                }
+              ],
+              "output": "combat.combat-monster"
+            }
+          ],
+          "mediums": [],
+          "deployments": [],
+          "components": []
+        },
+        {
+          "id": "game.network-over-wire",
+          "name": "NetworkOverWire",
+          "uses": [
+            "lib.network",
+            "lib.transport"
+          ],
+          "imports": {
+            "components": [
+              "pkg.netstack",
+              "pkg.link"
+            ],
+            "interactions": [],
+            "transformations": [],
+            "mediums": []
+          },
+          "implements": [],
+          "languages": [],
+          "interactions": [],
+          "transformations": [
+            {
+              "id": "game.network-over-wire.down",
+              "name": "Network down to Transport",
+              "parameters": [
+                {
+                  "id": "game.network-over-wire.down.message",
+                  "name": "message",
+                  "type": "lib.network.message"
+                }
+              ],
+              "output": "lib.transport.packet"
+            },
+            {
+              "id": "game.network-over-wire.up",
+              "name": "Transport up to Network",
+              "parameters": [
+                {
+                  "id": "game.network-over-wire.up.packet",
+                  "name": "packet",
+                  "type": "lib.transport.packet"
+                }
+              ],
+              "output": "lib.network.message"
+            }
+          ],
+          "mediums": [],
+          "deployments": [],
+          "components": []
+        },
+        {
+          "id": "game.server",
+          "name": "Server",
+          "uses": [
+            "combat",
+            "lib.network"
+          ],
+          "imports": {
+            "components": [
+              "game.physics",
+              "game.combat-over-network",
+              "game.network-over-wire"
+            ],
+            "interactions": [],
+            "transformations": [],
+            "mediums": []
+          },
+          "implements": [],
+          "languages": [],
+          "interactions": [
+            {
+              "id": "game.server.attack",
+              "name": "attack",
+              "language": "combat",
+              "parameters": [
+                {
+                  "id": "game.server.attack.attacker",
+                  "name": "attacker",
+                  "type": "fighting.attacker"
+                },
+                {
+                  "id": "game.server.attack.target",
+                  "name": "target",
+                  "type": "fighting.targetable"
+                }
+              ],
+              "output": "fighting.damage"
+            }
+          ],
+          "transformations": [],
+          "mediums": [],
+          "deployments": [
+            {
+              "id": "game.server.single",
+              "name": "Single",
+              "instances": [
+                {
+                  "id": "game.server.single.physics",
+                  "name": "physics",
+                  "of": "game.physics",
+                  "min": 1,
+                  "max": 1
+                }
+              ],
+              "connections": []
+            }
+          ],
+          "components": []
+        },
+        {
+          "id": "game.client",
+          "name": "Client",
+          "uses": [
+            "combat"
+          ],
+          "imports": {
+            "components": [
+              "game.physics",
+              "game.combat-over-network",
+              "game.network-over-wire",
+              "pkg.in-process"
+            ],
+            "interactions": [
+              "game.server.attack"
+            ],
+            "transformations": [],
+            "mediums": []
+          },
+          "implements": [],
+          "languages": [],
+          "interactions": [],
+          "transformations": [],
+          "mediums": [],
+          "deployments": [
+            {
+              "id": "game.client.desktop",
+              "name": "Desktop",
+              "instances": [
+                {
+                  "id": "game.client.desktop.physics",
+                  "name": "physics",
+                  "of": "game.physics",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "id": "game.client.desktop.input",
+                  "name": "input",
+                  "of": "game.client.input",
+                  "min": 1,
+                  "max": 1
+                }
+              ],
+              "connections": [
+                {
+                  "id": "game.client.desktop.input-attacks",
+                  "from": "game.client.desktop.input",
+                  "to": null,
+                  "toComponent": "game.client",
+                  "what": [
                     "game.server.attack"
                   ],
-                  "mediums": []
-                },
-                "languages": [],
+                  "mediations": [
+                    {
+                      "id": "game.client.desktop.input-attacks#m0",
+                      "how": "pkg.in-process.medium",
+                      "down": null,
+                      "up": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "components": [
+            {
+              "id": "game.client.input",
+              "name": "Input",
+              "uses": [
+                "combat"
+              ],
+              "imports": {
+                "components": [],
+                "interactions": [
+                  "game.server.attack"
+                ],
                 "transformations": [],
-                "interactions": [],
-                "mediums": [],
-                "deployments": [],
-                "components": []
-              }
-            ]
-          }
-        ]
-      },
+                "mediums": []
+              },
+              "implements": [],
+              "languages": [],
+              "interactions": [],
+              "transformations": [],
+              "mediums": [],
+              "deployments": [],
+              "components": []
+            }
+          ]
+        }
+      ]
+    },
+    "packages": [
       {
         "id": "pkg.netstack",
         "name": "NetStack",
@@ -632,10 +587,11 @@
         ],
         "imports": {
           "components": [],
-          "transformations": [],
           "interactions": [],
+          "transformations": [],
           "mediums": []
         },
+        "implements": [],
         "languages": [
           {
             "id": "lib.network",
@@ -677,7 +633,6 @@
             "formulas": []
           }
         ],
-        "transformations": [],
         "interactions": [
           {
             "id": "pkg.netstack.send",
@@ -690,11 +645,10 @@
                 "type": "lib.network.message"
               }
             ],
-            "output": "lib.network.message",
-            "primary": null,
-            "compares": []
+            "output": "lib.network.message"
           }
         ],
+        "transformations": [],
         "mediums": [
           {
             "id": "pkg.netstack.medium",
@@ -714,10 +668,11 @@
         ],
         "imports": {
           "components": [],
-          "transformations": [],
           "interactions": [],
+          "transformations": [],
           "mediums": []
         },
+        "implements": [],
         "languages": [
           {
             "id": "lib.transport",
@@ -759,7 +714,6 @@
             "formulas": []
           }
         ],
-        "transformations": [],
         "interactions": [
           {
             "id": "pkg.link.transmit",
@@ -772,11 +726,10 @@
                 "type": "lib.transport.packet"
               }
             ],
-            "output": "lib.transport.packet",
-            "primary": null,
-            "compares": []
+            "output": "lib.transport.packet"
           }
         ],
+        "transformations": [],
         "mediums": [
           {
             "id": "pkg.link.medium",
@@ -796,10 +749,11 @@
         ],
         "imports": {
           "components": [],
-          "transformations": [],
           "interactions": [],
+          "transformations": [],
           "mediums": []
         },
+        "implements": [],
         "languages": [
           {
             "id": "lib.in-process",
@@ -816,7 +770,6 @@
             "formulas": []
           }
         ],
-        "transformations": [],
         "interactions": [
           {
             "id": "pkg.in-process.pass",
@@ -829,11 +782,10 @@
                 "type": "lib.in-process.reference"
               }
             ],
-            "output": "lib.in-process.reference",
-            "primary": null,
-            "compares": []
+            "output": "lib.in-process.reference"
           }
         ],
+        "transformations": [],
         "mediums": [
           {
             "id": "pkg.in-process.medium",
@@ -844,37 +796,6 @@
         ],
         "deployments": [],
         "components": []
-      }
-    ],
-    "configurations": [
-      {
-        "id": "game.release",
-        "name": "Release",
-        "root": {
-          "id": "game.release#root",
-          "instance": null,
-          "deployment": "game.online",
-          "choices": [
-            {
-              "id": "game.release#root.0",
-              "instance": "game.online.server",
-              "deployment": "game.server.single",
-              "choices": []
-            },
-            {
-              "id": "game.release#root.1",
-              "instance": "game.online.client-1",
-              "deployment": "game.client.desktop",
-              "choices": []
-            },
-            {
-              "id": "game.release#root.2",
-              "instance": "game.online.client-2",
-              "deployment": "game.client.desktop",
-              "choices": []
-            }
-          ]
-        }
       }
     ]
   },

@@ -78,10 +78,6 @@ def w6(f):
     find(f, "game.network-over-wire")["uses"].remove("lib.transport")
 
 
-def w7(f):
-    find(f, "game.combat-over-network.down")["relationshipMappings"] = [{"source": "combat.chasing", "targets": ["lib.network.carries"]}]
-
-
 def w8(f):
     find(f, "game.server.attack")["parameters"][1]["type"] = "lib.network.message"
 
@@ -91,7 +87,7 @@ def w9(f):
 
 
 def w10(f):
-    find(f, "game.online.client-2-attacks")["toInstance"] = "game.online.client-1"
+    find(f, "game.online.client-2-attacks")["to"] = "game.online.client-1"
 
 
 def w11(f):
@@ -103,8 +99,8 @@ def w12(f):
     mediation["down"], mediation["up"] = mediation["up"], mediation["down"]
 
 
-def w13(f):
-    find(f, "game.release")["root"]["choices"][0]["deployment"] = "game.client.desktop"
+def w14(f):
+    find(f, "game.client")["implements"].append("game.server")
 
 
 for name, note, change in [
@@ -117,13 +113,12 @@ for name, note, change in [
     ("w3", "W3: Monster reaches two ends named 'hunters'.", w3),
     ("w4", "W4: Core and Combat extend each other.", w4),
     ("w5", "W5: Server uses Network without importing the Component that defines it.", w5),
-    ("w6", "W6: a Transformation into a Language its holder does not use.", w6),
-    ("w7", "W7: a Relationship mapping whose Entities are not mapped.", w7),
+    ("w6", "W6: a Transformation into a Language its Component does not use.", w6),
     ("w8", "W8: an Interaction with a Parameter outside its Language.", w8),
     ("w9", "W9: Physics imports a Component from inside its sibling Client.", w9),
     ("w10", "W10: a Connection to an Instance that does not offer its What.", w10),
     ("w11", "W11: a Medium whose call is another Component's Interaction.", w11),
     ("w12", "W12: a Mediation realized upside down.", w12),
-    ("w13", "W13: a choice of a Deployment of another Component.", w13),
+    ("w14", "W14: Client implements Server without importing it.", w14),
 ]:
     mutate(name, note, change)

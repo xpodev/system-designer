@@ -1,6 +1,6 @@
 /**
  * MediationFormat: the Mediums a Component defines and imports, and a Connection's stack of
- * Mediations, as JSON. Mediations are in stack order, the first over the Connection's What;
+ * Mediations, as JSON. Mediations are in stack order, the top one over the Connection's What;
  * each has its id, names its Medium and, if realized, its `down` and `up`, or `null`.
  */
 import { mediationStack, nameOf, setMediationStack, setName, type Graph } from "@systemathic/core";

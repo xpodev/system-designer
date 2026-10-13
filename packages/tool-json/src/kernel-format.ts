@@ -1,16 +1,15 @@
 /**
  * KernelFormat: a Language — what it extends, its Entities (each with what it extends),
  * Relationships and Formulas — as JSON. Names are text, bounds are numbers with "N" for
- * unbounded, and a Formula is its text; its mentions are derived from the text once the whole
- * file is read.
+ * unbounded, and a Formula is its text; what it mentions is derived from the text, never stored.
  */
-import { boundInstance, boundOf, linkMentions, nameOf, setName, type Graph } from "@systemathic/core";
+import { boundInstance, boundOf, nameOf, setName, type Graph } from "@systemathic/core";
 import { array, FormatError, object, string, type Reader } from "./reader.js";
 
 /** An end; `name` is null for an unnamed end, which cannot be navigated to. */
 export interface EndJson { id: string; name: string | null; entity: string; min: number; max: number | "N" }
 export interface RelationshipJson { id: string; ends: EndJson[] }
-export interface FormulaJson { id: string; text: string; constrains?: string }
+export interface FormulaJson { id: string; text: string }
 export interface EntityJson { id: string; name: string; extends: string[] }
 export interface KernelLanguageJson {
   id: string; name: string; extends: string[];
@@ -49,8 +48,7 @@ export function readLanguage(reader: Reader, value: unknown, at: string): string
       if (end.name !== null) setName(graph, endId, string(end.name, `${at}.name`));
       graph.connect(id, "ends", endId);
       reader.refer(endId, "entity", end.entity, `${at}.entity`);
-      graph.connect(endId, "min", boundInstance(graph, natural(end.min, `${at}.min`)));
-      if (end.max !== "N") graph.connect(endId, "max", boundInstance(graph, natural(end.max, `${at}.max`)));
+      readRange(reader, endId, end, at);
     });
   });
 
@@ -60,8 +58,6 @@ export function readLanguage(reader: Reader, value: unknown, at: string): string
     const id = reader.create("Formula", formula.id, where, string(formula.text, `${where}.text`));
     if (id === undefined) return;
     graph.connect(language, "formulas", id);
-    if (formula.constrains !== undefined) reader.refer(id, "constrains", formula.constrains, `${where}.constrains`);
-    reader.finally(() => linkMentions(graph, id));
   });
 
   return language;
@@ -79,16 +75,21 @@ export function writeLanguage(graph: Graph, language: string): KernelLanguageJso
         id: end,
         name: nameOf(graph, end) ?? null,
         entity: graph.navigate(end, "entity")[0] ?? "",
-        min: boundOf(graph, end, "min") ?? 0,
-        max: boundOf(graph, end, "max") ?? "N",
+        ...writeRange(graph, end),
       })),
     })),
-    formulas: graph.navigate(language, "formulas").map((id) => {
-      const [constrains] = graph.navigate(id, "constrains");
-      const text = String(graph.get(id).value ?? "");
-      return constrains === undefined ? { id, text } : { id, text, constrains };
-    }),
+    formulas: graph.navigate(language, "formulas").map((id) => ({ id, text: String(graph.get(id).value ?? "") })),
   };
+}
+
+/** A range — of an End, or of an Instance — as `min` and `max`, with "N" for unbounded. */
+export function readRange(reader: Reader, id: string, json: Record<string, unknown>, at: string): void {
+  reader.graph.connect(id, "min", boundInstance(reader.graph, natural(json.min, `${at}.min`)));
+  if (json.max !== "N") reader.graph.connect(id, "max", boundInstance(reader.graph, natural(json.max, `${at}.max`)));
+}
+
+export function writeRange(graph: Graph, id: string): { min: number; max: number | "N" } {
+  return { min: boundOf(graph, id, "min") ?? 0, max: boundOf(graph, id, "max") ?? "N" };
 }
 
 function natural(value: unknown, at: string): number {

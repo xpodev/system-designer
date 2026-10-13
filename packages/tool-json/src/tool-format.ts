@@ -1,29 +1,24 @@
 /**
- * ToolFormat: `Tool::System / JSON`. A file holds the design, in the core layers' formats, and
- * the attachments, opaque. This is where the layers are put together: each layer above
- * Contexts extends what the layers below it read and write, and Std extends Operations and
- * Contexts.
+ * ToolFormat: a System file, `systemathic/3` (docs/format.md). A file holds the design — the
+ * System, its root and its packages, each Component in the core layers' formats — and the
+ * attachments, opaque. This is where the layers are put together: each layer above Contexts
+ * extends what the layers below it read and write.
  */
-import { systemGraph } from "@systemathic/core";
+import { coreGraph, nameOf, setName } from "@systemathic/core";
 import type { ToolSystem } from "@systemathic/tool";
-import { configurations } from "./configuration-format.js";
-import { readDesign, writeDesign, type DesignJson, type Extension } from "./contexts-format.js";
+import { readComponent, writeComponent, type ComponentJson, type Extension } from "./contexts-format.js";
 import { deployment } from "./deployment-format.js";
 import { mediations, mediums } from "./mediation-format.js";
-import { operations } from "./operations-format.js";
 import { array, FormatError, object, Reader, string, type LoadProblem } from "./reader.js";
-import { stdInteractions, stdTransformations } from "./std-format.js";
 
-export const FORMAT = "systemathic/2";
-
-/** The format of the previous model, which cannot be read into this one. */
-const PREVIOUS = "systemathic/1";
+export const FORMAT = "systemathic/3";
 
 export interface AttachmentJson { owner: string; data: unknown }
+export interface DesignJson { id: string; name: string; root: ComponentJson; packages: ComponentJson[] }
 export interface SystemFile { format: typeof FORMAT; design: DesignJson; attachments: AttachmentJson[] }
 
 /** Every layer above Contexts, in the order their keys are written. */
-const layers: readonly Extension[] = [operations([stdInteractions]), mediums, deployment([mediations]), configurations, stdTransformations];
+const layers: readonly Extension[] = [mediums, deployment([mediations])];
 
 export interface ReadResult {
   readonly system: ToolSystem;
@@ -34,12 +29,22 @@ export interface ReadResult {
 /** Reads a parsed file. Throws FormatError if it is not a System file of this format. */
 export function readSystem(value: unknown): ReadResult {
   const json = object(value, "$");
-  if (json.format === PREVIOUS) {
-    throw new FormatError(`$.format: this file is in the previous model ("${PREVIOUS}"), which Systemathic no longer reads; it cannot be opened`);
+  if (json.format !== FORMAT) {
+    const found = typeof json.format === "string" ? ` (this one is "${json.format}"; scripts/migrate.py brings "systemathic/2" forward)` : "";
+    throw new FormatError(`$.format: expected "${FORMAT}"${found}`);
   }
-  if (json.format !== FORMAT) throw new FormatError(`$.format: expected "${FORMAT}"`);
-  const reader = new Reader(systemGraph());
-  readDesign(reader, json.design, "$.design", layers);
+  const reader = new Reader(coreGraph());
+  const design = object(json.design, "$.design");
+  const system = reader.create("System", design.id, "$.design");
+  if (system !== undefined) {
+    setName(reader.graph, system, string(design.name, "$.design.name"));
+    const root = readComponent(reader, design.root, "$.design.root", layers);
+    if (root !== undefined) reader.graph.connect(system, "root", root);
+    array(design.packages, "$.design.packages").forEach((value, index) => {
+      const component = readComponent(reader, value, `$.design.packages[${index}]`, layers);
+      if (component !== undefined) reader.graph.connect(system, "packages", component);
+    });
+  }
   reader.finish();
   const attachments = array(json.attachments, "$.attachments").map((value, index) => {
     const attachment = object(value, `$.attachments[${index}]`);
@@ -49,11 +54,19 @@ export function readSystem(value: unknown): ReadResult {
 }
 
 export function writeSystem(system: ToolSystem): SystemFile {
-  const [root] = system.design.ofEntity("System");
-  if (root === undefined) throw new Error("the design has no System");
+  const graph = system.design;
+  const [id] = graph.ofEntity("System");
+  if (id === undefined) throw new Error("the design has no System");
+  const [root] = graph.navigate(id, "root");
+  if (root === undefined) throw new Error("the System has no root");
   return {
     format: FORMAT,
-    design: writeDesign(system.design, root, layers),
+    design: {
+      id,
+      name: nameOf(graph, id) ?? "",
+      root: writeComponent(graph, root, layers),
+      packages: graph.navigate(id, "packages").map((component) => writeComponent(graph, component, layers)),
+    },
     attachments: system.attachments.map(({ owner, data }) => ({ owner, data })),
   };
 }

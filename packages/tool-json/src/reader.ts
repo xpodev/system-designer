@@ -42,7 +42,7 @@ export class Reader {
       }
       const expected = this.graph.vocabulary.step(this.graph.get(from).entity, endName)?.end.entity;
       const actual = this.graph.get(id).entity;
-      if (actual !== expected) {
+      if (expected === undefined || !this.graph.vocabulary.conforms(actual, expected)) {
         this.problems.push({ at, message: `refers to ${actual} '${id}', where a ${expected} is expected` });
         return;
       }

@@ -11,12 +11,14 @@ const game = JSON.parse(readFileSync(new URL("../../../examples/game.systemathic
 const load = () => readSystem(game).system;
 
 describe("deletion", () => {
-  it("deleting a Language takes its contents, the Interactions over it and the Transformations from or to it", () => {
+  it("deleting a Language takes its contents, the Interactions over it and the Parameters of its Entities", () => {
     const system = load();
     const removed = remove(system.design, "lib.network");
     expect(removed).toEqual(
-      expect.arrayContaining(["lib.network", "lib.network.message", "pkg.netstack.send", "game.combat-over-network.down", "game.network-over-wire.up"]),
+      expect.arrayContaining(["lib.network", "lib.network.message", "pkg.netstack.send", "game.combat-over-network.up.id", "game.network-over-wire.down.message"]),
     );
+    expect(system.design.has("game.combat-over-network.up")).toBe(true);
+    expect(system.design.navigate("game.combat-over-network.down", "output")).toEqual([]);
     expect(system.design.navigate("pkg.netstack", "uses")).toEqual([]);
     expect(system.design.has("pkg.netstack.medium")).toBe(true);
   });
@@ -44,18 +46,15 @@ describe("deletion", () => {
     expect(system.design.navigate("game.client", "importedInteractions")).toEqual([]);
   });
 
-  it("deleting an Instance takes its Connections and the choices for it", () => {
+  it("deleting an Instance takes its Connections", () => {
     const system = load();
     const removed = remove(system.design, "game.online.client-2");
-    expect(removed).toEqual(expect.arrayContaining(["game.online.client-2-attacks", "game.release#root.2"]));
-    expect(system.design.has("game.release#root.1")).toBe(true);
+    expect(removed).toEqual(["game.online.client-2", "game.online.client-2-attacks", "game.online.client-2-attacks#m0", "game.online.client-2-attacks#m1"]);
   });
 
-  it("an Entity's mappings go with it; ends and Entities that refer to it stay, ill-formed", () => {
+  it("ends, outputs and Entities that refer to a deleted Entity stay, ill-formed", () => {
     const system = load();
-    expect(remove(system.design, "fighting.damage")).toEqual(
-      expect.arrayContaining(["fighting.damage", "game.combat-over-network.down#em2", "game.combat-over-network.up#em1"]),
-    );
+    expect(remove(system.design, "fighting.damage")).toEqual(["fighting.damage"]);
     expect(system.design.navigate("game.server.attack", "output")).toEqual([]);
     const removed = remove(system.design, "core.player");
     expect(removed).toEqual(["core.player"]);
@@ -71,19 +70,5 @@ describe("deletion", () => {
       system.design.apply(invert(delta));
       expect(writeSystem(system), root).toEqual(game);
     }
-  });
-});
-
-describe("Std in the file", () => {
-  it("reads and writes primary Parameters, comparisons and deferrals", () => {
-    const file = structuredClone(game);
-    const server = file.design.components[0].components[3];
-    server.interactions[0].compares = ["fighting.damage"];
-    file.design.components[0].components[1].transformations[0].deferred = [{ entity: "core.player" }];
-    const { system, problems } = readSystem(file);
-    expect(problems).toEqual([]);
-    expect(system.design.navigate("game.server.attack", "primary")).toEqual(["game.server.attack.attacker"]);
-    expect(system.design.navigate("fighting.damage", "comparison")).toEqual(["game.server.attack"]);
-    expect(writeSystem(system)).toEqual(file);
   });
 });

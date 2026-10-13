@@ -7,7 +7,8 @@ describe("Tool", () => {
     const context = newSystem("Game");
     expect(nameOf(context.design, context.system!)).toBe("Game");
     expect(nameOf(context.design, context.root!)).toBe("Game");
-    expect(context.design.navigate(context.system!, "components")).toEqual([context.root]);
+    expect(context.design.navigate(context.system!, "root")).toEqual([context.root]);
+    expect(context.design.navigate(context.system!, "packages")).toEqual([]);
   });
 
   it("opens and saves independent copies", () => {

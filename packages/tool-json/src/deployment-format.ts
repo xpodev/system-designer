@@ -1,15 +1,16 @@
 /**
  * DeploymentFormat: a Component's Deployments, as JSON. A Deployment nests its named
- * Instances and its Connections; a Connection refers to the Instance it goes from, the
+ * Instances, each with its range, and its Connections; a Connection refers to the Instance it goes from, the
  * Instance or Component it goes to, and the Interactions of its What. Layers above Deployment
  * add their parts of a Connection through the extension hooks.
  */
 import { nameOf, setName, type Graph } from "@systemathic/core";
 import type { Extension } from "./contexts-format.js";
+import { readRange, writeRange } from "./kernel-format.js";
 import { array, object, string, type Reader } from "./reader.js";
 
-export interface InstanceJson { id: string; name: string; of: string }
-export interface ConnectionJson { id: string; from: string; toInstance: string | null; toComponent: string | null; what: string[] }
+export interface InstanceJson { id: string; name: string; of: string; min: number; max: number | "N" }
+export interface ConnectionJson { id: string; from: string; to: string | null; toComponent: string | null; what: string[] }
 export interface DeploymentJson { id: string; name: string; instances: InstanceJson[]; connections: ConnectionJson[] }
 
 /** What a layer above Deployment reads into, and writes from, a Connection. */
@@ -47,6 +48,7 @@ function readDeployment(reader: Reader, component: string, value: unknown, at: s
     setName(graph, instanceId, string(instance.name, `${where}.name`));
     graph.connect(id, "instances", instanceId);
     reader.refer(instanceId, "of", instance.of, `${where}.of`);
+    readRange(reader, instanceId, instance, where);
   });
   array(json.connections, `${at}.connections`).forEach((value, index) => {
     const where = `${at}.connections[${index}]`;
@@ -55,7 +57,7 @@ function readDeployment(reader: Reader, component: string, value: unknown, at: s
     if (connectionId === undefined) return;
     graph.connect(id, "connections", connectionId);
     reader.refer(connectionId, "from", connection.from, `${where}.from`);
-    if (connection.toInstance !== null) reader.refer(connectionId, "toInstance", connection.toInstance, `${where}.toInstance`);
+    if (connection.to !== null) reader.refer(connectionId, "to", connection.to, `${where}.to`);
     if (connection.toComponent !== null) reader.refer(connectionId, "toComponent", connection.toComponent, `${where}.toComponent`);
     array(connection.what, `${where}.what`).forEach((ref, i) => reader.refer(connectionId, "what", ref, `${where}.what[${i}]`));
     for (const extension of extensions) extension.readConnection(reader, connectionId, connection, where);
@@ -70,13 +72,14 @@ function writeDeployment(graph: Graph, deployment: string, extensions: readonly 
       id,
       name: nameOf(graph, id) ?? "",
       of: graph.navigate(id, "of")[0] ?? "",
+      ...writeRange(graph, id),
     })),
     connections: graph.navigate(deployment, "connections").map((id) =>
       Object.assign(
         {
           id,
           from: graph.navigate(id, "from")[0] ?? "",
-          toInstance: graph.navigate(id, "toInstance")[0] ?? null,
+          to: graph.navigate(id, "to")[0] ?? null,
           toComponent: graph.navigate(id, "toComponent")[0] ?? null,
           what: graph.navigate(id, "what"),
         },
