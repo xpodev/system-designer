@@ -1,6 +1,6 @@
 /**
  * The design's layering, checked on the code: packages depend only on the packages below
- * them (docs/tool-design.md), and inside the core a layer imports only the layers below it
+ * them (docs/system-designer.md), and inside the core a layer imports only the layers below it
  * (`layers_extend_down`).
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -17,13 +17,14 @@ const below: Record<string, string[]> = {
   editing: ["core", "tool"],
   editors: ["core", "editing"],
   documentation: ["tool", "editing", "editors"],
+  configurations: ["core", "tool", "editing", "editors"],
   diagnoser: ["core", "tool", "verifier"],
   verifier: ["core", "tool"],
   "python-host": ["core", "tool", "tool-json", "verifier"],
   perspectives: ["core", "tool", "diagnoser"],
   exporter: ["core", "tool", "verifier", "documentation"],
   catalog: ["core", "tool", "tool-json", "editing", "editors"],
-  host: ["core", "tool", "tool-json", "editing", "editors", "documentation", "diagnoser", "verifier", "perspectives", "exporter", "catalog"],
+  host: ["core", "tool", "tool-json", "editing", "editors", "documentation", "configurations", "diagnoser", "verifier", "perspectives", "exporter", "catalog"],
   mcp: ["host", "host-node"],
   ui: ["host", "host-browser"],
   "host-node": ["host", "catalog", "python-host"],
@@ -32,7 +33,7 @@ const below: Record<string, string[]> = {
   cli: ["core", "tool", "tool-json", "diagnoser", "verifier", "python-host", "exporter", "host-node"],
 };
 
-const coreLayers = ["kernel", "contexts", "operations", "deployment", "mediation", "configuration", "std"];
+const coreLayers = ["kernel", "functions", "contexts", "deployment", "mediation", "systems"];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
