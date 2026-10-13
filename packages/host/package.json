@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Hosting: where system contexts live — one authority per system context, on whatever files, catalog and script host it is given.",
+  "description": "Hosting: where system contexts live \u2014 one authority per system context, on whatever files, catalog and script host it is given.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -13,16 +13,17 @@
     }
   },
   "dependencies": {
+    "@systemathic/catalog": "workspace:*",
+    "@systemathic/configurations": "workspace:*",
     "@systemathic/core": "workspace:*",
-    "@systemathic/tool": "workspace:*",
-    "@systemathic/tool-json": "workspace:*",
+    "@systemathic/diagnoser": "workspace:*",
+    "@systemathic/documentation": "workspace:*",
     "@systemathic/editing": "workspace:*",
     "@systemathic/editors": "workspace:*",
-    "@systemathic/documentation": "workspace:*",
-    "@systemathic/diagnoser": "workspace:*",
-    "@systemathic/verifier": "workspace:*",
-    "@systemathic/perspectives": "workspace:*",
     "@systemathic/exporter": "workspace:*",
-    "@systemathic/catalog": "workspace:*"
+    "@systemathic/perspectives": "workspace:*",
+    "@systemathic/tool": "workspace:*",
+    "@systemathic/tool-json": "workspace:*",
+    "@systemathic/verifier": "workspace:*"
   }
 }

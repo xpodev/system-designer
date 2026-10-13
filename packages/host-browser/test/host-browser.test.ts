@@ -35,7 +35,7 @@ describe("a browser tab's host", () => {
     await host.apply(id, session, "LanguageEditor", "addEntity", { language: "core", name: "Item" });
     await host.save(id);
     const kept = JSON.parse((await store.get("examples/game.systemathic.json"))!);
-    expect(kept.design.components[0].languages[0].entities.map((e: { name: string }) => e.name)).toContain("Item");
+    expect(kept.design.root.languages[0].entities.map((e: { name: string }) => e.name)).toContain("Item");
     await host.save(id, "mine/game.systemathic.json");
     expect(await host.files()).toContain("mine/game.systemathic.json");
   });
@@ -44,7 +44,7 @@ describe("a browser tab's host", () => {
     const host = await fresh();
     const { id } = await host.open("docs/system-designer.systemathic.json");
     const run = await host.verify(id);
-    expect(run).toMatchObject({ profile: "profile", script: "docs/system-designer.rules.py", rules: 17, errors: 0, warnings: 0, failures: [] });
+    expect(run).toMatchObject({ profile: "profile", script: "docs/system-designer.rules.py", rules: 16, errors: 0, warnings: 0, failures: [] });
   }, 120_000);
 
   it("edits a System's script, and checks it as it is written", async () => {
@@ -53,7 +53,7 @@ describe("a browser tab's host", () => {
     const script = await host.script(id);
     expect(script).toMatchObject({ path: "examples/game.rules.py", exists: false });
     await host.saveScript(id, script.path, script.source);
-    expect((await host.verify(id)).rules).toBe(9);
+    expect((await host.verify(id)).rules).toBe(8);
     expect((await host.checkScript("profile = Profile(\n")).problems[0]!.message).toMatch(/^SyntaxError/);
   }, 120_000);
 

@@ -153,6 +153,9 @@ importers:
       '@systemathic/catalog':
         specifier: workspace:*
         version: link:../catalog
+      '@systemathic/configurations':
+        specifier: workspace:*
+        version: link:../configurations
       '@systemathic/core':
         specifier: workspace:*
         version: link:../core

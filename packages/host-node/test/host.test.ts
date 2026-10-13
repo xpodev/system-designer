@@ -69,7 +69,7 @@ describe("Host", () => {
     await host.saveScript(id, fresh.path, fresh.source);
     expect(await host.attachment(id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" });
     expect(await host.script(id)).toMatchObject({ path: "game.rules.py", exists: true, source: fresh.source });
-    expect((await host.verify(id)).rules).toBe(9);
+    expect((await host.verify(id)).rules).toBe(8);
     const broken = await host.checkScript("from systemathic.std import *\nprofile = Profile(nothing)\n");
     expect(broken.problems[0]).toMatchObject({ line: 2, severity: "error" });
     expect((await host.symbols()).some((s) => s.name === "mediation_primitives")).toBe(true);
@@ -91,12 +91,12 @@ describe("Host", () => {
     const host = nodeHost({ cwd: workspace() });
     const { id } = await host.open("game.json");
     const run = await host.verify(id);
-    expect(run).toMatchObject({ profile: "standard", rules: 8, errors: 0, warnings: 0 });
+    expect(run).toMatchObject({ profile: "standard", rules: 7, errors: 0, warnings: 0 });
     expect(await host.diagnostics(id)).toEqual([]);
     const { session } = await host.startSession(id, "test");
-    await host.apply(id, session, "TransformationEditor", "unmap", { transformation: "game.combat-over-network.down", source: "combat.combat-player" });
+    await host.apply(id, session, "ComponentEditor", "import", { component: "game.physics", item: "game.server" });
     await host.verify(id);
-    expect((await host.diagnostics(id)).map((d) => [d.kind, d.check])).toEqual([["rule", "completeness"]]);
+    expect((await host.diagnostics(id)).map((d) => [d.kind, d.check])).toEqual([["rule", "imports_acyclic"]]);
     const v = await host.view(id, "diagnostics");
     expect(v.items.find((item) => item.id === "warnings")!.detail).toBe("1");
     await expect(host.view(id, "component")).rejects.toMatchObject({ status: 400 });
@@ -116,7 +116,7 @@ describe("Host", () => {
     const saved = JSON.parse(readFileSync(join(dir, "api.json"), "utf8"));
     expect(saved.attachments.map((a: { owner: string }) => a.owner)).toEqual(["catalog", "ui"]);
     const exported = await host.exportSelection(id, ["lib.http"], "Just HTTP", "http.json");
-    expect(exported.file.design.components.map((c) => c.id)).toEqual(["pkg.http"]);
+    expect([exported.file.design.root.id, ...exported.file.design.packages.map((c) => c.id)]).toEqual(["pkg.http"]);
     expect((await host.specification(id)).markdown).toMatch(/^# Api\n/);
   });
 });

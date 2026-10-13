@@ -15,6 +15,9 @@
       "path": "../tool"
     },
     {
+      "path": "../configurations"
+    },
+    {
       "path": "../documentation"
     },
     {

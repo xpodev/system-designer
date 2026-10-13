@@ -35,7 +35,7 @@ describe("systemathic", () => {
   it("check: reports load problems", async () => {
     const { fake, out } = io();
     expect(await run(["check", "examples/broken/dangling.systemathic.json"], fake)).toBe(1);
-    expect(out[0]).toBe("load   $.design.components[0].components[3].uses[1]: refers to 'nothing', which does not exist");
+    expect(out[0]).toBe("load   $.design.root.components[3].uses[1]: refers to 'nothing', which does not exist");
   });
 
   it("check: exits 2 on a file that is not a System", async () => {
@@ -55,13 +55,13 @@ describe("systemathic", () => {
   it("verify: runs a script's profile and exits 0 when no rule finds an error", async () => {
     const { fake, out } = io();
     expect(await run(["verify", "docs/system-designer.systemathic.json", "docs/system-designer.rules.py"], fake)).toBe(0);
-    expect(out.at(-1)).toBe("docs/system-designer.systemathic.json: profile (17 rules): 0 errors, 0 warnings, 0 failed rules");
+    expect(out.at(-1)).toBe("docs/system-designer.systemathic.json: profile (16 rules): 0 errors, 0 warnings, 0 failed rules");
   }, 30_000);
 
   it("verify: uses the standard rules when the System names no profile", async () => {
     const { fake, out } = io();
     expect(await run(["verify", "examples/game.systemathic.json"], fake)).toBe(0);
-    expect(out.at(-1)).toBe("examples/game.systemathic.json: standard (8 rules): 0 errors, 0 warnings, 0 failed rules");
+    expect(out.at(-1)).toBe("examples/game.systemathic.json: standard (7 rules): 0 errors, 0 warnings, 0 failed rules");
   }, 30_000);
 
   it("verify: refuses a System with structural errors", async () => {
@@ -82,7 +82,7 @@ describe("systemathic", () => {
     expect(md.out[0]).toMatch(/^# Game\n/);
     const json = io();
     expect(await run(["export", "examples/game.systemathic.json", "json", "std"], json.fake)).toBe(0);
-    expect(JSON.parse(json.out[0]!).requirements).toHaveLength(8);
+    expect(JSON.parse(json.out[0]!).requirements).toHaveLength(7);
   }, 30_000);
 
   it("export: refuses a System with structural errors", async () => {

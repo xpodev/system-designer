@@ -13,6 +13,7 @@ import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
+import { configurationEditor } from "@systemathic/configurations";
 import { documentationEditor } from "@systemathic/documentation";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
@@ -34,7 +35,7 @@ import {
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
 
 /** Every operation a client may apply: the concept editors', and the tool contexts' that edit on the History too. */
-const OPERATIONS: readonly Operation[] = [...Object.values(editors).flat(), ...documentationEditor];
+const OPERATIONS: readonly Operation[] = [...Object.values(editors).flat(), ...documentationEditor, ...configurationEditor];
 
 /**
  * The files a Host reads and writes: Systems, scripts, packages. Paths are relative to the

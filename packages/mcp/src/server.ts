@@ -61,8 +61,9 @@ export async function createServer(host: HostApi): Promise<McpServer> {
     {
       instructions:
         "Systemathic designs systems as precise models: core Languages (closed vocabularies of Entities, Relationships and axioms) and extensions of them; " +
-        "Components that use Languages, offer Interactions, hold Transformations between Languages, nest other Components and import what they depend on; " +
-        "Deployments that place Instances and connect them, each Connection optionally mediated over a stack of Mediums; and Configurations that choose a Deployment per Instance. " +
+        "Components that use Languages, offer Interactions, hold Transformations from one Language to another, nest other Components, import what they depend on, and may implement other Components; " +
+        "Deployments that place Instances, each with a range of occupants, and connect them, each Connection optionally mediated over a stack of Mediums. " +
+        "Configurations, kept beside the design, choose for each occupant the Component that fills it and the Deployment it runs as. " +
         "Open or create a System with open_system or new_system, read it with view (start with the outline perspective), edit it with the editor tools, " +
         "and check it with diagnostics and verify. Edits never fail for leaving the System ill-formed: read diagnostics after editing, and fix what they show. " +
         "Others may be editing the same System at the same time; undo undoes only your own edits.",
