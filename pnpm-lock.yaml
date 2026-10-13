@@ -66,6 +66,25 @@ importers:
         specifier: workspace:*
         version: link:../verifier
 
+  packages/configurations:
+    dependencies:
+      '@systemathic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@systemathic/editing':
+        specifier: workspace:*
+        version: link:../editing
+      '@systemathic/editors':
+        specifier: workspace:*
+        version: link:../editors
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+    devDependencies:
+      '@systemathic/tool-json':
+        specifier: workspace:*
+        version: link:../tool-json
+
   packages/core: {}
 
   packages/diagnoser:
