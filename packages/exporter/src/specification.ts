@@ -1,9 +1,9 @@
 /**
- * Specification (docs/tool-design.md): a design, exported as a contract for validators. A
+ * Specification: a design, exported as a contract for validators. A
  * Statement is a design fact — a Language's vocabulary, what a Component may use and import,
  * how its Deployments connect its parts; a Requirement is a design rule, from the profile the
  * design was verified against; an Obligation is what an implementation must satisfy that no
- * design check can (foundation.md, O1–O4), for specific Subjects. Every part has an id that
+ * design check can (foundation.md, O1–O5), for specific Subjects. Every part has an id that
  * stays the same as long as the Elements it is about do, so a validator can refer to it.
  */
 import { describe as describeElement, mediationStack, nameOf, parameters, scope, type Graph } from "@systemathic/core";
@@ -32,7 +32,7 @@ export interface Requirement {
   readonly script: string;
 }
 
-export type ObligationKind = "O1" | "O2" | "O3" | "O4";
+export type ObligationKind = "O1" | "O2" | "O3" | "O4" | "O5";
 
 export interface Obligation {
   readonly id: string;
@@ -80,38 +80,37 @@ function language(graph: Graph, id: string): Section {
     });
     statements.push(statement(`relationship:${relationship}`, `Relationship ${sides.join(" <——> ")}: ${ways.reverse().join("; ")}.`, relationship, ...ends));
   }
-  for (const entity of graph.navigate(id, "entities")) {
-    const comparison = first(graph, entity, "comparison");
-    if (comparison !== undefined) statements.push(statement(`comparison:${entity}`, `${name(graph, entity)}s are compared by ${name(graph, comparison)}.`, entity, comparison));
-  }
   for (const formula of graph.navigate(id, "formulas")) statements.push(statement(`axiom:${formula}`, `Axiom: ${String(graph.get(formula).value ?? "")}`, formula));
   return { id: `language:${id}`, title: `Language ${name(graph, id)}`, statements, sections: [] };
 }
 
+/** A Function's signature: `attack(by: Attacker): Damage`, or with nothing after it when it gives nothing back. */
+function signature(graph: Graph, func: string): string {
+  const params = parameters(graph, func).map((p) => `${name(graph, p)}: ${name(graph, first(graph, p, "type"))}`).join(", ");
+  const output = first(graph, func, "output");
+  return `${name(graph, func)}(${params})${output === undefined ? "" : `: ${name(graph, output)}`}`;
+}
+
+/** A Transformation's source Language, its inputs', and its target, its output's. */
+function source(graph: Graph, t: string): string | undefined {
+  const [input] = parameters(graph, t);
+  const type = input === undefined ? undefined : first(graph, input, "type");
+  return type === undefined ? undefined : first(graph, type, "language");
+}
+
+function target(graph: Graph, t: string): string | undefined {
+  const output = first(graph, t, "output");
+  return output === undefined ? undefined : first(graph, output, "language");
+}
+
 function interactionStatement(graph: Graph, interaction: string): Statement {
-  const signature = parameters(graph, interaction).map((p) => `${name(graph, p)}: ${name(graph, first(graph, p, "type"))}`).join(", ");
-  const primary = first(graph, interaction, "primary");
-  const action = primary === undefined ? "" : ` It is an Action on '${name(graph, primary)}'.`;
-  const text = `Interaction ${name(graph, interaction)}(${signature}) → ${name(graph, first(graph, interaction, "output"))}, over ${name(graph, first(graph, interaction, "language"))}.${action}`;
+  const gives = first(graph, interaction, "output") === undefined ? " It gives nothing back." : "";
+  const text = `Interaction ${signature(graph, interaction)}, over ${name(graph, first(graph, interaction, "language"))}.${gives}`;
   return statement(`interaction:${interaction}`, text, interaction);
 }
 
-function transformationStatements(graph: Graph, t: string): Statement[] {
-  const context = graph.navigate(t, "context");
-  const kind = context.length === 0 ? "nothing kept as context" : `keeping ${names(graph, context)} as context`;
-  const statements = [statement(`transformation:${t}`, `Transformation ${name(graph, t)}: ${name(graph, first(graph, t, "source"))} → ${name(graph, first(graph, t, "target"))}, ${kind}.`, t)];
-  for (const end of ["entityMappings", "relationshipMappings"]) {
-    for (const mapping of graph.navigate(t, end)) {
-      const from = first(graph, mapping, "source");
-      const targets = graph.navigate(mapping, "targets");
-      statements.push(statement(`mapping:${mapping}`, `${name(graph, from)} is represented with ${names(graph, targets)}.`, mapping, ...(from ? [from] : []), ...targets));
-    }
-  }
-  for (const deferral of graph.navigate(t, "deferred")) {
-    const item = ["entity", "relationship"].flatMap((end) => graph.navigate(deferral, end))[0];
-    statements.push(statement(`deferred:${deferral}`, `${name(graph, item)} is deliberately left unmapped.`, deferral, ...(item ? [item] : [])));
-  }
-  return statements;
+function transformationStatement(graph: Graph, t: string): Statement {
+  return statement(`transformation:${t}`, `Transformation ${signature(graph, t)}: from ${name(graph, source(graph, t))} to ${name(graph, target(graph, t))}.`, t);
 }
 
 /** How a Connection passes, in a sentence. */
@@ -129,11 +128,17 @@ function mediationText(graph: Graph, connection: string): string {
 
 function deploymentStatements(graph: Graph, deployment: string): Statement[] {
   const instances = graph.navigate(deployment, "instances");
-  const placed = instances.map((i) => `${name(graph, i)} (${name(graph, first(graph, i, "of"))})`).join(", ") || "nothing";
+  const placed =
+    instances
+      .map((i) => {
+        const occupants = range(graph, i);
+        return `${name(graph, i)} (${name(graph, first(graph, i, "of"))}${occupants === "1..1" ? "" : `, ${occupants} of them`})`;
+      })
+      .join(", ") || "nothing";
   const statements = [statement(`deployment:${deployment}`, `Deployment ${name(graph, deployment)} places ${placed}.`, deployment, ...instances)];
   for (const connection of graph.navigate(deployment, "connections")) {
     const from = first(graph, connection, "from");
-    const to = first(graph, connection, "toInstance") ?? first(graph, connection, "toComponent");
+    const to = first(graph, connection, "to") ?? first(graph, connection, "toComponent");
     const what = graph.navigate(connection, "what");
     const stack = mediationStack(graph, connection);
     statements.push(
@@ -166,8 +171,11 @@ function component(graph: Graph, id: string): Section {
     statement(`uses:${id}`, `Uses the Languages ${names(graph, uses)}.`, id, ...uses),
     statement(`scope:${id}`, `May use exactly the Languages ${names(graph, visible)}, and nothing else.`, id, ...visible),
     statement(`imports:${id}`, `Imports ${importText}; it reaches nothing else of any other Component.`, id, ...imported),
+    ...graph.navigate(id, "implements").map((x) =>
+      statement(`implements:${id}:${x}`, `Implements ${name(graph, x)}: it may stand wherever ${name(graph, x)} is placed.`, id, x),
+    ),
     ...graph.navigate(id, "interactions").map((i) => interactionStatement(graph, i)),
-    ...graph.navigate(id, "transformations").flatMap((t) => transformationStatements(graph, t)),
+    ...graph.navigate(id, "transformations").map((t) => transformationStatement(graph, t)),
     ...graph.navigate(id, "mediums").map((m) =>
       statement(`medium:${m}`, `Medium ${name(graph, m)}: a What passes over ${name(graph, first(graph, m, "language"))}, through ${name(graph, first(graph, m, "call"))}.`, m),
     ),
@@ -175,16 +183,6 @@ function component(graph: Graph, id: string): Section {
   ];
   const sections = [...graph.navigate(id, "languages").map((l) => language(graph, l)), ...graph.navigate(id, "components").map((c) => component(graph, c))];
   return { id: `component:${id}`, title: `Component ${name(graph, id)}`, statements, sections };
-}
-
-function choiceText(graph: Graph, choice: string, path: string): string[] {
-  const deployment = name(graph, first(graph, choice, "deployment"));
-  const lines = [`${path || "the root"} is put together as ${deployment}`];
-  for (const child of graph.navigate(choice, "choices")) {
-    const instance = name(graph, first(graph, child, "instance"));
-    lines.push(...choiceText(graph, child, path ? `${path}/${instance}` : instance));
-  }
-  return lines;
 }
 
 function obligations(graph: Graph): Obligation[] {
@@ -201,20 +199,30 @@ function obligations(graph: Graph): Obligation[] {
     found.push({
       id: `O2:${down}`,
       kind: "O2",
-      text: `${name(graph, up)} gives back what ${name(graph, down)} was given: an equivalent ${name(graph, first(graph, down, "source"))} instance.`,
+      text: `${name(graph, up)} gives back what ${name(graph, down)} was given: an equivalent ${name(graph, source(graph, down))} instance.`,
       subjects: [down, up],
     });
   }
   for (const t of graph.ofEntity("Transformation")) {
-    const source = first(graph, t, "source");
-    if (source !== undefined && graph.navigate(source, "formulas").length > 0) {
-      found.push({ id: `O3:${t}`, kind: "O3", text: `${name(graph, t)} preserves the axioms of ${name(graph, source)}.`, subjects: [t, source] });
+    const from = source(graph, t);
+    if (from !== undefined && graph.navigate(from, "formulas").length > 0) {
+      found.push({ id: `O3:${t}`, kind: "O3", text: `${name(graph, t)} preserves the axioms of ${name(graph, from)}.`, subjects: [t, from] });
     }
   }
   for (const entity of graph.ofEntity("Entity")) {
     const extended = graph.navigate(entity, "extends");
     if (extended.length > 0) {
       found.push({ id: `O4:${entity}`, kind: "O4", text: `An instance of ${name(graph, entity)} is the same instance as each of ${names(graph, extended)}.`, subjects: [entity, ...extended] });
+    }
+  }
+  for (const component of graph.ofEntity("Component")) {
+    for (const implemented of graph.navigate(component, "implements")) {
+      found.push({
+        id: `O5:${component}:${implemented}`,
+        kind: "O5",
+        text: `${name(graph, component)} offers every Interaction of ${name(graph, implemented)}, as it is specified, wherever it stands in for it.`,
+        subjects: [component, implemented],
+      });
     }
   }
   return found;
@@ -226,25 +234,11 @@ export function specify(context: SystemContext, profile?: Profile): Specificatio
   const [system] = graph.ofEntity("System");
   if (system === undefined) throw new Error("the design has no System");
   const [root] = graph.navigate(system, "root");
-  const top = graph.navigate(system, "components");
-  const packages = top.filter((c) => c !== root);
+  const packages = graph.navigate(system, "packages");
   const sections: Section[] = [
     ...(root === undefined ? [] : [component(graph, root)]),
     ...(packages.length === 0 ? [] : [{ id: "packages", title: "Packages", statements: [], sections: packages.map((c) => component(graph, c)) }]),
   ];
-  const configurations = graph.navigate(system, "configurations");
-  if (configurations.length > 0) {
-    sections.push({
-      id: "configurations",
-      title: "Configurations",
-      statements: configurations.map((c) => {
-        const [choice] = graph.navigate(c, "root");
-        const choices = choice === undefined ? ["nothing is chosen"] : choiceText(graph, choice, "");
-        return statement(`configuration:${c}`, `Configuration ${name(graph, c)}: ${choices.join("; ")}.`, c);
-      }),
-      sections: [],
-    });
-  }
   const requirements = (profile?.rules ?? []).map((rule) => ({ id: `R:${rule.name}`, rule: rule.name, severity: rule.severity, about: rule.about, script: rule.script }));
   return { system: name(graph, system), sections, requirements, obligations: obligations(graph) };
 }

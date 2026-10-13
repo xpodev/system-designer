@@ -327,7 +327,7 @@ extensions and Components are the root's.
 Beside the root are the **packages** the System brings in from outside, such as the
 library's: Components defined elsewhere and copied in, so the System stays closed. They
 are the root's siblings, so the root imports from them as from any sibling, and its
-children through the root's imports. Packages import only each other.
+children through the root's imports. Packages import only each other, and the root.
 
 ### Component *(Contexts)*
 

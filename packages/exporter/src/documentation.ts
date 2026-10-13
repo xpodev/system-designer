@@ -1,8 +1,8 @@
 /**
  * Documentation: a design written up for the people who build on it and with it. Every
  * Component, nested as it is, with its Languages, Interactions, Transformations, Mediums and
- * Deployments, and the Description of each thing (from the Documentation tool context); the
- * Configurations; and the rules the design is verified against with their own documentation.
+ * Deployments, and the Description of each thing (from the Documentation tool context); and
+ * the rules the design is verified against with their own documentation.
  * Unlike a Specification it is not a contract: it has no ids to cite and does not read back.
  * It says the same facts in prose — a Relationship as what each side has of the other.
  */
@@ -39,23 +39,20 @@ export interface RelationshipDoc extends Documented {
 }
 
 export interface InteractionDoc extends Documented {
+  /** `attack(by: Attacker): Damage, over Combat`; a Function without an output has none after it. */
   readonly signature: string;
-  /** The primary Parameter's name, when it is an Action. */
-  readonly action?: string;
 }
 
 export interface AxiomDoc {
   readonly id: string;
   readonly text: string;
   readonly description?: string;
-  /** How the Relationship it constrains reads, if it constrains one. */
-  readonly constrains?: string;
 }
 
 export interface LanguageDoc extends Documented {
   /** The Languages it extends. */
   readonly extends: readonly string[];
-  readonly entities: readonly (Documented & { comparedBy?: string; extends: readonly string[] })[];
+  readonly entities: readonly (Documented & { extends: readonly string[] })[];
   readonly relationships: readonly RelationshipDoc[];
   readonly axioms: readonly AxiomDoc[];
   /** The Components that use it. */
@@ -63,13 +60,11 @@ export interface LanguageDoc extends Documented {
 }
 
 export interface TransformationDoc extends Documented {
+  /** `down(monster: CombatMonster): EntityId` */
+  readonly signature: string;
+  /** The Languages it goes from and to: its inputs', and its output's. */
   readonly source: string;
   readonly target: string;
-  /** What is kept for it to work: nothing for one by value. */
-  readonly context: readonly string[];
-  /** `Monster ↦ Targetable, Attacker`, for every mapping. */
-  readonly mappings: readonly string[];
-  readonly deferred: readonly string[];
 }
 
 export interface MediumDoc extends Documented {
@@ -81,12 +76,12 @@ export interface ConnectionDoc extends Documented {
   readonly from: string;
   readonly to: string;
   readonly what: readonly string[];
-  /** The Mediums it passes over, from the first down, each with its realization if it has one. */
+  /** The Mediums it passes over, from the top down, each with its realization if it has one. */
   readonly mediations: readonly string[];
 }
 
 export interface DeploymentDoc extends Documented {
-  /** `server (Server)`, for every Instance. */
+  /** `server (Server)`, for every Instance; `clients (Client, 0..N)` when not exactly one occupies it. */
   readonly instances: readonly string[];
   readonly connections: readonly ConnectionDoc[];
 }
@@ -95,17 +90,14 @@ export interface ComponentDoc extends Documented {
   readonly uses: readonly string[];
   /** Everything it imports, by name, with what kind of thing it is: `attack (Interaction)`. */
   readonly imports: readonly string[];
+  /** The Components it implements. */
+  readonly implements: readonly string[];
   readonly languages: readonly LanguageDoc[];
   readonly interactions: readonly InteractionDoc[];
   readonly transformations: readonly TransformationDoc[];
   readonly mediums: readonly MediumDoc[];
   readonly deployments: readonly DeploymentDoc[];
   readonly components: readonly ComponentDoc[];
-}
-
-export interface ConfigurationDoc extends Documented {
-  /** `client-1 ↦ Desktop`, for every choice, by Instance path. */
-  readonly choices: readonly string[];
 }
 
 export interface RuleDoc {
@@ -121,7 +113,6 @@ export interface Documentation {
   readonly system: Documented;
   /** The root first, then the packages beside it. */
   readonly components: readonly ComponentDoc[];
-  readonly configurations: readonly ConfigurationDoc[];
   /** The rules of the profile the System is verified against, if it has been. */
   readonly rules: readonly RuleDoc[];
 }
@@ -190,48 +181,38 @@ function language(described: Described, id: string): LanguageDoc {
   return {
     ...documented(described, id),
     extends: graph.navigate(id, "extends").map((l) => name(graph, l)),
-    entities: graph.navigate(id, "entities").map((e) => {
-      const comparison = first(graph, e, "comparison");
-      const doc = { ...documented(described, e), extends: graph.navigate(e, "extends").map((b) => name(graph, b)) };
-      return comparison === undefined ? doc : { ...doc, comparedBy: name(graph, comparison) };
-    }),
+    entities: graph.navigate(id, "entities").map((e) => ({ ...documented(described, e), extends: graph.navigate(e, "extends").map((b) => name(graph, b)) })),
     relationships,
     axioms: graph.navigate(id, "formulas").map((f) => {
-      const constrains = first(graph, f, "constrains");
       const description = described.descriptions.get(f);
-      return {
-        id: f,
-        text: String(graph.get(f).value ?? ""),
-        ...(description === undefined ? {} : { description }),
-        ...(constrains === undefined ? {} : { constrains: relationships.find((r) => r.id === constrains)?.name ?? name(graph, constrains) }),
-      };
+      return { id: f, text: String(graph.get(f).value ?? ""), ...(description === undefined ? {} : { description }) };
     }),
     usedBy: graph.navigate(id, "users").map((c) => name(graph, c)),
   };
 }
 
+/** A Function's signature: `attack(by: Attacker): Damage`. */
+function signature(graph: Graph, id: string): string {
+  const params = parameters(graph, id).map((p) => `${name(graph, p)}: ${name(graph, first(graph, p, "type"))}`);
+  const output = first(graph, id, "output");
+  return `${name(graph, id)}(${params.join(", ")})${output === undefined ? "" : `: ${name(graph, output)}`}`;
+}
+
 function interaction(described: Described, id: string): InteractionDoc {
   const { graph } = described;
-  const params = parameters(graph, id).map((p) => `${name(graph, p)}: ${name(graph, first(graph, p, "type"))}`);
-  const signature = `${name(graph, id)}(${params.join(", ")}) → ${name(graph, first(graph, id, "output"))}, over ${name(graph, first(graph, id, "language"))}`;
-  const primary = first(graph, id, "primary");
-  const doc = { ...documented(described, id), signature };
-  return primary === undefined ? doc : { ...doc, action: name(graph, primary) };
+  return { ...documented(described, id), signature: `${signature(graph, id)}, over ${name(graph, first(graph, id, "language"))}` };
 }
 
 function transformation(described: Described, id: string): TransformationDoc {
   const { graph } = described;
-  const mappings = ["entityMappings", "relationshipMappings"].flatMap((end) =>
-    graph.navigate(id, end).map((m) => `${name(graph, first(graph, m, "source"))} ↦ ${graph.navigate(m, "targets").map((t) => name(graph, t)).join(", ") || "nothing"}`),
-  );
-  const deferred = graph.navigate(id, "deferred").map((d) => name(graph, ["entity", "relationship"].flatMap((end) => graph.navigate(d, end))[0]));
+  const [input] = parameters(graph, id);
+  const type = input === undefined ? undefined : first(graph, input, "type");
+  const output = first(graph, id, "output");
   return {
     ...documented(described, id),
-    source: name(graph, first(graph, id, "source")),
-    target: name(graph, first(graph, id, "target")),
-    context: graph.navigate(id, "context").map((e) => name(graph, e)),
-    mappings,
-    deferred,
+    signature: signature(graph, id),
+    source: name(graph, type === undefined ? undefined : first(graph, type, "language")),
+    target: name(graph, output === undefined ? undefined : first(graph, output, "language")),
   };
 }
 
@@ -239,10 +220,15 @@ function deployment(described: Described, id: string): DeploymentDoc {
   const { graph } = described;
   return {
     ...documented(described, id),
-    instances: graph.navigate(id, "instances").map((i) => `${name(graph, i)} (${name(graph, first(graph, i, "of"))})`),
+    instances: graph.navigate(id, "instances").map((i) => {
+      const min = boundOf(graph, i, "min") ?? 1;
+      const max = boundOf(graph, i, "max") ?? null;
+      const range = min === 1 && max === 1 ? "" : `, ${min}..${max ?? "N"}`;
+      return `${name(graph, i)} (${name(graph, first(graph, i, "of"))}${range})`;
+    }),
     connections: graph.navigate(id, "connections").map((c) => {
       const from = name(graph, first(graph, c, "from"));
-      const to = name(graph, first(graph, c, "toInstance") ?? first(graph, c, "toComponent"));
+      const to = name(graph, first(graph, c, "to") ?? first(graph, c, "toComponent"));
       const what = graph.navigate(c, "what").map((i) => name(graph, i));
       const mediations = mediationStack(graph, c).map((m) => {
         const down = first(graph, m, "down");
@@ -263,6 +249,7 @@ function component(described: Described, id: string): ComponentDoc {
     ...documented(described, id),
     uses: graph.navigate(id, "uses").map((l) => name(graph, l)),
     imports: IMPORTS.flatMap((end) => graph.navigate(id, end).map((item) => `${name(graph, item)} (${graph.get(item).entity})`)),
+    implements: graph.navigate(id, "implements").map((c) => name(graph, c)),
     languages: graph.navigate(id, "languages").map((l) => language(described, l)),
     interactions: graph.navigate(id, "interactions").map((i) => interaction(described, i)),
     transformations: graph.navigate(id, "transformations").map((t) => transformation(described, t)),
@@ -272,29 +259,15 @@ function component(described: Described, id: string): ComponentDoc {
   };
 }
 
-function choices(graph: Graph, choice: string, path: string): string[] {
-  const own = `${path || "the root"} ↦ ${name(graph, first(graph, choice, "deployment"))}`;
-  return [own, ...graph.navigate(choice, "choices").flatMap((child) => {
-    const instance = name(graph, first(graph, child, "instance"));
-    return choices(graph, child, path ? `${path}/${instance}` : instance);
-  })];
-}
-
 /** The Documentation of a system context, with the rules of the profile it is verified against, if any. */
 export function document(context: SystemContext, profile?: Profile): Documentation {
   const graph = context.design;
   const [system] = graph.ofEntity("System");
   if (system === undefined) throw new Error("the design has no System");
   const described: Described = { graph, descriptions: descriptions(context) };
-  const [root] = graph.navigate(system, "root");
-  const top = graph.navigate(system, "components");
   return {
     system: documented(described, system),
-    components: [...top.filter((c) => c === root), ...top.filter((c) => c !== root)].map((c) => component(described, c)),
-    configurations: graph.navigate(system, "configurations").map((c) => {
-      const [first_] = graph.navigate(c, "root");
-      return { ...documented(described, c), choices: first_ === undefined ? [] : choices(graph, first_, "") };
-    }),
+    components: [...graph.navigate(system, "root"), ...graph.navigate(system, "packages")].map((c) => component(described, c)),
     rules: (profile?.rules ?? []).map((rule) => ({ name: rule.name, severity: rule.severity, about: rule.about, ...(rule.doc ? { doc: rule.doc } : {}), script: rule.script })),
   };
 }
@@ -321,7 +294,7 @@ export function documentationMarkdown(doc: Documentation): string {
     if (language.entities.length) {
       for (const entity of language.entities) {
         const extended = entity.extends.length ? ` : ${entity.extends.join(", ")}` : "";
-        item(`**${entity.name}**${extended}${entity.comparedBy ? ` (compared by \`${entity.comparedBy}\`)` : ""}`, entity.description);
+        item(`**${entity.name}**${extended}`, entity.description);
       }
       line("");
     }
@@ -332,7 +305,7 @@ export function documentationMarkdown(doc: Documentation): string {
       line("");
     }
     if (language.axioms.length) {
-      for (const axiom of language.axioms) item(`Axiom \`${axiom.text}\`${axiom.constrains ? ` (on ${axiom.constrains})` : ""}`, axiom.description);
+      for (const axiom of language.axioms) item(`Axiom \`${axiom.text}\``, axiom.description);
       line("");
     }
   };
@@ -342,20 +315,18 @@ export function documentationMarkdown(doc: Documentation): string {
     prose(component.description);
     list("Uses", component.uses);
     list("Imports", component.imports);
+    if (component.implements.length) list("Implements", component.implements);
     line("");
     for (const language of component.languages) languageSection(language, depth + 1);
     if (component.interactions.length) {
       heading(depth + 1, "Interactions");
-      for (const interaction of component.interactions) item(`\`${interaction.signature}\`${interaction.action ? ` (an Action on ${interaction.action})` : ""}`, interaction.description);
+      for (const interaction of component.interactions) item(`\`${interaction.signature}\``, interaction.description);
       line("");
     }
-    for (const t of component.transformations) {
-      heading(depth + 1, `${t.name} — ${t.source} → ${t.target}`);
-      prose(t.description);
-      if (t.context.length) line(`Keeps ${t.context.join(", ")} as context.`, "");
-      for (const mapping of t.mappings) line(`- ${mapping}`);
-      for (const deferred of t.deferred) line(`- ${deferred}: deliberately left unmapped`);
-      if (t.mappings.length || t.deferred.length) line("");
+    if (component.transformations.length) {
+      heading(depth + 1, "Transformations");
+      for (const t of component.transformations) item(`\`${t.signature}\`, ${t.source} → ${t.target}`, t.description);
+      line("");
     }
     if (component.mediums.length) {
       heading(depth + 1, "Mediums");
@@ -380,7 +351,7 @@ export function documentationMarkdown(doc: Documentation): string {
   const [root, ...packages] = doc.components;
   const count = (c: ComponentDoc): number => 1 + c.components.reduce((sum, child) => sum + count(child), 0);
   line(
-    `This System has ${plural(root === undefined ? 0 : count(root), "Component")}, ${plural(packages.length, "package")} beside its root, and ${plural(doc.configurations.length, "Configuration")}.`,
+    `This System has ${plural(root === undefined ? 0 : count(root), "Component")}, and ${plural(packages.length, "package")} beside its root.`,
     "",
   );
   if (root !== undefined) componentSection(root, 2);
@@ -388,16 +359,6 @@ export function documentationMarkdown(doc: Documentation): string {
     heading(2, "Packages");
     for (const component of packages) componentSection(component, 3);
   }
-  if (doc.configurations.length) {
-    heading(2, "Configurations");
-    for (const configuration of doc.configurations) {
-      heading(3, configuration.name);
-      prose(configuration.description);
-      for (const choice of configuration.choices) line(`- ${choice}`);
-      line("");
-    }
-  }
-
   if (doc.rules.length) {
     heading(2, "Verification rules");
     for (const rule of doc.rules) {

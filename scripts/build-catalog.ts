@@ -28,7 +28,7 @@ interface VocabularySpec {
 }
 
 const slug = (text: string) => text.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase();
-const noImports = { components: [] as string[], transformations: [] as string[], interactions: [] as string[], mediums: [] as string[] };
+const noImports = { components: [] as string[], interactions: [] as string[], transformations: [] as string[], mediums: [] as string[] };
 
 /** A vocabulary, as the Component that owns its Language, offers its Interactions and defines its Medium. */
 function vocabulary(spec: VocabularySpec) {
@@ -47,6 +47,7 @@ function vocabulary(spec: VocabularySpec) {
     name: spec.name,
     uses: [language],
     imports: noImports,
+    implements: [] as string[],
     languages: [
       {
         id: language,
@@ -64,16 +65,14 @@ function vocabulary(spec: VocabularySpec) {
         formulas: (spec.formulas ?? []).map((text, index) => ({ id: `${language}.axiom${index}`, text })),
       },
     ],
-    transformations: [] as unknown[],
     interactions: spec.interactions.map(([name, params, output]) => ({
       id: interaction(name),
       name,
       language,
       parameters: params.map(([p, type]) => ({ id: `${interaction(name)}.${slug(p)}`, name: p, type: entity(type) })),
       output: entity(output),
-      primary: null,
-      compares: [],
     })),
+    transformations: [] as unknown[],
     mediums: [{ id: `${component}.medium`, name: spec.medium[0], language, call: interaction(spec.medium[1]) }],
     deployments: [],
     components: [],
@@ -234,42 +233,31 @@ const V = {
   }),
 };
 
-const httpEntities = ["request", "response", "method", "target", "header", "body", "status"];
-
 /** HTTP over TCP: a realization of the HTTP Medium's call over TCP's, imported by whoever mediates HTTP over TCP. */
 const httpOverTcp = {
   id: "pkg.http-over-tcp",
   name: "HttpOverTcp",
   uses: ["lib.http", "lib.tcp"],
   imports: { ...noImports, components: ["pkg.http", "pkg.tcp"] },
+  implements: [],
   languages: [],
+  interactions: [],
+  // A request goes down as a stream; a stream comes back up as the response. How a message's
+  // parts are laid out in its stream is the realization's business.
   transformations: [
     {
       id: "pkg.http-over-tcp.down",
       name: "HTTP messages as TCP streams",
-      source: "lib.http",
-      target: "lib.tcp",
-      context: [],
-      entityMappings: httpEntities.map((e) => ({ source: `lib.http.${e}`, targets: [e === "request" || e === "response" ? "lib.tcp.stream" : "lib.tcp.segment"] })),
-      relationshipMappings: [],
-      // How a message's parts are laid out in its stream is the realization's business.
-      deferred: V.http.languages[0]!.relationships.map((relationship) => ({ relationship: relationship.id })),
+      parameters: [{ id: "pkg.http-over-tcp.down.request", name: "request", type: "lib.http.request" }],
+      output: "lib.tcp.stream",
     },
     {
       id: "pkg.http-over-tcp.up",
       name: "TCP streams as HTTP messages",
-      source: "lib.tcp",
-      target: "lib.http",
-      context: [],
-      entityMappings: [
-        { source: "lib.tcp.stream", targets: ["lib.http.request", "lib.http.response"] },
-        { source: "lib.tcp.segment", targets: ["lib.http.method", "lib.http.target", "lib.http.header", "lib.http.body", "lib.http.status"] },
-      ],
-      relationshipMappings: [],
-      deferred: [],
+      parameters: [{ id: "pkg.http-over-tcp.up.stream", name: "stream", type: "lib.tcp.stream" }],
+      output: "lib.http.response",
     },
   ],
-  interactions: [],
   mediums: [],
   deployments: [],
   components: [],
@@ -309,8 +297,8 @@ export function files(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const p of packages) {
     const file = {
-      format: "systemathic/2",
-      design: { id: `lib.${p.key}.system`, name: p.name, root: (p.components[0] as { id: string }).id, components: p.components, configurations: [] },
+      format: "systemathic/3",
+      design: { id: `lib.${p.key}.system`, name: p.name, root: p.components[0], packages: p.components.slice(1) },
       attachments: [{ owner: "catalog", data: { package: p.key, about: p.about, tags: p.tags } }],
     };
     out[`${p.key}.systemathic.json`] = JSON.stringify(file, null, 2) + "\n";

@@ -15,7 +15,6 @@ export {
   reading,
   type AxiomDoc,
   type ComponentDoc,
-  type ConfigurationDoc,
   type ConnectionDoc,
   type DeploymentDoc,
   type Documentation,

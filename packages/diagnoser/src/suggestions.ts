@@ -107,13 +107,13 @@ const byAxiom: Readonly<Record<string, Suggest>> = {
   "A System's root is not one of its packages": fix("Remove the root from the System's packages", "s"),
   "Every Component is nested, or is the root or a package of a System": fix("Nest the Component in another, or bring it in as a package", "c"),
   "The root imports only packages": fix("Import only the System's packages into the root", "k"),
-  "A package imports only other packages": fix("Import only other packages into a package", "c", "k"),
+  "A package imports only other packages, or the root": fix("Import only other packages, or the root, into a package", "c", "k"),
   "The root imports Interactions only from packages": fix("Import into the root only Interactions of packages", "i"),
-  "A package imports Interactions only from other packages": fix("Import into a package only other packages' Interactions", "c", "i"),
+  "A package imports Interactions only from other packages, or the root": fix("Import into a package only other packages' or the root's Interactions", "c", "i"),
   "The root imports Transformations only from packages": fix("Import into the root only Transformations of packages", "t"),
-  "A package imports Transformations only from other packages": fix("Import into a package only other packages' Transformations", "c", "t"),
+  "A package imports Transformations only from other packages, or the root": fix("Import into a package only other packages' or the root's Transformations", "c", "t"),
   "The root imports Mediums only from packages": fix("Import into the root only Mediums of packages", "m"),
-  "A package imports Mediums only from other packages": fix("Import into a package only other packages' Mediums", "c", "m"),
+  "A package imports Mediums only from other packages, or the root": fix("Import into a package only other packages' or the root's Mediums", "c", "m"),
 };
 
 /** The axioms there are suggestions for. */

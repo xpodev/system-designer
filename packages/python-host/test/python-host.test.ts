@@ -16,7 +16,7 @@ describe("RuleHost", () => {
   it("verifies the tool's design against its own profile", async () => {
     const profile = await verifier.profile({ path: "docs/system-designer.rules.py" });
     expect(profile.rules.map((rule) => rule.name)).toContain("readers_dont_edit");
-    expect(profile.rules).toHaveLength(17);
+    expect(profile.rules).toHaveLength(16);
     const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
     expect(run.violations).toEqual([]);
@@ -26,10 +26,11 @@ describe("RuleHost", () => {
     const profile = await verifier.profile(STANDARD);
     const game = context("examples/game.systemathic.json");
     expect((await verifier.verify(snapshot(game), profile)).violations).toEqual([]);
-    remove(game.design, "game.combat-over-network.down#d0");
+    game.design.connect("game.client", "uses", "lib.network");
     const run = await verifier.verify(snapshot(game), profile);
     expect(run.violations.map((violation) => [violation.rule.name, violation.subjects])).toEqual([
-      ["completeness", ["game.combat-over-network.down", "combat.chasing"]],
+      ["opacity", ["game.online.client-1-attacks", "game.client"]],
+      ["opacity", ["game.online.client-2-attacks", "game.client"]],
     ]);
   }, 30_000);
 

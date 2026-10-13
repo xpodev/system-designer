@@ -47,7 +47,7 @@ describe("importing", () => {
     const { target, session } = fresh();
     const result = importPackage(session, catalog.find("http")!);
     expect(result.edits.map((edit) => edit.summary)).toEqual(["addPackage pkg.http"]);
-    expect(target.graph.navigate(target.context.system!, "components")).toEqual([target.context.root, "pkg.http"]);
+    expect(target.graph.navigate(target.context.system!, "packages")).toEqual(["pkg.http"]);
     expect(nameOf(target.graph, "lib.http.request")).toBe("Request");
     expect(nameOf(target.graph, "pkg.http.medium")).toBe("HTTP");
     expect(diagnose(target.context)).toEqual([]);
@@ -86,7 +86,7 @@ describe("exporting a selection", () => {
     const content = exportSelection(game, ["pkg.link"], { name: "Link", tags: ["network"] });
     expect(diagnose(open(content))).toEqual([]);
     const file = writeSystem(content);
-    expect(file.design.components.map((c) => c.id)).toEqual(["pkg.link"]);
+    expect([file.design.root.id, ...file.design.packages.map((c) => c.id)]).toEqual(["pkg.link"]);
     const { target, session } = fresh();
     importPackage(session, packageOf(readSystem(file).system, "file", "link.json"));
     expect(diagnose(target.context)).toEqual([]);

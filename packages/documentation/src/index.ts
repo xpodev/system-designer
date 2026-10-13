@@ -3,7 +3,7 @@
  * is a tool context, not part of the design: the core knows nothing of it, and nothing in a
  * design depends on it. The things it describes are its Subjects, by id — the System, its
  * Components, Languages, Entities, Relationships, Formulas, Interactions, Transformations,
- * Mediums, Deployments, Instances, Connections and Configurations — and it keeps their
+ * Mediums, Deployments, Instances and Connections — and it keeps their
  * Descriptions with the System, as its own attachment.
  *
  * Describing is an Edit like any other: it is on the one History, told to every session, and
@@ -30,7 +30,6 @@ export const SUBJECTS: ReadonlySet<string> = new Set([
   "Deployment",
   "Instance",
   "Connection",
-  "Configuration",
 ]);
 
 interface Stored {
@@ -89,7 +88,7 @@ export const documentationEditor: readonly Operation[] = [
     editor: "DocumentationEditor",
     name: "describe",
     kind: "change",
-    about: "Describes something in the System — the System itself, a Component, Language, Entity, Relationship, Formula, Interaction, Transformation, Medium, Deployment, Instance, Connection or Configuration: what it is and what it is for, in prose. Empty text removes the description.",
+    about: "Describes something in the System — the System itself, a Component, Language, Entity, Relationship, Formula, Interaction, Transformation, Medium, Deployment, Instance or Connection: what it is and what it is for, in prose. Empty text removes the description.",
     parameters: [
       { name: "subject", kind: "element", of: [...SUBJECTS], about: "what is described" },
       { name: "text", kind: "text", about: "the description, in prose (a little Markdown); empty to remove it" },

@@ -1,6 +1,6 @@
 /**
- * The Catalog (docs/tool-design.md): content available to import. A Package's content is a
- * Tool::System — library content is stored exactly like any other System — and its Origin is
+ * The Catalog: content available to import. A Package's content is a System — library
+ * content is stored exactly like any other System — and its Origin is
  * the standard catalog or a file. Importing copies a Package's Components in beside the
  * Target's root, through the SystemEditor, one Edit each, so every System stays closed; the
  * root, and what is nested in it, then import from them as from any sibling. Exporting a
@@ -11,7 +11,7 @@
  * Target — the same Element, by id, Entity and name, as when "HTTP over TCP" is imported
  * over an HTTP imported before — is reused rather than copied again.
  */
-import { ancestry, copy, nameOf, setName, systemComposition, systemGraph, type Graph } from "@systemathic/core";
+import { ancestry, copy, coreGraph, nameOf, setName, systemComposition, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { SystemEditor } from "@systemathic/editors";
 import type { SystemContext, ToolSystem } from "@systemathic/tool";
@@ -118,7 +118,7 @@ export function importPackage(session: EditSession, p: Package): Import {
   const ids = new Map<string, string>();
   const edits: Edit[] = [];
   const reused: string[] = [];
-  for (const component of source.navigate(sourceSystem, "components")) {
+  for (const component of [...source.navigate(sourceSystem, "root"), ...source.navigate(sourceSystem, "packages")]) {
     if (sameElement(source, target, component)) {
       for (const id of owned(source, component)) if (target.has(id)) ids.set(id, id);
       reused.push(component);
@@ -156,13 +156,10 @@ const UP: Readonly<Record<string, string>> = {
   Formula: "language",
   End: "relationship",
   Interaction: "component",
-  Parameter: "interaction",
-  Transformation: "holder",
-  EntityMapping: "transformation",
-  RelationshipMapping: "transformation",
-  Deferred: "transformation",
-  Medium: "definer",
-  Deployment: "deployed",
+  Transformation: "component",
+  Parameter: "function",
+  Medium: "component",
+  Deployment: "component",
   Instance: "deployment",
   Connection: "deployment",
   Mediation: "connection",
@@ -199,8 +196,9 @@ export function closure(graph: Graph, selection: readonly string[]): Set<string>
     pending.push(
       ...owners(users, "importedComponents"),
       ...owners(owners(users, "importedInteractions"), "component"),
-      ...owners(owners(users, "importedTransformations"), "holder"),
-      ...owners(owners(users, "importedMediums"), "definer"),
+      ...owners(owners(users, "importedTransformations"), "component"),
+      ...owners(owners(users, "importedMediums"), "component"),
+      ...owners(users, "implements"),
       ...owners(owners(users, "uses"), "component"),
       ...owners(owners(languages, "extends"), "component"),
       ...owners(inside.filter((id) => graph.get(id).entity === "Instance"), "of"),
@@ -214,15 +212,14 @@ export function closure(graph: Graph, selection: readonly string[]): Set<string>
 export function exportSelection(context: SystemContext, selection: readonly string[], info: { name: string; about?: string; tags?: readonly string[] }): ToolSystem {
   const source = context.design;
   const chosen = closure(source, selection);
-  const design = systemGraph();
+  const design = coreGraph();
   const key = info.name.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase() || "package";
   const system = `${key}.system`;
   design.add("System", system);
   setName(design, system, info.name);
   const ordered = source.ofEntity("Component").filter((id) => chosen.has(id));
   const ids = new Map<string, string>();
-  for (const id of copy(source, design, ordered, ids)) design.connect(system, "components", id);
-  const [first] = design.navigate(system, "components");
-  if (first !== undefined) design.connect(system, "root", first);
+  // The first Component is the Package's root; the rest are packages beside it.
+  copy(source, design, ordered, ids).forEach((id, index) => design.connect(system, index === 0 ? "root" : "packages", id));
   return { design, attachments: [{ owner: ATTACHMENT_OWNER, data: { package: key, about: info.about ?? "", tags: [...(info.tags ?? [])] } satisfies PackageInfo }] };
 }

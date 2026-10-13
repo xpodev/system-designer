@@ -41,9 +41,9 @@ describe("perspectives", () => {
     expect(() => view(game, "deployment", { subject: "game" })).toThrow("needs a Deployment");
   });
 
-  it("outline: the root first, then the packages beside it, each nested, and the Configurations", () => {
+  it("outline: the root first, then the packages beside it, each nested", () => {
     const v = view(game, "outline");
-    expect(children(v, "game.system")).toEqual(["Game", "NetStack", "Link", "In-process", "Configurations"]);
+    expect(children(v, "game.system")).toEqual(["Game", "NetStack", "Link", "In-process"]);
     const root = "game.system/game";
     expect(children(v, `${root}/core`)).toEqual([
       "Monster",
@@ -53,10 +53,10 @@ describe("perspectives", () => {
       "all m in Monster. not m in m.^leader",
     ]);
     expect(v.items.find((item) => item.subject === "combat.combat-monster")!.detail).toBe("extends Monster, Targetable, Attacker");
-    expect(v.items.find((item) => item.subject === "game.server.attack")!.detail).toBe("attack(attacker: Attacker, target: Targetable) → Damage, over Combat");
+    expect(v.items.find((item) => item.subject === "game.server.attack")!.detail).toBe("attack(attacker: Attacker, target: Targetable): Damage, over Combat");
+    expect(v.items.find((item) => item.subject === "game.combat-over-network.down")!.detail).toBe("Combat down to Network(monster: CombatMonster): EntityId");
     expect(v.items.find((item) => item.subject === "game.online.client-1-attacks")!.detail).toBe("over Network (realized), then Wire (realized)");
     expect(v.items.find((item) => item.subject === "game.local.client-attacks")!.detail).toBe("over In-process");
-    expect(children(v, "configurations")).toEqual(["Release"]);
   });
 
   it("language: Entities, what they extend, the Relationships between them, and the Interactions over it", () => {
@@ -108,7 +108,8 @@ describe("perspectives", () => {
     const v = view(game, "levels");
     expect(v.items.filter((item) => item.kind === "level").map((item) => item.label)).toEqual(["Kernel", "Systemathic Languages", "Model"]);
     expect(children(v, "kernel")).toContain("Relationship");
-    expect(children(v, "languages/Std")).toEqual(["Deferred"]);
+    expect(children(v, "languages/Functions")).toEqual(["Function", "Parameter"]);
+    expect(children(v, "languages/Systems")).toEqual(["System"]);
     expect(children(v, "languages/Mediation")).toEqual(["Medium", "Mediation"]);
   });
 

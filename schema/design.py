@@ -40,7 +40,7 @@ def from_design(path: Path) -> dict[str, dict]:
         for child in component["components"]:
             walk(child)
 
-    for component in design["components"]:
+    for component in [design["root"], *design["packages"]]:
         walk(component)
     if len(found) != 1:
         raise LookupError(f"{path} has {len(found)} Components named Systemathic, not one")

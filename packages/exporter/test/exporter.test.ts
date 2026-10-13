@@ -26,7 +26,8 @@ describe("specification", () => {
   });
 
   it("states what each Component may use, imports and offers, and how its Deployments connect its parts", () => {
-    expect(text("interaction:game.server.attack")).toBe("Interaction attack(attacker: Attacker, target: Targetable) → Damage, over Combat. It is an Action on 'attacker'.");
+    expect(text("interaction:game.server.attack")).toBe("Interaction attack(attacker: Attacker, target: Targetable): Damage, over Combat.");
+    expect(text("transformation:game.combat-over-network.down")).toBe("Transformation Combat down to Network(monster: CombatMonster): EntityId: from Combat to Network.");
     expect(text("scope:game.combat-over-network")).toBe("May use exactly the Languages Core, Fighting, Combat, Network, and nothing else.");
     expect(text("imports:game.client")).toBe(
       "Imports the Components Physics, CombatOverNetwork, NetworkOverWire, In-process; the Interactions attack; the Transformations none; the Mediums none; it reaches nothing else of any other Component.",
@@ -35,13 +36,10 @@ describe("specification", () => {
       "In Online, client-1 uses attack of server; it passes over Network (down by Combat down to Network, up by Network up to Combat), then Wire (down by Network down to Transport, up by Transport up to Network).",
     );
     expect(text("medium:pkg.netstack.medium")).toBe("Medium Network: a What passes over Network, through send.");
-    expect(text("configuration:game.release")).toBe(
-      "Configuration Release: the root is put together as Online; server is put together as Single; client-1 is put together as Desktop; client-2 is put together as Desktop.",
-    );
   });
 
   it("nests Components as sections, the packages apart", () => {
-    expect(spec.sections.map((s) => s.title)).toEqual(["Component Game", "Packages", "Configurations"]);
+    expect(spec.sections.map((s) => s.title)).toEqual(["Component Game", "Packages"]);
     expect(spec.sections[1]!.sections.map((s) => s.title)).toEqual(["Component NetStack", "Component Link", "Component In-process"]);
   });
 
@@ -103,7 +101,7 @@ describe("documentation", () => {
 
   it("is a Markdown document, with every Description, Component by Component, and the rules' documentation", () => {
     const markdown = documentationMarkdown(doc);
-    expect(markdown).toMatch(/^# Game\n\nA small game\.\n\nMonsters, and those who fight them\.\n\nThis System has 7 Components, 3 packages beside its root, and 1 Configuration\.\n/);
+    expect(markdown).toMatch(/^# Game\n\nA small game\.\n\nMonsters, and those who fight them\.\n\nThis System has 7 Components, and 3 packages beside its root\.\n/);
     expect(markdown).toContain("### Core — a core Language\n");
     expect(markdown).toContain("### Combat — extends Core, Fighting\n");
     expect(markdown).toContain("- **CombatMonster** : Monster, Targetable, Attacker\n");
