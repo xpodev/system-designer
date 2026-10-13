@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { stdSpec } from "@systemathic/core";
+import { coreSpec } from "@systemathic/core";
 import { open } from "@systemathic/tool";
 import { readSystem } from "@systemathic/tool-json";
 import { snapshot, type Run } from "@systemathic/verifier";
@@ -25,11 +25,10 @@ describe("suggestions", () => {
   });
 
   it("are keyed by axioms that exist, and cover every axiom a fix can be suggested for", () => {
-    const abouts = stdSpec.axioms.map((axiom) => axiom.about);
+    const abouts = coreSpec.axioms.map((axiom) => axiom.about);
     for (const about of suggestedAxioms) expect(abouts).toContain(about);
-    const without = ["Bounds are well-founded: no Bound succeeds itself", "Every choice belongs to a Configuration", "No choice is below itself, eventually"];
-    const order = stdSpec.axioms.filter((axiom) => axiom.id === "order").map((axiom) => axiom.about);
-    expect(abouts.filter((about) => !suggestedAxioms.includes(about)).sort()).toEqual([...without, ...order].sort());
+    const order = coreSpec.axioms.filter((axiom) => axiom.id === "order").map((axiom) => axiom.about);
+    expect(abouts.filter((about) => !suggestedAxioms.includes(about)).sort()).toEqual(order.sort());
   });
 });
 
@@ -53,7 +52,7 @@ describe("metrics", () => {
   it("count, measure depth, and fan in and out", () => {
     const found = metrics(context("game.systemathic.json").design);
     const of = (subject: string, measure: string) => found.find((m) => m.subject === subject && m.measure === measure)?.value;
-    expect(of("game.system", "components")).toBe(4);
+    expect(of("game.system", "packages")).toBe(3);
     expect(of("game", "languages")).toBe(3);
     expect(of("core", "entities")).toBe(2);
     expect(of("combat", "extends")).toBe(2);
@@ -61,6 +60,7 @@ describe("metrics", () => {
     expect(of("game.physics", "fan-in")).toBe(2);
     expect(of("game.client", "fan-out")).toBe(5);
     expect(of("game.online.client-1-attacks", "mediations")).toBe(2);
-    expect(of("game.combat-over-network.down", "mappings")).toBe(3);
+    expect(of("game.combat-over-network.down", "parameters")).toBe(1);
+    expect(of("game.server.attack", "parameters")).toBe(2);
   });
 });

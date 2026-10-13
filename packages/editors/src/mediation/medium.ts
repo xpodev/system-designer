@@ -38,10 +38,10 @@ export function setCall(session: EditSession, medium: string, call: string): Edi
 /** Creates the call: a new Interaction of the Medium's Component, over its Language, with an output Entity. */
 export function createCall(session: EditSession, medium: string, name: string, output: string): Edit {
   const graph = session.target.graph;
-  const [component] = graph.navigate(medium, "definer");
+  const [component] = graph.navigate(medium, "component");
   const id = freshId(graph, component ?? medium, name);
   return session.edit("addition", `createCall ${name}`, [id], (graph) => {
-    const [definer] = graph.navigate(medium, "definer");
+    const [definer] = graph.navigate(medium, "component");
     const [language] = graph.navigate(medium, "language");
     if (definer === undefined) return;
     addNamed(graph, "Interaction", id, name, definer, "interactions");

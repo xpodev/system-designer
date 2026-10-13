@@ -4,7 +4,7 @@
  * server's tools, a command line — are built from these descriptors, so a new operation, or a
  * new editor, needs no change to any client.
  */
-import { boundInstance, linkMentions, setName, type Graph } from "@systemathic/core";
+import { boundInstance, setName, type Graph } from "@systemathic/core";
 import type { Edit, EditKind, EditSession } from "@systemathic/editing";
 
 /** An argument: an Element of some Entity, several, a name or text, a range, a position, or a choice. */
@@ -82,7 +82,8 @@ function check(graph: Graph, parameter: ParameterSpec, value: unknown): void {
     if (!parameter.optional) fail(describeKind(parameter));
     return;
   }
-  const isElement = (id: unknown) => typeof id === "string" && graph.has(id) && (parameter.of ?? []).includes(graph.get(id).entity);
+  const isElement = (id: unknown) =>
+    typeof id === "string" && graph.has(id) && (parameter.of ?? []).some((entity) => graph.vocabulary.conforms(graph.get(id).entity, entity));
   switch (parameter.kind) {
     case "element":
       if (!isElement(value)) fail(describeKind(parameter));
@@ -134,21 +135,13 @@ export function addNamed(graph: Graph, entity: string, id: string, name: string,
   graph.connect(owner, end, id);
 }
 
-/** Sets an End's range: `min`, and `max` unless unbounded. */
+/** Sets a range — of an End or an Instance: `min`, and `max` unless unbounded. */
 export function setBounds(graph: Graph, end: string, value: string): void {
   const { min, max } = parseRange(value)!;
   graph.disconnect(end, "min");
   graph.disconnect(end, "max");
   graph.connect(end, "min", boundInstance(graph, min));
   if (max !== null) graph.connect(end, "max", boundInstance(graph, max));
-}
-
-/**
- * Formulas are kept as text; which Entities and ends they mention follows from it, so after a
- * change to a vocabulary every Formula's mentions are derived again.
- */
-export function relinkFormulas(graph: Graph): void {
-  for (const formula of graph.ofEntity("Formula")) linkMentions(graph, formula);
 }
 
 export const str = (args: Arguments, name: string): string => args[name] as string;

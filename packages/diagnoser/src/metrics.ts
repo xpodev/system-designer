@@ -1,12 +1,12 @@
 /**
- * Statistics about a System (docs/tool-design.md, Diagnostics: Metric and Measure): counts,
- * depths, fan-in and fan-out. A Metric is one Measure of one Subject.
+ * Statistics about a System: counts, depths, fan-in and fan-out. A Metric is one Measure of
+ * one Subject.
  */
-import { ancestry, mediationStack, type Graph } from "@systemathic/core";
+import { ancestry, mediationStack, parameters, type Graph } from "@systemathic/core";
 
 export type Measure =
+  | "packages"
   | "components"
-  | "configurations"
   | "languages"
   | "entities"
   | "relationships"
@@ -22,7 +22,8 @@ export type Measure =
   | "connections"
   | "mediations"
   | "transformations"
-  | "mappings";
+  | "implements"
+  | "parameters";
 
 export interface Metric {
   readonly subject: string;
@@ -34,15 +35,15 @@ export interface Metric {
 const IMPORTS: readonly (readonly [end: string, owner: string | null])[] = [
   ["importedComponents", null],
   ["importedInteractions", "component"],
-  ["importedTransformations", "holder"],
-  ["importedMediums", "definer"],
+  ["importedTransformations", "component"],
+  ["importedMediums", "component"],
 ];
 
 export function metrics(graph: Graph): Metric[] {
   const found: Metric[] = [];
   const count = (subject: string, measure: Measure, value: number) => found.push({ subject, measure, value });
   for (const system of graph.ofEntity("System")) {
-    for (const measure of ["components", "configurations"] as const) count(system, measure, graph.navigate(system, measure).length);
+    count(system, "packages", graph.navigate(system, "packages").length);
   }
   for (const language of graph.ofEntity("Language")) {
     for (const measure of ["entities", "relationships", "formulas", "extends"] as const) count(language, measure, graph.navigate(language, measure).length);
@@ -58,7 +59,7 @@ export function metrics(graph: Graph): Metric[] {
       }
     }
     importedFrom.set(component, from);
-    for (const measure of ["languages", "components", "interactions", "deployments", "transformations"] as const) {
+    for (const measure of ["languages", "components", "interactions", "deployments", "transformations", "implements"] as const) {
       count(component, measure, graph.navigate(component, measure).length);
     }
     count(component, "imports", imports);
@@ -72,8 +73,6 @@ export function metrics(graph: Graph): Metric[] {
     for (const measure of ["instances", "connections"] as const) count(deployment, measure, graph.navigate(deployment, measure).length);
   }
   for (const connection of graph.ofEntity("Connection")) count(connection, "mediations", mediationStack(graph, connection).length);
-  for (const transformation of graph.ofEntity("Transformation")) {
-    count(transformation, "mappings", graph.navigate(transformation, "entityMappings").length + graph.navigate(transformation, "relationshipMappings").length);
-  }
+  for (const func of graph.ofEntity("Function")) count(func, "parameters", parameters(graph, func).length);
   return found;
 }

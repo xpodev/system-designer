@@ -1,9 +1,9 @@
 /**
  * MediationEditor (Mediation): a Connection's stack of Mediations — each over a Medium, and
- * optionally realized by a round trip of Transformations. The first mediates the Connection's
- * What; each next one, the call of the Medium above it.
+ * optionally realized by a round trip of Transformations. The top one mediates the Connection's
+ * What; each one below, the call of the Medium above it.
  */
-import { ancestry, mediationStack, nameOf, remove as removeFromModel, setMediationStack, type Graph } from "@systemathic/core";
+import { ancestry, mediationStack, nameOf, parameters, remove as removeFromModel, setMediationStack, setName, setParameters, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { addNamed, element, freshId, index, maybe, operation, str, text, type Operation } from "../operation.js";
 
@@ -38,18 +38,28 @@ export function realize(session: EditSession, mediation: string, down: string | 
   });
 }
 
-/** The Language a Mediation's What is over: the Connection's What's, or the call's of the Medium above it. */
-export function whatLanguage(graph: Graph, mediation: string): string | undefined {
+/** The Interaction a Mediation mediates: the Connection's first What, or the call of the Medium above it. */
+export function whatInteraction(graph: Graph, mediation: string): string | undefined {
   const [connection] = graph.navigate(mediation, "connection");
   if (connection === undefined) return undefined;
   const stack = mediationStack(graph, connection);
   const position = stack.indexOf(mediation);
-  if (position <= 0) {
-    const [first] = graph.navigate(connection, "what");
-    return first === undefined ? undefined : graph.navigate(first, "language")[0];
-  }
+  if (position <= 0) return graph.navigate(connection, "what")[0];
   const [above] = graph.navigate(stack[position - 1]!, "how");
-  return above === undefined ? undefined : graph.navigate(above, "language")[0];
+  return above === undefined ? undefined : graph.navigate(above, "call")[0];
+}
+
+/** The Language a Mediation's What is over: the Connection's What's, or the call's of the Medium above it. */
+export function whatLanguage(graph: Graph, mediation: string): string | undefined {
+  const interaction = whatInteraction(graph, mediation);
+  return interaction === undefined ? undefined : graph.navigate(interaction, "language")[0];
+}
+
+/** The input and output Entities of an Interaction: its first Parameter's type, and its output. */
+function signature(graph: Graph, interaction: string | undefined): { input?: string; output?: string } {
+  if (interaction === undefined) return {};
+  const [first] = parameters(graph, interaction);
+  return { input: first === undefined ? undefined : graph.navigate(first, "type")[0], output: graph.navigate(interaction, "output")[0] };
 }
 
 /**
@@ -68,7 +78,7 @@ export function createRealization(session: EditSession, mediation: string, name?
     throw new Error("a Mediation is realized between its What's Language and its Medium's: it has to have both");
   }
   const [deployment] = graph.navigate(connection, "deployment");
-  const [deployed] = deployment === undefined ? [] : graph.navigate(deployment, "deployed");
+  const [deployed] = deployment === undefined ? [] : graph.navigate(deployment, "component");
   if (deployed === undefined) throw new Error("the Connection is in no Deployment");
   const [toComponent] = graph.navigate(connection, "toComponent");
   const title = name ?? `${nameOf(graph, what) ?? "What"}Over${nameOf(graph, how) ?? "How"}`;
@@ -83,18 +93,30 @@ export function createRealization(session: EditSession, mediation: string, name?
       const [owner] = graph.navigate(language, "component");
       if (owner !== undefined && !within.has(owner)) graph.connect(holder, "importedComponents", owner);
     }
-    addNamed(graph, "Transformation", down, `${title} down`, holder, "transformations");
-    graph.connect(down, "source", what);
-    graph.connect(down, "target", how);
-    addNamed(graph, "Transformation", up, `${title} up`, holder, "transformations");
-    graph.connect(up, "source", how);
-    graph.connect(up, "target", what);
+    // The way down takes what the What takes, and gives what the call takes; the way up takes
+    // what the call gives, and gives what the What gives. Where either is unknown, the
+    // signature is left for the designer, and diagnosed.
+    const above = signature(graph, whatInteraction(graph, mediation));
+    const call = signature(graph, graph.navigate(medium!, "call")[0]);
+    const realize = (id: string, title: string, input: string | undefined, output: string | undefined) => {
+      addNamed(graph, "Transformation", id, title, holder, "transformations");
+      if (input !== undefined) {
+        const parameter = `${id}.input`;
+        graph.add("Parameter", parameter);
+        setName(graph, parameter, "input");
+        graph.connect(parameter, "type", input);
+        setParameters(graph, id, [parameter]);
+      }
+      if (output !== undefined) graph.connect(id, "output", output);
+    };
+    realize(down, `${title} down`, above.input, call.input);
+    realize(up, `${title} up`, call.output, above.output);
     graph.disconnect(mediation, "down");
     graph.disconnect(mediation, "up");
     graph.connect(mediation, "down", down);
     graph.connect(mediation, "up", up);
     if (toComponent !== undefined) return;
-    const ends = [...graph.navigate(connection, "from"), ...graph.navigate(connection, "toInstance")].flatMap((instance) => graph.navigate(instance, "of"));
+    const ends = [...graph.navigate(connection, "from"), ...graph.navigate(connection, "to")].flatMap((instance) => graph.navigate(instance, "of"));
     for (const end of ends) for (const transformation of [down, up]) graph.connect(end, "importedTransformations", transformation);
   });
 }

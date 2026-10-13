@@ -1,10 +1,10 @@
 /**
  * ComponentEditor (Contexts): a Component — its children, Languages and Transformations, the
- * Languages it uses, and the Components and Transformations it imports. Adding a Language or
- * a Transformation is here because the Component owns it. What layers above add to a
- * Component — Interactions, Deployments, Mediums — their own editors add.
+ * Languages it uses, the Components and Transformations it imports, and the Components it
+ * implements. Adding a Language or a Transformation is here because the Component owns it.
+ * What layers above add to a Component — Deployments, Mediums — their own editors add.
  */
-import { remove as removeFromModel, setName } from "@systemathic/core";
+import { nameOf, remove as removeFromModel, setName, setParameters } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { addNamed, element, freshId, operation, str, text, type Operation } from "../operation.js";
 
@@ -23,14 +23,36 @@ export function addLanguage(session: EditSession, component: string, name: strin
   return session.edit("addition", `addLanguage ${name}`, [id], (graph) => addNamed(graph, "Language", id, name, component, "languages"));
 }
 
-/** Adds a Transformation from one Language to another, held by the Component. */
-export function addTransformation(session: EditSession, component: string, name: string, source: string, target: string): Edit {
-  const id = freshId(session.target.graph, component, name);
+/**
+ * Adds a Transformation held by the Component: from an input of one Language to an output of
+ * another. More inputs, all of the input's Language, are the FunctionEditor's to add.
+ */
+export function addTransformation(session: EditSession, component: string, name: string, input: string, output: string): Edit {
+  const graph = session.target.graph;
+  const id = freshId(graph, component, name);
+  const inputName = (nameOf(graph, input) ?? "input").replace(/^./, (c) => c.toLowerCase());
+  const parameter = freshId(graph, id, inputName);
   return session.edit("addition", `addTransformation ${name}`, [id], (graph) => {
     addNamed(graph, "Transformation", id, name, component, "transformations");
-    graph.connect(id, "source", source);
-    graph.connect(id, "target", target);
+    graph.add("Parameter", parameter);
+    setName(graph, parameter, inputName);
+    graph.connect(parameter, "type", input);
+    setParameters(graph, id, [parameter]);
+    graph.connect(id, "output", output);
   });
+}
+
+/** Makes a Component an implementation of another: it imports it, and may stand wherever it is placed. */
+export function implement(session: EditSession, component: string, implemented: string): Edit {
+  return session.edit("change", "implement", [component, implemented], (graph) => {
+    graph.connect(component, "implements", implemented);
+    graph.connect(component, "importedComponents", implemented);
+  });
+}
+
+/** Stops a Component implementing another; the import stays. */
+export function unimplement(session: EditSession, component: string, implemented: string): Edit {
+  return session.edit("change", "unimplement", [component, implemented], (graph) => graph.disconnect(component, "implements", implemented));
 }
 
 export function use(session: EditSession, component: string, language: string): Edit {
@@ -56,7 +78,7 @@ export function unimportItem(session: EditSession, component: string, item: stri
 export function move(session: EditSession, component: string, parent: string): Edit {
   return session.edit("change", "move", [component, parent], (graph) => {
     graph.disconnect(component, "parent");
-    graph.disconnect(component, "system");
+    for (const system of graph.ofEntity("System")) graph.disconnect(system, "packages", component);
     graph.connect(parent, "components", component);
   });
 }
@@ -84,9 +106,20 @@ export const componentEditor: readonly Operation[] = [
     EDITOR,
     "addTransformation",
     "addition",
-    "Adds a Transformation held by a Component, from a source Language to a target Language, both of which it uses.",
-    [COMPONENT, text("name", "the Transformation's name"), element("source", "Language", "the source Language"), element("target", "Language", "the target Language")],
-    (s, a) => addTransformation(s, str(a, "component"), str(a, "name"), str(a, "source"), str(a, "target")),
+    "Adds a Transformation held by a Component, from an input Entity of one Language it uses to an output Entity of another.",
+    [COMPONENT, text("name", "the Transformation's name"), element("input", "Entity", "the input's Entity"), element("output", "Entity", "the output Entity")],
+    (s, a) => addTransformation(s, str(a, "component"), str(a, "name"), str(a, "input"), str(a, "output")),
+  ),
+  operation(
+    EDITOR,
+    "implement",
+    "change",
+    "Makes a Component implement another: an alternative to it, wherever it is placed. It imports what it implements.",
+    [COMPONENT, element("implemented", "Component", "the Component implemented")],
+    (s, a) => implement(s, str(a, "component"), str(a, "implemented")),
+  ),
+  operation(EDITOR, "unimplement", "change", "Stops a Component implementing another.", [COMPONENT, element("implemented", "Component", "the Component implemented")], (s, a) =>
+    unimplement(s, str(a, "component"), str(a, "implemented")),
   ),
   operation(EDITOR, "use", "change", "Makes a Component use a Language in its scope.", [COMPONENT, element("language", "Language", "the Language")], (s, a) =>
     use(s, str(a, "component"), str(a, "language")),

@@ -6,7 +6,7 @@
  */
 import { accessibleInteractions, extendedLanguages, nameOf, remove as removeFromModel, setName, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
-import { addNamed, element, elements, flag, freshId, ids, operation, str, text, type Operation } from "../operation.js";
+import { addNamed, element, elements, flag, freshId, ids, operation, range, setBounds, str, text, type Operation } from "../operation.js";
 
 const EDITOR = "DeploymentEditor";
 
@@ -15,13 +15,19 @@ export function addDeployment(session: EditSession, component: string, name: str
   return session.edit("addition", `addDeployment ${name}`, [id], (graph) => addNamed(graph, "Deployment", id, name, component, "deployments"));
 }
 
-/** Places a named Instance of a child of the deployed Component, or of a Component it imports. */
-export function addInstance(session: EditSession, deployment: string, component: string, name: string): Edit {
+/** Places a named Instance of a child of the deployed Component, or of a Component it imports, with a range: `1..1` unless given. */
+export function addInstance(session: EditSession, deployment: string, component: string, name: string, occupants = "1..1"): Edit {
   const id = freshId(session.target.graph, deployment, name);
   return session.edit("addition", `addInstance ${name}`, [id], (graph) => {
     addNamed(graph, "Instance", id, name, deployment, "instances");
     graph.connect(id, "of", component);
+    setBounds(graph, id, occupants);
   });
+}
+
+/** Sets how many occupy an Instance: `1..1`, `0..1`, `0..N`, … */
+export function setRange(session: EditSession, instance: string, occupants: string): Edit {
+  return session.edit("change", `setRange ${occupants}`, [instance], (graph) => setBounds(graph, instance, occupants));
 }
 
 /** What a Connection from `instance` with `what` still needs: Interactions to import, and Languages to use. */
@@ -52,7 +58,7 @@ export function connect(session: EditSession, deployment: string, from: string, 
     graph.add("Connection", id);
     graph.connect(deployment, "connections", id);
     graph.connect(id, "from", from);
-    graph.connect(id, graph.get(to).entity === "Instance" ? "toInstance" : "toComponent", to);
+    graph.connect(id, graph.get(to).entity === "Instance" ? "to" : "toComponent", to);
     for (const interaction of what) graph.connect(id, "what", interaction);
     if (component === undefined) return;
     if (options.addImports) for (const interaction of missing.imports) graph.connect(component, "importedInteractions", interaction);
@@ -88,9 +94,17 @@ export const deploymentEditor: readonly Operation[] = [
     EDITOR,
     "addInstance",
     "addition",
-    "Places a named Instance of a child of the deployed Component, or of a Component it imports.",
-    [DEPLOYMENT, element("of", "Component", "the Component placed"), text("name", "the Instance's name, unique in the Deployment")],
-    (s, a) => addInstance(s, str(a, "deployment"), str(a, "of"), str(a, "name")),
+    "Places a named Instance of a child of the deployed Component, or of a Component it imports, with how many occupy it (1..1 unless given).",
+    [
+      DEPLOYMENT,
+      element("of", "Component", "the Component placed"),
+      text("name", "the Instance's name, unique in the Deployment"),
+      { ...range("range", "how many occupy it, such as 1..1 or 0..N"), optional: true },
+    ],
+    (s, a) => addInstance(s, str(a, "deployment"), str(a, "of"), str(a, "name"), (a.range as string | undefined) ?? "1..1"),
+  ),
+  operation(EDITOR, "setRange", "change", "Sets how many occupy an Instance: 1..1, 0..1, 0..N, …", [element("instance", "Instance", "the Instance"), range("range", "how many occupy it")], (s, a) =>
+    setRange(s, str(a, "instance"), str(a, "range")),
   ),
   operation(
     EDITOR,
@@ -117,7 +131,7 @@ export const deploymentEditor: readonly Operation[] = [
     EDITOR,
     "remove",
     "removal",
-    "Removes a Deployment, an Instance or a Connection: an Instance with its Connections, a Deployment with its Instances, and the choices of either.",
+    "Removes a Deployment, an Instance or a Connection: an Instance with its Connections, a Deployment with its Instances and Connections.",
     [element("item", ["Deployment", "Instance", "Connection"], "what to remove")],
     (s, a) => remove(s, str(a, "item")),
   ),

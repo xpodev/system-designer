@@ -22,7 +22,7 @@ export function addPackage(session: EditSession, system: string, source: Graph, 
   if (entity !== "Component") throw new Error(`only Components are brought into a System, not a ${entity}`);
   return session.edit("addition", `addPackage ${component}`, [], (graph) => {
     const [id] = copy(source, graph, [component], copied);
-    if (id !== undefined) graph.connect(system, "components", id);
+    if (id !== undefined) graph.connect(system, "packages", id);
   });
 }
 

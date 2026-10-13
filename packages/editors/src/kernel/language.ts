@@ -8,7 +8,6 @@ import {
   maybe,
   operation,
   range,
-  relinkFormulas,
   setBounds,
   str,
   text,
@@ -28,7 +27,6 @@ export function addEntity(session: EditSession, language: string, name: string):
   const id = freshId(session.target.graph, language, name);
   return session.edit("addition", `addEntity ${name}`, [id], (graph) => {
     addNamed(graph, "Entity", id, name, language, "entities");
-    relinkFormulas(graph);
   });
 }
 
@@ -43,17 +41,14 @@ export function addRelationship(session: EditSession, language: string, a: EndIn
       graph.connect(endId, "entity", end.entity);
       setBounds(graph, endId, end.range);
     }
-    relinkFormulas(graph);
   });
 }
 
-export function addFormula(session: EditSession, language: string, formula: string, constrains?: string): Edit {
+export function addFormula(session: EditSession, language: string, formula: string): Edit {
   const id = freshId(session.target.graph, language, "formula");
   return session.edit("addition", `addFormula ${formula}`, [id], (graph) => {
     graph.add("Formula", id, formula);
     graph.connect(language, "formulas", id);
-    if (constrains !== undefined) graph.connect(id, "constrains", constrains);
-    relinkFormulas(graph);
   });
 }
 
@@ -61,7 +56,6 @@ export function addFormula(session: EditSession, language: string, formula: stri
 export function extend(session: EditSession, language: string, extended: string): Edit {
   return session.edit("change", "extend", [language, extended], (graph) => {
     graph.connect(language, "extends", extended);
-    relinkFormulas(graph);
   });
 }
 
@@ -69,7 +63,6 @@ export function extend(session: EditSession, language: string, extended: string)
 export function unextend(session: EditSession, language: string, extended: string): Edit {
   return session.edit("change", "unextend", [language, extended], (graph) => {
     graph.disconnect(language, "extends", extended);
-    relinkFormulas(graph);
   });
 }
 
@@ -81,7 +74,6 @@ export function rename(session: EditSession, language: string, name: string): Ed
 export function remove(session: EditSession, language: string): Edit {
   return session.edit("removal", `remove Language`, [language], (graph) => {
     removeFromModel(graph, language);
-    relinkFormulas(graph);
   });
 }
 
@@ -117,9 +109,9 @@ export const languageEditor: readonly Operation[] = [
     EDITOR,
     "addFormula",
     "addition",
-    "Adds a Formula (an axiom) to a Language, optionally as a constraint of one of its Relationships.",
-    [LANGUAGE, text("text", "the formula, in the ASCII syntax"), element("constrains", "Relationship", "the Relationship it constrains", true)],
-    (s, a) => addFormula(s, str(a, "language"), str(a, "text"), maybe(a, "constrains")),
+    "Adds a Formula (an axiom) to a Language.",
+    [LANGUAGE, text("text", "the formula, in the ASCII syntax")],
+    (s, a) => addFormula(s, str(a, "language"), str(a, "text")),
   ),
   operation(EDITOR, "extend", "change", "Makes a Language extend another in its scope.", [LANGUAGE, element("extended", "Language", "the Language extended")], (s, a) =>
     extend(s, str(a, "language"), str(a, "extended")),

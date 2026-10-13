@@ -5,7 +5,7 @@ exports[`diagnoser > diagnoses broken/dangling.systemathic.json 1`] = `
   "found": [],
   "problems": [
     {
-      "at": "$.design.components[0].components[3].uses[1]",
+      "at": "$.design.root.components[3].uses[1]",
       "message": "refers to 'nothing', which does not exist",
     },
   ],
@@ -54,7 +54,7 @@ exports[`diagnoser > diagnoses broken/range.systemathic.json 1`] = `
   ],
   "problems": [
     {
-      "at": "$.design.components[1].mediums[0].call",
+      "at": "$.design.packages[0].mediums[0].call",
       "message": "refers to 'nothing', which does not exist",
     },
   ],
@@ -183,58 +183,18 @@ exports[`diagnoser > diagnoses broken/w6.systemathic.json 1`] = `
   "found": [
     {
       "check": "W6",
-      "message": "A Transformation's source is a Language its holder uses",
+      "message": "A Transformation's inputs are in the vocabulary of a Language its Component uses",
       "subjects": [
         "game.network-over-wire.up",
+        "game.network-over-wire.up.packet",
       ],
     },
     {
       "check": "W6",
-      "message": "A Transformation's target is a Language its holder uses",
+      "message": "A Transformation's output is in the vocabulary of a Language its Component uses",
       "subjects": [
         "game.network-over-wire.down",
-      ],
-    },
-  ],
-  "problems": [],
-}
-`;
-
-exports[`diagnoser > diagnoses broken/w7.systemathic.json 1`] = `
-{
-  "found": [
-    {
-      "check": "mapping",
-      "message": "Target Relationships join images of the source Relationship's ends",
-      "subjects": [
-        "game.combat-over-network.down#rm0",
-        "lib.network.carries",
-        "lib.network.carries.ids",
-      ],
-    },
-    {
-      "check": "mapping",
-      "message": "Target Relationships join images of the source Relationship's ends",
-      "subjects": [
-        "game.combat-over-network.down#rm0",
-        "lib.network.carries",
-        "lib.network.carries.messages",
-      ],
-    },
-    {
-      "check": "W7",
-      "message": "A Relationship mapping requires both end Entities mapped",
-      "subjects": [
-        "game.combat-over-network.down#rm0",
-        "combat.chasing.chasers",
-      ],
-    },
-    {
-      "check": "W7",
-      "message": "A Relationship mapping requires both end Entities mapped",
-      "subjects": [
-        "game.combat-over-network.down#rm0",
-        "combat.chasing.chasing",
+        "lib.transport.packet",
       ],
     },
   ],
@@ -263,9 +223,10 @@ exports[`diagnoser > diagnoses broken/w9.systemathic.json 1`] = `
   "found": [
     {
       "check": "W9",
-      "message": "A Component imports only its siblings, or what a Component it is nested in imports",
+      "message": "A nested Component imports only its siblings, or what a Component it is nested in imports",
       "subjects": [
         "game.physics",
+        "game",
         "game.client.input",
       ],
     },
@@ -322,6 +283,7 @@ exports[`diagnoser > diagnoses broken/w12.systemathic.json 1`] = `
       "subjects": [
         "game.online.client-1-attacks#m0",
         "game.combat-over-network.down",
+        "game.combat-over-network.down.monster",
       ],
     },
     {
@@ -330,25 +292,26 @@ exports[`diagnoser > diagnoses broken/w12.systemathic.json 1`] = `
       "subjects": [
         "game.online.client-1-attacks#m0",
         "game.combat-over-network.up",
+        "combat.combat-monster",
       ],
     },
     {
       "check": "W12",
-      "message": "The first Mediation's realization comes up to its Connection's What",
+      "message": "The top Mediation's realization comes up to its Connection's What",
       "subjects": [
         "game.online.client-1-attacks#m0",
         "game.combat-over-network.down",
-        "game.online.client-1-attacks",
+        "lib.network.entity-id",
         "game.server.attack",
       ],
     },
     {
       "check": "W12",
-      "message": "The first Mediation's realization goes down from its Connection's What",
+      "message": "The top Mediation's realization goes down from its Connection's What",
       "subjects": [
         "game.online.client-1-attacks#m0",
         "game.combat-over-network.up",
-        "game.online.client-1-attacks",
+        "game.combat-over-network.up.id",
         "game.server.attack",
       ],
     },
@@ -357,15 +320,15 @@ exports[`diagnoser > diagnoses broken/w12.systemathic.json 1`] = `
 }
 `;
 
-exports[`diagnoser > diagnoses broken/w13.systemathic.json 1`] = `
+exports[`diagnoser > diagnoses broken/w14.systemathic.json 1`] = `
 {
   "found": [
     {
-      "check": "W13",
-      "message": "A choice is of a Deployment of its Instance's Component",
+      "check": "W14",
+      "message": "A Component imports what it implements",
       "subjects": [
-        "game.release#root.0",
-        "game.online.server",
+        "game.client",
+        "game.server",
       ],
     },
   ],

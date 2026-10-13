@@ -1,11 +1,11 @@
 /**
- * The Diagnoser (docs/tool-design.md): what is wrong with a System, and what can be measured
- * about it. Structural errors are found without any knowledge of W1–W13 written here: the
+ * The Diagnoser: what is wrong with a System, and what can be measured about it. Structural
+ * errors are found without any knowledge of the well-formedness conditions written here: the
  * core's own ranges and axioms are evaluated on the System, which is a finite model. Rule
  * Violations of a verification Run reach it through its projection of Verification, so the
  * Verifier never knows diagnostics exist.
  */
-import { analyzeFormula, counterexamples, describe, parse, stdSpec, type Formula, type Graph } from "@systemathic/core";
+import { analyzeFormula, coreSpec, counterexamples, describe, parse, type Formula, type Graph } from "@systemathic/core";
 import type { SystemContext } from "@systemathic/tool";
 import type { Run } from "@systemathic/verifier";
 import { axiomSuggestions, rangeSuggestions, type Suggestion } from "./suggestions.js";
@@ -20,7 +20,7 @@ export type CheckKind = "condition" | "rule";
 
 export interface Diagnostic {
   readonly severity: Severity;
-  /** What found it: `range`, `formula`, the id of a core axiom (`W1`–`W13`, `mapping`, …), or a rule's name. */
+  /** What found it: `range`, `formula`, the id of a core axiom (`W1`–`W14`, `order`, …), or a rule's name. */
   readonly check: string;
   readonly kind: CheckKind;
   readonly message: string;
@@ -29,7 +29,7 @@ export interface Diagnostic {
   readonly suggestions: readonly Suggestion[];
 }
 
-const axioms: { readonly id: string; readonly about: string; readonly formula: Formula }[] = stdSpec.axioms.map((axiom) => ({
+const axioms: { readonly id: string; readonly about: string; readonly formula: Formula }[] = coreSpec.axioms.map((axiom) => ({
   id: axiom.id,
   about: axiom.about,
   formula: parse(axiom.formula),

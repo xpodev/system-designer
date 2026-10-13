@@ -6,16 +6,15 @@ import { describe, expect, it } from "vitest";
 import {
   ArgumentError,
   ComponentEditor,
-  ConfigurationEditor,
   DeploymentEditor,
   EntityEditor,
   FormulaEditor,
+  FunctionEditor,
   InteractionEditor,
   LanguageEditor,
   MediationEditor,
   MediumEditor,
   RelationshipEditor,
-  StdEditor,
   editors,
   findOperation,
 } from "../src/index.js";
@@ -32,7 +31,7 @@ function game() {
   const pack = created(
     LanguageEditor.addRelationship(s, core, { entity: monster, name: "leader", range: "0..1" }, { entity: monster, name: "followers", range: "0..N" }),
   );
-  const acyclic = created(LanguageEditor.addFormula(s, core, "all m in Monster. not m in m.^leader", pack));
+  const acyclic = created(LanguageEditor.addFormula(s, core, "all m in Monster. not m in m.^leader"));
   const fighting = created(ComponentEditor.addLanguage(s, root, "Fighting"));
   const attacker = created(LanguageEditor.addEntity(s, fighting, "Attacker"));
   const damage = created(LanguageEditor.addEntity(s, fighting, "Damage"));
@@ -47,14 +46,13 @@ function game() {
   const message = created(LanguageEditor.addEntity(s, network, "Message"));
   ComponentEditor.use(s, root, network);
   const send = created(InteractionEditor.addInteraction(s, root, network, "send", message));
-  InteractionEditor.addParameter(s, send, "message", message);
+  FunctionEditor.addParameter(s, send, "message", message);
   const medium = created(MediumEditor.addMedium(s, root, "Network", network, send));
 
   const server = created(ComponentEditor.addComponent(s, root, "Server"));
   ComponentEditor.use(s, server, combat);
   const attack = created(InteractionEditor.addInteraction(s, server, combat, "attack", damage));
-  const by = created(InteractionEditor.addParameter(s, attack, "by", attacker));
-  StdEditor.setPrimary(s, attack, by);
+  const by = created(FunctionEditor.addParameter(s, attack, "by", attacker));
   const client = created(ComponentEditor.addComponent(s, root, "Client"));
   ComponentEditor.use(s, client, combat);
 
@@ -64,7 +62,7 @@ function game() {
   const wire = created(DeploymentEditor.connect(s, online, clientInstance, serverInstance, [attack], { addImports: true }));
   const mediation = created(MediationEditor.addMediation(s, wire, medium));
   MediationEditor.createRealization(s, mediation);
-  return { target, s, root, core, monster, pack, acyclic, combat, fighter, attacker, damage, network, send, medium, server, attack, by, client, online, serverInstance, clientInstance, wire, mediation };
+  return { target, s, root, core, monster, pack, acyclic, combat, fighter, attacker, damage, network, message, send, medium, server, attack, by, client, online, serverInstance, clientInstance, wire, mediation };
 }
 
 const wrong = (target: Target) => diagnose(target.context).map((d) => d.check);
@@ -92,8 +90,14 @@ describe("concept editors", () => {
   it("realize a Mediation in a Component of its own, imported by both ends", () => {
     const { target, mediation, client, server, root } = game();
     const [down] = target.graph.navigate(mediation, "down");
-    const [holder] = target.graph.navigate(down!, "holder");
+    const [up] = target.graph.navigate(mediation, "up");
+    const [holder] = target.graph.navigate(down!, "component");
     expect(nameOf(target.graph, holder!)).toBe("CombatOverNetwork");
+    // The way down takes what attack takes and gives what send takes; the way up, the reverse.
+    const typeOf = (f: string) => parameters(target.graph, f).map((p) => nameOf(target.graph, target.graph.navigate(p, "type")[0]!));
+    const outputOf = (f: string) => nameOf(target.graph, target.graph.navigate(f, "output")[0]!);
+    expect([typeOf(down!), outputOf(down!)]).toEqual([["Attacker"], "Message"]);
+    expect([typeOf(up!), outputOf(up!)]).toEqual([["Message"], "Damage"]);
     expect(target.graph.navigate(holder!, "parent")).toEqual([root]);
     for (const end of [client, server]) expect(target.graph.navigate(end, "importedTransformations")).toEqual(target.graph.navigate(mediation, "down").concat(target.graph.navigate(mediation, "up")));
   });
@@ -133,14 +137,13 @@ describe("concept editors", () => {
     expect(wrong(target)).toEqual([]);
   });
 
-  it("keep Formulas' mentions in step with renames", () => {
+  it("read Formulas afresh after a rename", () => {
     const { target, s, pack, acyclic } = game();
     const leader = target.graph.navigate(pack, "ends")[0]!;
     RelationshipEditor.renameEnd(s, leader, "boss");
     expect(wrong(target)).toEqual(["formula"]);
     FormulaEditor.setText(s, acyclic, "all m in Monster. not m in m.^boss");
     expect(wrong(target)).toEqual([]);
-    expect(target.graph.navigate(acyclic, "mentionedEnds")).toEqual([leader]);
   });
 
   it("let an edit leave the System ill-formed, and show it", () => {
@@ -163,40 +166,45 @@ describe("concept editors", () => {
 
   it("order Parameters", () => {
     const { target, s, attack, by, attacker } = game();
-    const second = created(InteractionEditor.addParameter(s, attack, "with", attacker));
-    const first = created(InteractionEditor.addParameter(s, attack, "first", attacker, 0));
+    const second = created(FunctionEditor.addParameter(s, attack, "with", attacker));
+    const first = created(FunctionEditor.addParameter(s, attack, "first", attacker, 0));
     expect(parameters(target.graph, attack)).toEqual([first, by, second]);
-    InteractionEditor.moveParameter(s, first, 2);
+    FunctionEditor.moveParameter(s, first, 2);
     expect(parameters(target.graph, attack)).toEqual([by, second, first]);
-    InteractionEditor.removeParameter(s, by);
+    FunctionEditor.removeParameter(s, by);
     expect(parameters(target.graph, attack)).toEqual([second, first]);
-    expect(target.graph.navigate(attack, "primary")).toEqual([]);
   });
 
-  it("defer and undefer", () => {
-    const { target, s, mediation, combat } = game();
-    const [down] = target.graph.navigate(mediation, "down");
-    const [fighter] = target.graph.navigate(combat, "entities");
-    const deferral = created(StdEditor.defer(s, down!, fighter!));
-    expect(target.graph.navigate(down!, "deferred")).toEqual([deferral]);
-    StdEditor.undefer(s, down!, fighter!);
-    expect(target.graph.navigate(down!, "deferred")).toEqual([]);
-  });
-
-  it("choose Deployments per Instance, dropping what was chosen beneath a changed choice", () => {
-    const { target, s, online, server, serverInstance } = game();
-    const single = created(DeploymentEditor.addDeployment(s, server, "Single"));
-    const sharded = created(DeploymentEditor.addDeployment(s, server, "Sharded"));
-    const release = created(ConfigurationEditor.addConfiguration(s, target.context.system!, "Release", online));
-    const [root] = target.graph.navigate(release, "root");
-    const choice = created(ConfigurationEditor.choose(s, root!, serverInstance, single));
-    expect(ConfigurationEditor.choose(s, root!, serverInstance, sharded).elements[0]).toBe(choice);
-    expect(target.graph.navigate(choice, "deployment")).toEqual([sharded]);
+  it("give a Function no output, and add a Transformation from an input to an output", () => {
+    const { target, s, root, attack, monster, message } = game();
+    FunctionEditor.setOutput(s, attack, undefined);
+    expect(target.graph.navigate(attack, "output")).toEqual([]);
+    expect(wrong(target)).toEqual([]);
+    const down = created(ComponentEditor.addTransformation(s, root, "Monsters as messages", monster, message));
+    expect(parameters(target.graph, down).map((p) => nameOf(target.graph, p))).toEqual(["monster"]);
+    expect(wrong(target)).toEqual(["W6"]);
+    ComponentEditor.use(s, root, target.graph.navigate(monster, "language")[0]!);
     expect(wrong(target)).toEqual([]);
   });
 
+  it("implement a Component, and place Instances with a range", () => {
+    const { target, s, root, server, online, serverInstance } = game();
+    const backup = created(ComponentEditor.addComponent(s, root, "Backup"));
+    ComponentEditor.implement(s, backup, server);
+    expect(target.graph.navigate(backup, "implements")).toEqual([server]);
+    expect(target.graph.navigate(backup, "importedComponents")).toEqual([server]);
+    expect(wrong(target)).toEqual(["W14"]);
+    ComponentEditor.use(s, backup, target.graph.navigate(server, "uses")[0]!);
+    expect(wrong(target)).toEqual([]);
+    DeploymentEditor.setRange(s, serverInstance, "1..N");
+    expect(target.graph.navigate(serverInstance, "max")).toEqual([]);
+    DeploymentEditor.setRange(s, serverInstance, "2..1");
+    expect(wrong(target)).toEqual(["W2"]);
+    expect(created(DeploymentEditor.addInstance(s, online, server, "spare", "0..1"))).toBe(`${online}.spare`);
+  });
+
   it("are described as data, and run from arguments by name", () => {
-    expect(Object.keys(editors)).toHaveLength(13);
+    expect(Object.keys(editors)).toHaveLength(11);
     const { target, s, core } = game();
     const addEntity = findOperation("LanguageEditor", "addEntity")!;
     expect(addEntity.parameters.map((p) => [p.name, p.kind])).toEqual([["language", "element"], ["name", "text"]]);

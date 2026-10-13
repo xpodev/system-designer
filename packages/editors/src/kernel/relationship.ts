@@ -1,7 +1,7 @@
 /** RelationshipEditor (Kernel): a Relationship, its Ends and their Bounds. */
 import { remove as removeFromModel, setName } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
-import { element, maybe, operation, range, relinkFormulas, setBounds, str, text, type Operation } from "../operation.js";
+import { element, maybe, operation, range, setBounds, str, text, type Operation } from "../operation.js";
 
 const EDITOR = "RelationshipEditor";
 
@@ -9,7 +9,6 @@ export function setEntity(session: EditSession, end: string, entity: string): Ed
   return session.edit("change", "setEntity", [end], (graph) => {
     graph.disconnect(end, "entity");
     graph.connect(end, "entity", entity);
-    relinkFormulas(graph);
   });
 }
 
@@ -21,7 +20,6 @@ export function renameEnd(session: EditSession, end: string, name: string | unde
   return session.edit("change", name === undefined ? "unnameEnd" : `renameEnd ${name}`, [end], (graph) => {
     if (name === undefined) graph.disconnect(end, "name");
     else setName(graph, end, name);
-    relinkFormulas(graph);
   });
 }
 
@@ -32,7 +30,6 @@ export function setRange(session: EditSession, end: string, value: string): Edit
 export function remove(session: EditSession, relationship: string): Edit {
   return session.edit("removal", "remove Relationship", [relationship], (graph) => {
     removeFromModel(graph, relationship);
-    relinkFormulas(graph);
   });
 }
 

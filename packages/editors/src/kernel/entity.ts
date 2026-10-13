@@ -1,14 +1,13 @@
 /** EntityEditor (Kernel): an Entity, and what it extends. */
 import { remove as removeFromModel, setName } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
-import { element, operation, relinkFormulas, str, text, type Operation } from "../operation.js";
+import { element, operation, str, text, type Operation } from "../operation.js";
 
 const EDITOR = "EntityEditor";
 
 export function rename(session: EditSession, entity: string, name: string): Edit {
   return session.edit("change", `rename Entity ${name}`, [entity], (graph) => {
     setName(graph, entity, name);
-    relinkFormulas(graph);
   });
 }
 
@@ -19,14 +18,12 @@ export function rename(session: EditSession, entity: string, name: string): Edit
 export function extend(session: EditSession, entity: string, extended: string): Edit {
   return session.edit("change", "extend", [entity, extended], (graph) => {
     graph.connect(entity, "extends", extended);
-    relinkFormulas(graph);
   });
 }
 
 export function unextend(session: EditSession, entity: string, extended: string): Edit {
   return session.edit("change", "unextend", [entity, extended], (graph) => {
     graph.disconnect(entity, "extends", extended);
-    relinkFormulas(graph);
   });
 }
 
@@ -34,7 +31,6 @@ export function unextend(session: EditSession, entity: string, extended: string)
 export function remove(session: EditSession, entity: string): Edit {
   return session.edit("removal", "remove Entity", [entity], (graph) => {
     removeFromModel(graph, entity);
-    relinkFormulas(graph);
   });
 }
 
