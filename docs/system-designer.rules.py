@@ -187,7 +187,7 @@ def clients_are_hows(system: System):
         if client.interactions:
             yield Violation([client, *client.interactions], f"{client.name} is a client, but offers Interactions")
     for connection in system.all("Connection"):
-        target = connection.toInstance.of if connection.toInstance is not None else connection.toComponent
+        target = connection.to.of if connection.to is not None else connection.toComponent
         if target in clients:
             yield Violation(connection, f"a Connection goes to the client {target.name}")
 

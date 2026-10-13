@@ -30,9 +30,10 @@ __all__ = [
     "ERROR", "WARNING", "Rule", "Profile", "Violation", "rule",
     "vocab", "ancestry", "siblings", "scope", "is_core", "is_extension",
     "leaf", "self_contained", "pure", "standalone", "shared", "dependencies",
-    "what_language", "ends", "round_trip", "is_projection", "hows", "abstract_language", "abstract", "items",
+    "what_language", "ends", "source", "target", "round_trip", "is_projection", "hows", "abstract_language", "abstract",
+    "items", "interface", "implementations",
     "opacity", "mediation_acyclic", "projection_acyclic", "generic_level", "imports_acyclic",
-    "deployments_complete", "interactions_abstract", "completeness",
+    "deployments_complete", "interactions_abstract",
     "mediation_primitives", "mediation_depth", "mediations_realized",
     "standard_rules", "standard",
 ]
@@ -147,9 +148,12 @@ def ancestry(component: Element) -> list[Element]:
 
 
 def siblings(component: Element) -> list[Element]:
-    """The Components beside it: its parent's other children, or the System's other top-level Components."""
-    owner = component.parent or component.system
-    return [] if owner is None else [other for other in owner.components if other is not component]
+    """The Components beside it: its parent's other children; for the root and the packages, each other."""
+    if component.parent is not None:
+        return [other for other in component.parent.components if other is not component]
+    system = component.model.system
+    top = [] if system is None else [c for c in [system.root, *system.packages] if c is not None]
+    return [other for other in top if other is not component]
 
 
 def scope(component: Element) -> list[Element]:
@@ -177,14 +181,31 @@ def pure(component: Element) -> bool:
 def dependencies(component: Element) -> list[Element]:
     """The Components it imports from: those it imports, and those offering what it imports."""
     found: list[Element] = list(component.importedComponents)
-    owners = [i.component for i in component.importedInteractions] + [t.holder for t in component.importedTransformations] + [m.definer for m in component.importedMediums]
+    owners = [i.component for i in component.importedInteractions] + [t.component for t in component.importedTransformations] + [m.component for m in component.importedMediums]
     found += [owner for owner in owners if owner is not None and owner not in found]
     return found
 
 
 def standalone(component: Element) -> bool:
     """It has an Instance in a Deployment of its parent."""
-    return any(instance.deployment is not None and instance.deployment.deployed is component.parent for instance in component.instances)
+    return any(instance.deployment is not None and instance.deployment.component is component.parent for instance in component.instances)
+
+
+def interface(component: Element) -> bool:
+    """Something implements it."""
+    return bool(component.implementations)
+
+
+def implementations(component: Element) -> list[Element]:
+    """The Components that implement it, eventually: those implementing them too."""
+    found: list[Element] = []
+    pending = list(component.implementations)
+    while pending:
+        current = pending.pop(0)
+        if current not in found and current is not component:
+            found.append(current)
+            pending.extend(current.implementations)
+    return found
 
 
 def shared(component: Element) -> bool:
@@ -198,7 +219,7 @@ def ends(connection: Element) -> list[Element]:
     """The Components at a Connection's ends: what it goes from, and what it goes to."""
     source = getattr(connection, "from")  # `from` is a Python keyword
     found = [source.of if source is not None else None]
-    found.append(connection.toInstance.of if connection.toInstance is not None else connection.toComponent)
+    found.append(connection.to.of if connection.to is not None else connection.toComponent)
     return [component for component in found if component is not None]
 
 
@@ -215,10 +236,25 @@ def what_language(mediation: Element) -> Element | None:
     return above.language if above is not None else None
 
 
+def source(transformation: Element) -> Element | None:
+    """A Transformation's source Language: its inputs'."""
+    parameters = transformation.parameters
+    return parameters[0].type.language if parameters and parameters[0].type is not None else None
+
+
+def target(transformation: Element) -> Element | None:
+    """A Transformation's target Language: its output's."""
+    output = transformation.output
+    return output.language if output is not None else None
+
+
 def round_trip(transformation: Element) -> bool:
     """Some Transformation leads back from its target to its source."""
-    target = transformation.target
-    return target is not None and any(back.target is transformation.source for back in target.outgoing)
+    there, back = target(transformation), source(transformation)
+    if there is None:
+        return False
+    others = transformation.model.system.all("Transformation") if transformation.model.system is not None else []
+    return any(source(other) is there and target(other) is back for other in others)
 
 
 def is_projection(transformation: Element) -> bool:
@@ -341,7 +377,8 @@ def projection_acyclic(system: System) -> Iterator[Violation]:
 
     To fix it, decide which Language holds the identities, and keep projections out of it.
     """
-    for cycle in _cycles(system.all("Language"), lambda l: [t.target for t in l.outgoing if is_projection(t) and t.target is not None]):
+    projections = [t for t in system.all("Transformation") if is_projection(t) and source(t) is not None and target(t) is not None]
+    for cycle in _cycles(system.all("Language"), lambda l: [target(t) for t in projections if source(t) is l]):
         yield Violation(cycle, f"projected into themselves: {_names(cycle)}")
 
 
@@ -414,31 +451,6 @@ def interactions_abstract(system: System) -> Iterator[Violation]:
                 yield Violation([component, interaction], f"{component.name} imports {interaction.name}, over {interaction.language.name}, which Mediations are over")
 
 
-@rule(severity=WARNING)
-def completeness(system: System) -> Iterator[Violation]:
-    """Every item of a Mediation's What Language is mapped by its way down, or deferred.
-
-    A realization says how a What goes into a Medium. An Entity or Relationship of the What's
-    Language that is neither mapped nor deferred is a gap: the implementation has nothing to
-    say about it, and nobody has said that this is on purpose.
-
-    To fix it, map the item, or defer it on the Transformation if it is deliberately left
-    out; a deferral is kept in exported specifications.
-    """
-    seen: set[Element] = set()
-    for mediation in system.all("Mediation"):
-        down = mediation.down
-        if down is None or down in seen or down.source is None:
-            continue
-        seen.add(down)
-        covered = {m.source for key in ("entityMappings", "relationshipMappings") for m in getattr(down, key)}
-        for deferral in down.deferred:
-            covered.update(x for x in (deferral.entity, deferral.relationship) if x is not None)
-        missing = [item for item in items(down.source) if item not in covered]
-        if missing:
-            yield Violation([down, *missing], f"{down.name} leaves {len(missing)} item(s) of {down.source.name} neither mapped nor deferred")
-
-
 def _mediums(system: System, names: Sequence[str]) -> set[Element]:
     return {system.medium(name) for name in names}
 
@@ -499,7 +511,7 @@ def mediations_realized(*mediums: str, severity: str = ERROR) -> Rule:
 
 standard_rules: tuple[Rule, ...] = (
     opacity, mediation_acyclic, projection_acyclic, generic_level,
-    imports_acyclic, deployments_complete, interactions_abstract, completeness,
+    imports_acyclic, deployments_complete, interactions_abstract,
 )
 
 #: Every standard rule that needs no arguments, at its default severity.

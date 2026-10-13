@@ -1,4 +1,4 @@
-"""The RuleHost (docs/tool-design.md, `Verifier / Python`): runs a script's profile on a System.
+"""The RuleHost (the Python Verifier, docs/system-designer.md): runs a script's profile on a System.
 
     python -m systemathic.host describe <script.py>
     python -m systemathic.host run <script.py> <system file> [profile]
@@ -64,7 +64,7 @@ def describe(path: str) -> dict:
 def describe_module(script: ModuleType) -> dict:
     return {
         "rules": [{"name": r.name, "severity": r.severity, "about": r.about, "doc": r.doc, "script": _origin(r)} for r in rules(script)],
-        # A profile may run a rule at another severity than the rule's own (`completeness.at(ERROR)`).
+        # A profile may run a rule at another severity than the rule's own (`interactions_abstract.at(ERROR)`).
         "profiles": [
             {"name": name, "rules": [r.name for r in p.rules], "severities": {r.name: r.severity for r in p.rules}}
             for name, p in profiles(script).items()

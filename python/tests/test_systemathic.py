@@ -38,6 +38,7 @@ from systemathic.std import (  # noqa: E402
 from systemathic import assist, host  # noqa: E402
 
 EXAMPLES = PYTHON.parent / "examples"
+DOCS = PYTHON.parent / "docs"
 GAME = json.loads((EXAMPLES / "game.systemathic.json").read_text(encoding="utf-8"))
 
 
@@ -69,7 +70,6 @@ class Binding(unittest.TestCase):
         system = load(EXAMPLES / "game.systemathic.json")
         attack = system.component("Server").interactions[0]
         self.assertEqual([p.name for p in attack.parameters], ["attacker", "target"])
-        self.assertIs(attack.primary, attack.parameters[0])
         self.assertEqual(attack.output.name, "Damage")
         self.assertEqual(attack.language.name, "Combat")
         end = system.language("Core").relationships[1].ends[0]
@@ -77,6 +77,9 @@ class Binding(unittest.TestCase):
         self.assertEqual(system.language("Core").formulas[0].text, "all m in Monster. not m in m.^leader")
         self.assertEqual([m.how.name for m in system.element("game.online.client-1-attacks").mediations], ["Network", "Wire"])
         self.assertEqual(system.root.name, "Game")
+        down = system.transformation("Combat down to Network")
+        self.assertEqual((down.parameters[0].type.name, down.output.name), ("CombatMonster", "EntityId"))
+        self.assertIs(system.interaction("send").parameters[0].function, system.interaction("send"))
         self.assertEqual(system.model.problems, [])
 
     def test_reads_an_unnamed_end(self):
@@ -103,8 +106,16 @@ class Binding(unittest.TestCase):
         self.assertEqual(len(system.model.problems), 1)
 
     def test_rejects_the_previous_model(self):
-        with self.assertRaisesRegex(ValueError, "systemathic/2"):
-            read({"format": "systemathic/1"})
+        with self.assertRaisesRegex(ValueError, "systemathic/3"):
+            read({"format": "systemathic/2"})
+
+    def test_orders_chains_however_they_were_linked(self):
+        file = copy.deepcopy(GAME)
+        attack = find(file, "game.server.attack")
+        attack["parameters"].reverse()
+        system = read(file)
+        self.assertEqual([p.name for p in system.interaction("attack").parameters], ["target", "attacker"])
+        self.assertIsNone(system.interaction("attack").parameters[0].previous)
 
 
 class Standard(unittest.TestCase):
@@ -136,11 +147,13 @@ class Standard(unittest.TestCase):
         find(file, "game.physics")["imports"]["components"].append("game.server")
         result = found(file)
         self.assertEqual(result["imports_acyclic"], ["depend on each other: Physics, Server"])
-        projection = {"id": "back", "name": "back", "source": "combat", "target": "core", "context": [],
-                      "entityMappings": [], "relationshipMappings": [], "deferred": []}
-        forward = dict(projection, id="forth", name="forth", source="core", target="fighting")
-        onward = dict(projection, id="onward", name="onward", source="fighting", target="combat")
-        find(file, "game")["transformations"] += [projection, forward, onward]
+        def projection(id: str, type_: str, output: str) -> dict:
+            return {"id": id, "name": id, "parameters": [{"id": f"{id}.x", "name": "x", "type": type_}], "output": output}
+
+        back = projection("back", "combat.combat-monster", "core.monster")
+        forward = projection("forth", "core.monster", "fighting.attacker")
+        onward = projection("onward", "fighting.attacker", "combat.combat-monster")
+        find(file, "game")["transformations"] += [back, forward, onward]
         find(file, "game")["uses"] += ["core", "fighting", "combat"]
         self.assertEqual(found(file)["projection_acyclic"], ["projected into themselves: Combat, Core, Fighting"])
 
@@ -155,11 +168,6 @@ class Standard(unittest.TestCase):
         find(file, "game.client")["imports"]["interactions"].append("pkg.netstack.send")
         find(file, "game.client")["imports"]["components"].append("pkg.netstack")
         self.assertIn("Client imports send, over Network, which Mediations are over", found(file)["interactions_abstract"])
-
-    def test_deferred_items_are_complete(self):
-        file = copy.deepcopy(GAME)
-        find(file, "game.combat-over-network.down")["deferred"] = []
-        self.assertEqual(found(file)["completeness"], ["Combat down to Network leaves 1 item(s) of Combat neither mapped nor deferred"])
 
     def test_mediation_rules_take_their_arguments_and_have_none_by_default(self):
         with self.assertRaises(TypeError):
@@ -233,9 +241,8 @@ class Assist(unittest.TestCase):
         self.assertEqual([p["message"][:28] for p in bare["problems"]], ["There is no profile to verif"])
         self.assertEqual(next(r for r in result["rules"] if r["name"] == "lonely")["line"], 4)
 
-    @unittest.skip("the tool's own design is rewritten in the new model last")
     def test_finds_nothing_wrong_with_the_tool_designs_profile(self):
-        self.assertEqual(assist.check(str(EXAMPLES / "tool-design.rules.py"))["problems"], [])
+        self.assertEqual(assist.check(str(DOCS / "system-designer.rules.py"))["problems"], [])
 
     def test_offers_symbols_with_their_documentation(self):
         symbols = {(s["name"], s["kind"]): s for s in assist.symbols()}
@@ -251,12 +258,11 @@ class RuleHost(unittest.TestCase):
         done = subprocess.run([sys.executable, "-m", "systemathic.host", *args], cwd=PYTHON, capture_output=True, text=True)
         return json.loads(done.stdout)
 
-    @unittest.skip("the tool's own design is rewritten in the new model last")
     def test_runs_the_tool_designs_own_profile(self):
-        result = self.run_host("run", str(EXAMPLES / "tool-design.rules.py"), str(EXAMPLES / "tool-design.systemathic.json"))
+        result = self.run_host("run", str(DOCS / "system-designer.rules.py"), str(DOCS / "system-designer.systemathic.json"))
         self.assertEqual(result["profile"], "profile")
         self.assertEqual(len(result["rules"]), 16)
-        self.assertEqual([v for v in result["violations"] if v["severity"] == ERROR], [])
+        self.assertEqual(result["violations"], [])
         self.assertEqual(result["failures"], [])
 
     def test_reports_a_broken_rule_and_runs_the_others(self):
@@ -269,7 +275,7 @@ class RuleHost(unittest.TestCase):
     def test_describes_a_script(self):
         result = host.describe("std")
         self.assertEqual([p["name"] for p in result["profiles"]], ["standard"])
-        self.assertEqual(len(result["rules"]), 8)
+        self.assertEqual(len(result["rules"]), 7)
         opacity = result["rules"][0]
         self.assertEqual(opacity["about"], "Every mediated Connection is opaque: what uses and what offers do not know how they are connected.")
         self.assertIn("This is what makes a how swappable", opacity["doc"])
