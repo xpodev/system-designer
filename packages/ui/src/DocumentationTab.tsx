@@ -1,6 +1,7 @@
 /**
- * The Documentation: the whole System written up as one document — every Language, Domain and
- * Mediation with what it is for, each Relationship read both ways, and the rules the System is
+ * The Documentation: the whole System written up as one document — every Component, nested,
+ * with its Languages, Interactions, Transformations, Mediums and Deployments and what each is
+ * for, each Relationship read both ways, the Configurations, and the rules the System is
  * verified against with their own documentation. Every description is written in place here,
  * as in the editors; the document goes out as Markdown.
  */
@@ -61,6 +62,9 @@ export function DocumentationTab() {
   );
 }
 
+type ComponentDoc = Documentation["components"][number];
+type LanguageDoc = ComponentDoc["languages"][number];
+
 function Document({ doc }: { doc: Documentation }) {
   const w = useWorkspace();
   const model = useModel();
@@ -75,38 +79,174 @@ function Document({ doc }: { doc: Documentation }) {
     );
   const anchor = (kind: string, id: string) => `doc-${kind}-${id}`.replace(/[^\w-]/g, "-");
   const jump = (target: string) => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const flat = (components: readonly ComponentDoc[], depth = 0): { component: ComponentDoc; depth: number }[] =>
+    components.flatMap((component) => [{ component, depth }, ...flat(component.components, depth + 1)]);
 
+  const languageSection = (language: LanguageDoc) => (
+    <section key={language.id} className="doc-language">
+      <h4>
+        <Icon name="Language" size={16} className="k-language" /> <Name id={language.id}>{language.name}</Name>{" "}
+        <span className="doc-meta">{language.extends.length ? `extends ${language.extends.join(", ")}` : "a core Language"}</span>
+      </h4>
+      <Description id={language.id} invite="Describe this Language" />
+      <p className="doc-meta">{language.usedBy.length ? `Used by ${language.usedBy.join(", ")}.` : "No Component uses it yet."}</p>
+      {language.entities.length > 0 && (
+        <dl className="doc-list">
+          {language.entities.map((entity) => (
+            <div key={entity.id}>
+              <dt>
+                <Name id={entity.id} className="entity-name">
+                  {entity.name}
+                </Name>
+                {entity.extends.length > 0 && <span className="doc-meta"> : {entity.extends.join(", ")}</span>}
+                {entity.comparedBy && <span className="doc-meta"> compared by {entity.comparedBy}</span>}
+              </dt>
+              <dd>
+                <Description id={entity.id} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {language.relationships.map((relationship) => (
+        <div key={relationship.id} className="doc-relationship">
+          <Name id={relationship.id} className="mono">
+            {relationship.name}
+          </Name>
+          <ul className="readings">
+            {relationship.navigations.map((n) => (
+              <li key={n.end} className={n.by === null ? "unnamed" : ""}>
+                <code className="range-chip">
+                  {n.min}..{n.max ?? "N"}
+                </code>{" "}
+                {n.reading}
+              </li>
+            ))}
+          </ul>
+          <Description id={relationship.id} />
+        </div>
+      ))}
+      {language.axioms.length > 0 && (
+        <dl className="doc-list">
+          {language.axioms.map((axiom) => (
+            <div key={axiom.id}>
+              <dt>
+                <Name id={axiom.id} className="mono">
+                  {axiom.text}
+                </Name>
+                {axiom.constrains && <span className="doc-meta"> on {axiom.constrains}</span>}
+              </dt>
+              <dd>
+                <Description id={axiom.id} invite="Say what this axiom means" />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  );
+
+  const componentSection = (component: ComponentDoc, depth: number) => (
+    <section key={component.id} id={anchor("Component", component.id)} className="doc-section" style={{ marginLeft: Math.min(depth, 4) * 16 }}>
+      <h3>
+        <Icon name="Component" size={18} className="k-component" /> <Name id={component.id}>{component.name}</Name>
+      </h3>
+      <Description id={component.id} invite="Describe this Component" />
+      <p className="doc-meta">
+        Uses {component.uses.join(", ") || "no Language yet"}
+        {component.imports.length > 0 && <>; imports {component.imports.join(", ")}</>}.
+      </p>
+      {component.languages.map(languageSection)}
+      {component.interactions.length > 0 && (
+        <>
+          <h4>Interactions</h4>
+          <dl className="doc-list">
+            {component.interactions.map((interaction) => (
+              <div key={interaction.id}>
+                <dt>
+                  <Name id={interaction.id} className="mono">
+                    {interaction.signature}
+                  </Name>
+                  {interaction.action && <Badge severity="info">Action on {interaction.action}</Badge>}
+                </dt>
+                <dd>
+                  <Description id={interaction.id} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+      {component.transformations.map((t) => (
+        <div key={t.id} className="doc-transformation">
+          <h4>
+            <Icon name="Transformation" size={15} /> <Name id={t.id}>{t.name}</Name>{" "}
+            <span className="doc-meta">
+              {t.source} → {t.target}
+              {t.context.length > 0 && `, keeping ${t.context.join(", ")}`}
+            </span>
+          </h4>
+          <Description id={t.id} invite="Describe this Transformation" />
+          {(t.mappings.length > 0 || t.deferred.length > 0) && (
+            <ul className="mappings">
+              {t.mappings.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+              {t.deferred.map((d) => (
+                <li key={d} className="deferred">
+                  {d} — deliberately left unmapped
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      {component.mediums.map((m) => (
+        <p key={m.id} className="doc-meta">
+          <Icon name="Medium" size={14} /> Medium <Name id={m.id}>{m.name}</Name>: over {m.language}, through {m.call}.
+        </p>
+      ))}
+      {component.deployments.map((d) => (
+        <div key={d.id} className="doc-transformation">
+          <h4>
+            <Icon name="Deployment" size={15} /> <Name id={d.id}>{d.name}</Name> <span className="doc-meta">places {d.instances.join(", ") || "nothing"}</span>
+          </h4>
+          <Description id={d.id} invite="Describe this Deployment" />
+          {d.connections.length > 0 && (
+            <ul className="mappings">
+              {d.connections.map((c) => (
+                <li key={c.id}>
+                  {c.from} uses {c.what.join(", ")} of {c.to}, {c.mediations.length ? `over ${c.mediations.join(", then ")}` : "how it passes left to the implementation"}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+
+  const [root, ...packages] = doc.components;
   return (
     <article className="document documentation">
       <Description id={doc.system.id} className="lead" invite="Describe this System: what it is, and what it is for" />
 
       <nav className="doc-contents" aria-label="Contents">
-        {(
-          [
-            ["Languages", "Language", doc.languages],
-            ["Domains", "Domain", doc.domains],
-            ["Mediations", "Mediation", doc.mediations],
-          ] as const
-        ).map(
-          ([title, icon, items]) =>
-            items.length > 0 && (
-              <div key={title}>
-                <h4>
-                  <Icon name={icon} size={14} /> {title}
-                </h4>
-                <ul>
-                  {items.map((item) => (
-                    <li key={item.id}>
-                      <a href={`#${anchor(icon, item.id)}`} onClick={(e) => (e.preventDefault(), jump(anchor(icon, item.id)))}>
-                        {item.name}
-                      </a>
-                      {!item.description && <span className="undescribed" title="Not described yet" />}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ),
-        )}
+        <div>
+          <h4>
+            <Icon name="Component" size={14} /> Components
+          </h4>
+          <ul>
+            {flat(doc.components).map(({ component, depth }) => (
+              <li key={component.id} style={{ paddingLeft: depth * 12 }}>
+                <a href={`#${anchor("Component", component.id)}`} onClick={(e) => (e.preventDefault(), jump(anchor("Component", component.id)))}>
+                  {component.name}
+                </a>
+                {!component.description && <span className="undescribed" title="Not described yet" />}
+              </li>
+            ))}
+          </ul>
+        </div>
         {doc.rules.length > 0 && (
           <div>
             <h4>
@@ -123,151 +263,22 @@ function Document({ doc }: { doc: Documentation }) {
         )}
       </nav>
 
-      {doc.languages.length > 0 && <h2>Languages</h2>}
-      {doc.languages.map((language) => (
-        <section key={language.id} id={anchor("Language", language.id)} className="doc-section">
+      {root && flat([root]).map(({ component, depth }) => componentSection(component, depth))}
+      {packages.length > 0 && <h2>Packages</h2>}
+      {flat(packages).map(({ component, depth }) => componentSection(component, depth))}
+
+      {doc.configurations.length > 0 && <h2>Configurations</h2>}
+      {doc.configurations.map((c) => (
+        <section key={c.id} className="doc-section">
           <h3>
-            <Icon name="Language" size={18} className="k-language" /> <Name id={language.id}>{language.name}</Name>
+            <Icon name="Configuration" size={18} /> <Name id={c.id}>{c.name}</Name>
           </h3>
-          <Description id={language.id} invite="Describe this Language" />
-          <p className="doc-meta">{language.usedBy.length ? `Used by ${language.usedBy.join(", ")}.` : "No Domain uses it yet."}</p>
-
-          {language.entities.length > 0 && (
-            <>
-              <h4>Entities</h4>
-              <dl className="doc-list">
-                {language.entities.map((entity) => (
-                  <div key={entity.id}>
-                    <dt>
-                      <Name id={entity.id} className="entity-name">
-                        {entity.name}
-                      </Name>
-                      {entity.comparedBy && <span className="doc-meta"> compared by {entity.comparedBy}</span>}
-                    </dt>
-                    <dd>
-                      <Description id={entity.id} />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </>
-          )}
-
-          {language.relationships.length > 0 && (
-            <>
-              <h4>Relationships</h4>
-              {language.relationships.map((relationship) => (
-                <div key={relationship.id} className="doc-relationship">
-                  <Name id={relationship.id} className="mono">
-                    {relationship.name}
-                  </Name>
-                  <ul className="readings">
-                    {relationship.navigations.map((n) => (
-                      <li key={n.end} className={n.by === null ? "unnamed" : ""}>
-                        <code className="range-chip">
-                          {n.min}..{n.max ?? "N"}
-                        </code>{" "}
-                        {n.reading}
-                      </li>
-                    ))}
-                  </ul>
-                  <Description id={relationship.id} />
-                </div>
-              ))}
-            </>
-          )}
-
-          {language.interactions.length > 0 && (
-            <>
-              <h4>Interactions</h4>
-              <dl className="doc-list">
-                {language.interactions.map((interaction) => (
-                  <div key={interaction.id}>
-                    <dt>
-                      <Name id={interaction.id} className="mono">
-                        {interaction.signature}
-                      </Name>
-                      {interaction.action && <Badge severity="info">Action on {interaction.action}</Badge>}
-                    </dt>
-                    <dd>
-                      <Description id={interaction.id} />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </>
-          )}
-
-          {language.axioms.length > 0 && (
-            <>
-              <h4>Axioms</h4>
-              <dl className="doc-list">
-                {language.axioms.map((axiom) => (
-                  <div key={axiom.id}>
-                    <dt>
-                      <Name id={axiom.id} className="mono">
-                        {axiom.text}
-                      </Name>
-                      {axiom.constrains && <span className="doc-meta"> on {axiom.constrains}</span>}
-                    </dt>
-                    <dd>
-                      <Description id={axiom.id} invite="Say what this axiom means" />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </>
-          )}
-        </section>
-      ))}
-
-      {doc.domains.length > 0 && <h2>Domains</h2>}
-      {doc.domains.map((domain) => (
-        <section key={domain.id} id={anchor("Domain", domain.id)} className="doc-section">
-          <h3>
-            <Icon name="Domain" size={18} className="k-domain" /> <Name id={domain.id}>{domain.name}</Name>
-          </h3>
-          <Description id={domain.id} invite="Describe this Domain" />
-          <p className="doc-meta">
-            Uses {domain.languages.join(", ") || "no Language of its own"}
-            {domain.references.length > 0 && <>; builds on {domain.references.join(", ")}</>}.
-          </p>
-          {domain.transformations.map((t) => (
-            <div key={t.id} className="doc-transformation">
-              <h4>
-                <Icon name="Transformation" size={15} /> <Name id={t.id}>{t.name}</Name>{" "}
-                <span className="doc-meta">
-                  a {t.kind}, {t.source} → {t.target}
-                </span>
-              </h4>
-              <Description id={t.id} invite="Describe this Transformation" />
-              {(t.mappings.length > 0 || t.deferred.length > 0) && (
-                <ul className="mappings">
-                  {t.mappings.map((m) => (
-                    <li key={m}>{m}</li>
-                  ))}
-                  {t.deferred.map((d) => (
-                    <li key={d} className="deferred">
-                      {d} — deliberately left unmapped
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </section>
-      ))}
-
-      {doc.mediations.length > 0 && <h2>Mediations</h2>}
-      {doc.mediations.map((mediation) => (
-        <section key={mediation.id} id={anchor("Mediation", mediation.id)} className="doc-section">
-          <h3>
-            <Icon name="Mediation" size={18} className="k-mediation" /> <Name id={mediation.id}>{mediation.name}</Name>
-          </h3>
-          <p className="doc-meta">
-            {mediation.what} is carried out over {mediation.how}; only {mediation.mediator} knows both.
-          </p>
-          <Description id={mediation.id} invite="Describe this Mediation" />
+          <Description id={c.id} invite="Describe this Configuration" />
+          <ul className="mappings">
+            {c.choices.map((choice) => (
+              <li key={choice}>{choice}</li>
+            ))}
+          </ul>
         </section>
       ))}
 

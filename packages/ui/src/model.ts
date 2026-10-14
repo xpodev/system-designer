@@ -7,53 +7,70 @@
 export interface EndJson { id: string; name: string | null; entity: string; min: number; max: number | "N" }
 export interface RelationshipJson { id: string; ends: EndJson[] }
 export interface FormulaJson { id: string; text: string; constrains?: string }
-export interface EntityJson { id: string; name: string }
+export interface EntityJson { id: string; name: string; extends: string[] }
+export interface LanguageJson { id: string; name: string; extends: string[]; entities: EntityJson[]; relationships: RelationshipJson[]; formulas: FormulaJson[] }
 export interface ParameterJson { id: string; name: string; type: string }
-export interface InteractionJson { id: string; name: string; parameters: ParameterJson[]; output: string; primary: string | null; compares: string[] }
-export interface LanguageJson {
-  id: string;
-  name: string;
-  entities: EntityJson[];
-  relationships: RelationshipJson[];
-  formulas: FormulaJson[];
-  interactions: InteractionJson[];
-}
+export interface InteractionJson { id: string; name: string; language: string; parameters: ParameterJson[]; output: string; primary: string | null; compares: string[] }
 export interface MappingJson { source: string; targets: string[] }
-export interface DeferredJson { entity?: string; relationship?: string; interaction?: string }
+export interface DeferredJson { entity?: string; relationship?: string }
 export interface TransformationJson {
   id: string;
   name: string;
   source: string;
   target: string;
-  reverse: { context: string[] } | null;
+  context: string[];
   entityMappings: MappingJson[];
   relationshipMappings: MappingJson[];
-  interactionMappings: MappingJson[];
   deferred: DeferredJson[];
 }
-export interface DomainJson { id: string; name: string; languages: string[]; references: string[]; transformations: TransformationJson[] }
-export interface MediationJson { id: string; what: string; how: string; mediator: string }
+export interface MediumJson { id: string; name: string; language: string; call: string }
+export interface MediationJson { id: string; how: string; down: string | null; up: string | null }
+export interface ConnectionJson { id: string; from: string; toInstance: string | null; toComponent: string | null; what: string[]; mediations: MediationJson[] }
+export interface InstanceJson { id: string; name: string; of: string }
+export interface DeploymentJson { id: string; name: string; instances: InstanceJson[]; connections: ConnectionJson[] }
+export interface ImportsJson { components: string[]; transformations: string[]; interactions: string[]; mediums: string[] }
+export interface ComponentJson {
+  id: string;
+  name: string;
+  uses: string[];
+  imports: ImportsJson;
+  languages: LanguageJson[];
+  transformations: TransformationJson[];
+  interactions: InteractionJson[];
+  mediums: MediumJson[];
+  deployments: DeploymentJson[];
+  components: ComponentJson[];
+}
+export interface ChoiceJson { id: string; instance: string | null; deployment: string; choices: ChoiceJson[] }
+export interface ConfigurationJson { id: string; name: string; root: ChoiceJson }
 export interface SystemFile {
   format: string;
-  design: { id: string; name: string; languages: LanguageJson[]; domains: DomainJson[]; mediations: MediationJson[] };
+  design: { id: string; name: string; root: string; components: ComponentJson[]; configurations: ConfigurationJson[] };
   attachments: { owner: string; data: unknown }[];
 }
 
-/** What an id is, and where it sits. */
+/** What an id is, and where it sits: the Component it is in, and what holds it there. */
 export type Located =
   | { kind: "System" }
-  | { kind: "Language"; language: LanguageJson }
-  | { kind: "Entity"; entity: EntityJson; language: LanguageJson }
-  | { kind: "Relationship"; relationship: RelationshipJson; language: LanguageJson }
-  | { kind: "End"; end: EndJson; relationship: RelationshipJson; language: LanguageJson }
-  | { kind: "Formula"; formula: FormulaJson; language: LanguageJson }
-  | { kind: "Interaction"; interaction: InteractionJson; language: LanguageJson }
-  | { kind: "Parameter"; parameter: ParameterJson; interaction: InteractionJson; language: LanguageJson }
-  | { kind: "Domain"; domain: DomainJson }
-  | { kind: "Transformation"; transformation: TransformationJson; domain: DomainJson }
-  | { kind: "Mediation"; mediation: MediationJson };
+  | { kind: "Component"; component: ComponentJson; parent?: ComponentJson }
+  | { kind: "Language"; language: LanguageJson; component: ComponentJson }
+  | { kind: "Entity"; entity: EntityJson; language: LanguageJson; component: ComponentJson }
+  | { kind: "Relationship"; relationship: RelationshipJson; language: LanguageJson; component: ComponentJson }
+  | { kind: "End"; end: EndJson; relationship: RelationshipJson; language: LanguageJson; component: ComponentJson }
+  | { kind: "Formula"; formula: FormulaJson; language: LanguageJson; component: ComponentJson }
+  | { kind: "Interaction"; interaction: InteractionJson; component: ComponentJson }
+  | { kind: "Parameter"; parameter: ParameterJson; interaction: InteractionJson; component: ComponentJson }
+  | { kind: "Transformation"; transformation: TransformationJson; component: ComponentJson }
+  | { kind: "Medium"; medium: MediumJson; component: ComponentJson }
+  | { kind: "Deployment"; deployment: DeploymentJson; component: ComponentJson }
+  | { kind: "Instance"; instance: InstanceJson; deployment: DeploymentJson; component: ComponentJson }
+  | { kind: "Connection"; connection: ConnectionJson; deployment: DeploymentJson; component: ComponentJson }
+  | { kind: "Configuration"; configuration: ConfigurationJson };
 
 export type Kind = Located["kind"];
+
+/** The kinds of thing a Component imports, by the key of its `imports`. */
+export type ImportKind = keyof ImportsJson;
 
 export class Model {
   readonly byId = new Map<string, Located>();
@@ -62,24 +79,32 @@ export class Model {
   constructor(readonly file: SystemFile) {
     const d = file.design;
     this.byId.set(d.id, { kind: "System" });
-    for (const language of d.languages) {
-      this.byId.set(language.id, { kind: "Language", language });
-      for (const entity of language.entities) this.byId.set(entity.id, { kind: "Entity", entity, language });
-      for (const relationship of language.relationships) {
-        this.byId.set(relationship.id, { kind: "Relationship", relationship, language });
-        for (const end of relationship.ends) this.byId.set(end.id, { kind: "End", end, relationship, language });
+    const index = (component: ComponentJson, parent?: ComponentJson) => {
+      this.byId.set(component.id, parent ? { kind: "Component", component, parent } : { kind: "Component", component });
+      for (const language of component.languages) {
+        this.byId.set(language.id, { kind: "Language", language, component });
+        for (const entity of language.entities) this.byId.set(entity.id, { kind: "Entity", entity, language, component });
+        for (const relationship of language.relationships) {
+          this.byId.set(relationship.id, { kind: "Relationship", relationship, language, component });
+          for (const end of relationship.ends) this.byId.set(end.id, { kind: "End", end, relationship, language, component });
+        }
+        for (const formula of language.formulas) this.byId.set(formula.id, { kind: "Formula", formula, language, component });
       }
-      for (const formula of language.formulas) this.byId.set(formula.id, { kind: "Formula", formula, language });
-      for (const interaction of language.interactions) {
-        this.byId.set(interaction.id, { kind: "Interaction", interaction, language });
-        for (const parameter of interaction.parameters) this.byId.set(parameter.id, { kind: "Parameter", parameter, interaction, language });
+      for (const interaction of component.interactions) {
+        this.byId.set(interaction.id, { kind: "Interaction", interaction, component });
+        for (const parameter of interaction.parameters) this.byId.set(parameter.id, { kind: "Parameter", parameter, interaction, component });
       }
-    }
-    for (const domain of d.domains) {
-      this.byId.set(domain.id, { kind: "Domain", domain });
-      for (const transformation of domain.transformations) this.byId.set(transformation.id, { kind: "Transformation", transformation, domain });
-    }
-    for (const mediation of d.mediations) this.byId.set(mediation.id, { kind: "Mediation", mediation });
+      for (const transformation of component.transformations) this.byId.set(transformation.id, { kind: "Transformation", transformation, component });
+      for (const medium of component.mediums) this.byId.set(medium.id, { kind: "Medium", medium, component });
+      for (const deployment of component.deployments) {
+        this.byId.set(deployment.id, { kind: "Deployment", deployment, component });
+        for (const instance of deployment.instances) this.byId.set(instance.id, { kind: "Instance", instance, deployment, component });
+        for (const connection of deployment.connections) this.byId.set(connection.id, { kind: "Connection", connection, deployment, component });
+      }
+      for (const child of component.components) index(child, component);
+    };
+    for (const component of d.components) index(component);
+    for (const configuration of d.configurations) this.byId.set(configuration.id, { kind: "Configuration", configuration });
     const documentation = file.attachments.find((a) => a.owner === "documentation")?.data as { descriptions?: Record<string, unknown> } | undefined;
     for (const [id, text] of Object.entries(documentation?.descriptions ?? {})) if (typeof text === "string" && this.byId.has(id)) this.descriptions.set(id, text);
   }
@@ -87,14 +112,24 @@ export class Model {
   get system() {
     return this.file.design;
   }
-  get languages() {
-    return this.file.design.languages;
+  /** The root Component. */
+  get root(): ComponentJson | undefined {
+    return this.component(this.file.design.root);
   }
-  get domains() {
-    return this.file.design.domains;
+  /** The packages beside the root. */
+  get packages(): ComponentJson[] {
+    return this.file.design.components.filter((c) => c.id !== this.file.design.root);
   }
-  get mediations() {
-    return this.file.design.mediations;
+  get configurations() {
+    return this.file.design.configurations;
+  }
+  /** Every Component, outermost first. */
+  get components(): ComponentJson[] {
+    return [...this.byId.values()].flatMap((at) => (at.kind === "Component" ? [at.component] : []));
+  }
+  /** Every Language, of every Component. */
+  get languages(): LanguageJson[] {
+    return [...this.byId.values()].flatMap((at) => (at.kind === "Language" ? [at.language] : []));
   }
 
   get(id: string): Located | undefined {
@@ -103,6 +138,28 @@ export class Model {
 
   kind(id: string): Kind | undefined {
     return this.byId.get(id)?.kind;
+  }
+
+  component(id: string | undefined): ComponentJson | undefined {
+    const at = id === undefined ? undefined : this.byId.get(id);
+    return at?.kind === "Component" ? at.component : undefined;
+  }
+
+  language(id: string | undefined): LanguageJson | undefined {
+    const at = id === undefined ? undefined : this.byId.get(id);
+    return at?.kind === "Language" ? at.language : undefined;
+  }
+
+  interaction(id: string | undefined): InteractionJson | undefined {
+    const at = id === undefined ? undefined : this.byId.get(id);
+    return at?.kind === "Interaction" ? at.interaction : undefined;
+  }
+
+  /** The Component something is in — or the Component itself. */
+  componentOf(id: string): ComponentJson | undefined {
+    const at = this.byId.get(id);
+    if (!at || at.kind === "System" || at.kind === "Configuration") return undefined;
+    return at.component;
   }
 
   /** What something is for, in prose, if it is described: the Documentation's, kept in its attachment. */
@@ -118,6 +175,8 @@ export class Model {
     switch (at.kind) {
       case "System":
         return this.system.name;
+      case "Component":
+        return at.component.name;
       case "Language":
         return at.language.name;
       case "Entity":
@@ -132,57 +191,126 @@ export class Model {
         return at.interaction.name;
       case "Parameter":
         return at.parameter.name;
-      case "Domain":
-        return at.domain.name;
       case "Transformation":
         return at.transformation.name;
-      case "Mediation":
-        return `${this.name(at.mediation.what)} / ${this.name(at.mediation.how)}`;
+      case "Medium":
+        return at.medium.name;
+      case "Deployment":
+        return at.deployment.name;
+      case "Instance":
+        return at.instance.name;
+      case "Connection": {
+        const to = at.connection.toInstance ?? at.connection.toComponent ?? undefined;
+        return `${this.name(at.connection.from)} → ${this.name(to)}`;
+      }
+      case "Configuration":
+        return at.configuration.name;
     }
   }
 
-  /** `langs*(D)`: a Domain's own Languages and those of every Domain it references, each with the Domain it comes through. */
-  scope(domain: string): Map<string, string> {
-    const found = new Map<string, string>();
-    const seen = new Set<string>();
-    const pending = [domain];
-    while (pending.length > 0) {
-      const current = pending.shift()!;
-      if (seen.has(current)) continue;
-      seen.add(current);
-      const at = this.byId.get(current);
-      if (at?.kind !== "Domain") continue;
-      for (const language of at.domain.languages) if (!found.has(language)) found.set(language, current);
-      pending.push(...at.domain.references);
+  /** `C.*parent`: a Component and every Component it is nested in, nearest first. */
+  ancestry(component: string): ComponentJson[] {
+    const found: ComponentJson[] = [];
+    let at = this.byId.get(component);
+    while (at?.kind === "Component" && !found.includes(at.component)) {
+      found.push(at.component);
+      at = at.parent ? this.byId.get(at.parent.id) : undefined;
     }
     return found;
   }
 
-  /** The Mediations a Domain takes part in, and how. */
-  rolesOf(domain: string): { mediation: MediationJson; role: "what" | "how" | "mediator" }[] {
-    return this.mediations.flatMap((mediation) =>
-      (["what", "how", "mediator"] as const).filter((role) => mediation[role] === domain).map((role) => ({ mediation, role })),
-    );
+  /** The Components beside one: its parent's other children, or the System's other top-level Components. */
+  siblings(component: string): ComponentJson[] {
+    const at = this.byId.get(component);
+    if (at?.kind !== "Component") return [];
+    return (at.parent ? at.parent.components : this.file.design.components).filter((c) => c.id !== component);
   }
 
-  /** The mediator's reversible Transformations from the what's Languages to the how's. */
-  witnesses(mediation: MediationJson): TransformationJson[] {
-    const mediator = this.byId.get(mediation.mediator);
-    if (mediator?.kind !== "Domain") return [];
-    const whats = this.scope(mediation.what);
-    const hows = this.scope(mediation.how);
-    return mediator.domain.transformations.filter((t) => t.reverse !== null && whats.has(t.source) && hows.has(t.target));
+  /** `L.*extends`: a Language and every Language it extends, nearest first. */
+  vocab(language: string): LanguageJson[] {
+    const found: LanguageJson[] = [];
+    const pending = [language];
+    while (pending.length > 0) {
+      const l = this.language(pending.shift());
+      if (!l || found.includes(l)) continue;
+      found.push(l);
+      pending.push(...l.extends);
+    }
+    return found;
   }
 
-  /** Where an Entity is used: ends, Parameters, outputs, mappings. */
+  /** The Entities of a Language's vocabulary: its own, and those of every Language it extends. */
+  vocabEntities(language: string): EntityJson[] {
+    return this.vocab(language).flatMap((l) => l.entities);
+  }
+
+  /**
+   * The Languages a Component may use: its own and its parents', and those of the Components it
+   * imports — each with the Component that brings it in.
+   */
+  scope(component: string): Map<string, ComponentJson> {
+    const found = new Map<string, ComponentJson>();
+    const c = this.component(component);
+    for (const owner of [...this.ancestry(component), ...(c?.imports.components ?? []).flatMap((id) => this.component(id) ?? [])]) {
+      for (const language of owner.languages) if (!found.has(language.id)) found.set(language.id, owner);
+    }
+    return found;
+  }
+
+  /** What a Component offers of a kind. */
+  private offered(component: ComponentJson, kind: ImportKind): string[] {
+    if (kind === "components") return [component.id];
+    if (kind === "interactions") return component.interactions.map((i) => i.id);
+    if (kind === "transformations") return component.transformations.map((t) => t.id);
+    return component.mediums.map((m) => m.id);
+  }
+
+  /** What a Component may import of a kind: its siblings', what its parents import, and what the Components those import offer. */
+  importable(component: string, kind: ImportKind): string[] {
+    const found = new Set<string>();
+    for (const sibling of this.siblings(component)) for (const id of this.offered(sibling, kind)) found.add(id);
+    for (const ancestor of this.ancestry(component).slice(1)) {
+      for (const id of ancestor.imports[kind]) found.add(id);
+      if (kind !== "components") for (const imported of ancestor.imports.components) for (const id of this.offered(this.component(imported) ?? emptyComponent, kind)) found.add(id);
+    }
+    const own = this.component(component);
+    if (kind !== "components" && own) for (const imported of own.imports.components) for (const id of this.offered(this.component(imported) ?? emptyComponent, kind)) found.add(id);
+    return [...found].filter((id) => this.byId.has(id) && !(kind === "components" && id === component));
+  }
+
+  /** What a Component has access to of a kind: its own and its parents', what it imports, and what the Components it imports offer. */
+  access(component: string, kind: Exclude<ImportKind, "components">): string[] {
+    const found = new Set<string>();
+    for (const owner of this.ancestry(component)) for (const id of this.offered(owner, kind)) found.add(id);
+    const own = this.component(component);
+    if (own) {
+      for (const id of own.imports[kind]) found.add(id);
+      for (const imported of own.imports.components) for (const id of this.offered(this.component(imported) ?? emptyComponent, kind)) found.add(id);
+    }
+    return [...found].filter((id) => this.byId.has(id));
+  }
+
+  /** The Components using a Language. */
+  usersOf(language: string): ComponentJson[] {
+    return this.components.filter((c) => c.uses.includes(language));
+  }
+
+  /** The Interactions over a Language, of any Component. */
+  interactionsOver(language: string): InteractionJson[] {
+    return this.components.flatMap((c) => c.interactions.filter((i) => i.language === language));
+  }
+
+  /** Where an Entity is used: ends, extensions, Parameters, outputs, mappings. */
   usesOf(entity: string): number {
     let count = 0;
     for (const language of this.languages) {
       for (const r of language.relationships) count += r.ends.filter((end) => end.entity === entity).length;
-      for (const i of language.interactions) count += i.parameters.filter((p) => p.type === entity).length + (i.output === entity ? 1 : 0);
+      count += language.entities.filter((e) => e.extends.includes(entity)).length;
     }
-    for (const domain of this.domains)
-      for (const t of domain.transformations) count += t.entityMappings.filter((m) => m.source === entity || m.targets.includes(entity)).length;
+    for (const component of this.components) {
+      for (const i of component.interactions) count += i.parameters.filter((p) => p.type === entity).length + (i.output === entity ? 1 : 0);
+      for (const t of component.transformations) count += t.entityMappings.filter((m) => m.source === entity || m.targets.includes(entity)).length;
+    }
     return count;
   }
 
@@ -193,31 +321,52 @@ export class Model {
     switch (at.kind) {
       case "System":
         return { tab: { kind: "system" } };
+      case "Component":
+        return { tab: { kind: "component", id } };
       case "Language":
         return { tab: { kind: "language", id } };
       case "Entity":
       case "Relationship":
       case "End":
       case "Formula":
+        return { tab: { kind: "language", id: at.language.id }, focus: at.kind === "End" ? at.relationship.id : id };
       case "Interaction":
       case "Parameter":
-        return { tab: { kind: "language", id: at.language.id }, focus: at.kind === "End" ? at.relationship.id : at.kind === "Parameter" ? at.interaction.id : id };
-      case "Domain":
-        return { tab: { kind: "domain", id } };
+      case "Medium":
+        return { tab: { kind: "component", id: at.component.id }, focus: at.kind === "Parameter" ? at.interaction.id : id };
       case "Transformation":
         return { tab: { kind: "transformation", id } };
-      case "Mediation":
-        return { tab: { kind: "mediation", id } };
+      case "Deployment":
+        return { tab: { kind: "deployment", id } };
+      case "Instance":
+      case "Connection":
+        return { tab: { kind: "deployment", id: at.deployment.id }, focus: id };
+      case "Configuration":
+        return { tab: { kind: "configuration", id } };
     }
   }
 }
 
+const emptyComponent: ComponentJson = {
+  id: "",
+  name: "",
+  uses: [],
+  imports: { components: [], transformations: [], interactions: [], mediums: [] },
+  languages: [],
+  transformations: [],
+  interactions: [],
+  mediums: [],
+  deployments: [],
+  components: [],
+};
+
 export type Tab =
   | { kind: "system" }
+  | { kind: "component"; id: string }
   | { kind: "language"; id: string }
-  | { kind: "domain"; id: string }
   | { kind: "transformation"; id: string }
-  | { kind: "mediation"; id: string }
+  | { kind: "deployment"; id: string }
+  | { kind: "configuration"; id: string }
   | { kind: "view"; perspective: string }
   | { kind: "specification" }
   | { kind: "documentation" }
@@ -250,8 +399,22 @@ export function relationshipLabel(relationship: RelationshipJson, name: (entity:
 
 export const ranges = ["1..1", "0..1", "1..N", "0..N"] as const;
 
-/** What the Documentation can describe: the System and the things in it, but not an end or a Parameter. */
-export const DESCRIBABLE: ReadonlySet<Kind> = new Set<Kind>(["System", "Language", "Entity", "Relationship", "Formula", "Interaction", "Domain", "Transformation", "Mediation"]);
+/** What the Documentation can describe: the System and the things in it, but not an end, a Parameter or a choice. */
+export const DESCRIBABLE: ReadonlySet<Kind> = new Set<Kind>([
+  "System",
+  "Component",
+  "Language",
+  "Entity",
+  "Relationship",
+  "Formula",
+  "Interaction",
+  "Transformation",
+  "Medium",
+  "Deployment",
+  "Instance",
+  "Connection",
+  "Configuration",
+]);
 
 /** How many, in words: `exactly one`, `at most one`, `any number of`, `one or more`, `2 to 5`. */
 export function quantity(min: number, max: number | "N"): string {

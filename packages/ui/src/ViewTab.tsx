@@ -6,10 +6,9 @@ import { Tree } from "./Tree";
 import { Icon } from "./widgets";
 import { useWorkspace } from "./workspace";
 
-const GRAPHS = new Set(["domain-map", "mediation-stack"]);
+const GRAPHS = new Set(["mediation-stack"]);
 const ABOUT: Record<string, string> = {
-  "domain-map": "Domains, the Languages they use (dashed), the Domains they reference, and the Transformations between Languages: projections in green, mediations in blue.",
-  "mediation-stack": "Each Domain above the Domains it is carried out over; each arrow is a Mediation, labelled with its mediator.",
+  "mediation-stack": "Each Language above the Languages it is mediated over, following the Connections; each arrow is labelled with the Mediums it passes through.",
   levels: "The kernel, the Systemathic Languages built in it, and your model, made of them.",
   statistics: "Counts, depths, fan-in and fan-out.",
 };

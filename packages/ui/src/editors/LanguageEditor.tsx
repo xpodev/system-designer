@@ -1,15 +1,15 @@
 /**
- * The Language editor: a Language's Entities, Relationships, Interactions and Axioms, each
- * edited in place, with the Language as a diagram above them when wanted. It speaks to the
- * LanguageEditor, EntityEditor, RelationshipEditor, FormulaEditor, InteractionEditor and
- * StdEditor of the host.
+ * The Language editor: what a Language extends, its Entities — each with what it extends —
+ * Relationships and Axioms, each edited in place, with the Language as a diagram above them
+ * when wanted, and the Interactions offered over it. It speaks to the LanguageEditor,
+ * EntityEditor, RelationshipEditor, FormulaEditor and StdEditor of the host.
  */
 import { useEffect, useState } from "react";
 import { api, type View } from "../api";
 import { Graph } from "../Graph";
-import { counted, rangeOf, UNNAMED, type EndJson, type InteractionJson, type LanguageJson, type RelationshipJson } from "../model";
+import { counted, rangeOf, UNNAMED, type EndJson, type LanguageJson, type RelationshipJson } from "../model";
 import { Description } from "../prose";
-import { AddInline, Badge, Icon, IconButton, InlineText, Marks, Menu, Picker, RangePicker, Section, type Choice } from "../widgets";
+import { AddInline, Chips, Icon, IconButton, InlineText, Marks, Menu, Picker, RangePicker, Section, type Choice } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
 import { EditorHeader, Problems } from "./common";
 
@@ -23,8 +23,11 @@ export function LanguageEditor({ id }: { id: string }) {
   const language = at.language;
   const mode = w.layout.languageMode?.[id] ?? "lists";
   const setMode = (m: "lists" | "diagram") => w.setLayout((l) => ({ ...l, languageMode: { ...l.languageMode, [id]: m } }));
-  const usedBy = model.domains.filter((d) => d.languages.includes(id));
-  const entities: Choice[] = language.entities.map((e) => ({ id: e.id, label: e.name }));
+  const usedBy = model.usersOf(id);
+  const over = model.interactionsOver(id);
+  // The vocabulary: its own Entities, and those of every Language it extends.
+  const entities: Choice[] = model.vocab(id).flatMap((l) => l.entities.map((e) => ({ id: e.id, label: e.name, hint: l.id === id ? undefined : l.name })));
+  const extendable = [...model.scope(at.component.id).keys()].filter((l) => l !== id && !model.vocab(l).some((x) => x.id === id));
 
   const addEntity = async (name: string) => {
     const edit = await w.act("LanguageEditor", "addEntity", { language: id, name }, { quiet: true });
@@ -41,7 +44,11 @@ export function LanguageEditor({ id }: { id: string }) {
         onRename={(name) => void w.act("LanguageEditor", "rename", { language: id, name })}
         summary={
           <>
-            {language.entities.length} entities · {language.relationships.length} relationships · {language.interactions.length} interactions · {language.formulas.length} axioms
+            {language.extends.length ? "an extension" : "a core Language"} of{" "}
+            <button className="link-chip" onClick={() => w.open({ kind: "component", id: at.component.id })}>
+              {at.component.name}
+            </button>{" "}
+            · {language.entities.length} entities · {language.relationships.length} relationships · {language.formulas.length} axioms
           </>
         }
         actions={
@@ -70,18 +77,32 @@ export function LanguageEditor({ id }: { id: string }) {
       <div className="editor-body">
         <p className="used-by">
           {usedBy.length === 0 ? (
-            <span className="muted">No Domain uses this Language yet. A Language needs no Domain to be valid; a Domain is where it is used.</span>
+            <span className="muted">No Component uses this Language yet. A Language needs none to be valid; a Component is where it is used.</span>
           ) : (
             <>
               Used by{" "}
-              {usedBy.map((d) => (
-                <button key={d.id} className="link-chip" onClick={() => w.open({ kind: "domain", id: d.id })}>
-                  <Icon name="Domain" size={13} /> {d.name}
+              {usedBy.map((c) => (
+                <button key={c.id} className="link-chip" onClick={() => w.open({ kind: "component", id: c.id })}>
+                  <Icon name="Component" size={13} /> {c.name}
                 </button>
               ))}
             </>
           )}
         </p>
+        <div className="extends-row">
+          <span className="label">Extends</span>
+          <Chips
+            values={language.extends}
+            label={(l) => model.name(l)}
+            icon="Language"
+            choices={extendable.map((l) => ({ id: l, label: model.name(l) }))}
+            onAdd={(extended) => void w.act("LanguageEditor", "extend", { language: id, extended })}
+            onRemove={(extended) => void w.act("LanguageEditor", "unextend", { language: id, extended })}
+            onOpen={(l) => w.open({ kind: "language", id: l })}
+            addLabel="Language"
+            empty="Nothing: it is a core Language."
+          />
+        </div>
         <Description id={id} className="about" invite="Describe this Language: what it is the vocabulary of, and what it is for" />
         <Problems ids={[id]} />
 
@@ -105,29 +126,26 @@ export function LanguageEditor({ id }: { id: string }) {
           {language.entities.length === 0 ? (
             <p className="muted">Add an Entity first: a Relationship joins two of them.</p>
           ) : (
-            <button className="add-inline" onClick={() => void addRelationship(w, language, language.entities[0]!.id, (language.entities[1] ?? language.entities[0]!).id)}>
+            <button className="add-inline" onClick={() => void addRelationship(w, model, language, language.entities[0]!.id, (language.entities[1] ?? language.entities[0]!).id)}>
               <Icon name="plus" /> Relationship
             </button>
           )}
         </Section>
 
-        <Section title="Interactions" icon="Interaction" count={language.interactions.length} hint="the operations this Language offers: Parameters in, an output out">
-          {language.interactions.map((i) => (
-            <InteractionCard key={i.id} interaction={i} entities={entities} />
-          ))}
-          {language.entities.length === 0 ? (
-            <p className="muted">Add an Entity first: an Interaction's output is one.</p>
-          ) : (
-            <AddInline
-              label="Interaction"
-              placeholder="Name, then Enter — e.g. cancel"
-              onAdd={async (name) => {
-                const edit = await w.act("InteractionEditor", "addInteraction", { language: id, name, output: language.entities[0]!.id }, { quiet: true });
-                if (edit) w.reveal(edit.elements[0]!);
-              }}
-            />
-          )}
-        </Section>
+        {over.length > 0 && (
+          <Section title="Interactions over it" icon="Interaction" count={over.length} hint="offered by the Components that use it">
+            <ul className="plain-list">
+              {over.map((i) => (
+                <li key={i.id}>
+                  <button className="link-chip" onClick={() => w.reveal(i.id)}>
+                    <Icon name="Interaction" size={13} /> {i.name}()
+                  </button>{" "}
+                  <span className="muted">of {model.componentOf(i.id)?.name}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
 
         <Section title="Axioms" icon="Formula" count={language.formulas.length} hint="what is always true, over this Language only">
           {language.formulas.map((f) => (
@@ -154,8 +172,11 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
   const model = useModel();
   const ref = useFocusRow(id);
   const entity = language.entities.find((e) => e.id === id)!;
-  const comparison = language.interactions.find((i) => i.compares.includes(id));
+  const comparisons = model.interactionsOver(language.id).concat(language.extends.flatMap((l) => model.interactionsOver(l)));
+  const comparison = comparisons.find((i) => i.compares.includes(id));
   const uses = model.usesOf(id);
+  // An Entity extends only Entities of the Languages its own extends: none, for a core Language.
+  const extendable = [...new Set(language.extends.flatMap((l) => model.vocab(l)))].flatMap((l) => l.entities.map((e) => ({ id: e.id, label: e.name, hint: l.name })));
   return (
     <tr ref={ref} className="row">
       <td className="cell-icon">
@@ -166,18 +187,30 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
           <InlineText value={entity.name} onCommit={(name) => void w.act("EntityEditor", "rename", { entity: id, name })} />
           <Marks diagnostics={w.about(id)} />
         </div>
+        {language.extends.length > 0 && (
+          <div className="entity-extends">
+            <span className="muted">extends</span>
+            <Chips
+              values={entity.extends}
+              label={(e) => model.name(e)}
+              icon="Entity"
+              choices={extendable}
+              onAdd={(extended) => void w.act("EntityEditor", "extend", { entity: id, extended })}
+              onRemove={(extended) => void w.act("EntityEditor", "unextend", { entity: id, extended })}
+              onOpen={(e) => w.reveal(e)}
+              addLabel="Entity"
+              empty="nothing: a new identity"
+            />
+          </div>
+        )}
         <Description id={id} className="row-description" />
       </td>
       <td className="cell-muted">{uses === 0 ? "unused" : `${uses} use${uses === 1 ? "" : "s"}`}</td>
-      <td className="cell-muted">
-        {comparison ? (
-          <span title="Std: this Language's own notion of sameness for it">compared by {comparison.name}</span>
-        ) : null}
-      </td>
+      <td className="cell-muted">{comparison ? <span title="Std: this Language's own notion of sameness for it">compared by {comparison.name}</span> : null}</td>
       <td className="cell-actions">
         <Menu
           items={[
-            ...language.interactions
+            ...comparisons
               .filter((i) => i.id !== comparison?.id)
               .map((i) => ({ label: `Compare by ${i.name}`, icon: "Interaction", onSelect: () => void w.act("StdEditor", "setComparison", { entity: id, interaction: i.id }) })),
             ...(comparison ? [{ label: "No comparison", icon: "x", onSelect: () => void w.act("StdEditor", "setComparison", { entity: id }) }] : []),
@@ -245,66 +278,6 @@ function RelationshipRow({ relationship, entities }: { relationship: Relationshi
   );
 }
 
-function InteractionCard({ interaction, entities }: { interaction: InteractionJson; entities: Choice[] }) {
-  const w = useWorkspace();
-  const ref = useFocusRow(interaction.id);
-  const i = interaction;
-  const problems = [...w.about(i.id), ...i.parameters.flatMap((p) => w.about(p.id))];
-  return (
-    <div ref={ref} className={`interaction-card row ${problems.length ? "has-problems" : ""}`}>
-      <div className="signature">
-        <Icon name="Interaction" />
-        <InlineText className="interaction-name" value={i.name} onCommit={(name) => void w.act("InteractionEditor", "rename", { item: i.id, name })} />
-        <span className="paren">(</span>
-        {i.parameters.map((p, index) => (
-          <span key={p.id} className={`parameter ${i.primary === p.id ? "primary" : ""}`}>
-            <button
-              className="star"
-              title={i.primary === p.id ? "The primary Parameter: this is an Action on it (click to unset)" : "Make this the primary Parameter (an Action)"}
-              onClick={() => void w.act("StdEditor", "setPrimary", i.primary === p.id ? { interaction: i.id } : { interaction: i.id, parameter: p.id })}
-            >
-              <Icon name="star" size={12} />
-            </button>
-            <InlineText value={p.name} onCommit={(name) => void w.act("InteractionEditor", "rename", { item: p.id, name })} />
-            <span className="colon">:</span>
-            <Picker value={p.type} choices={entities} onChange={(type) => type && void w.act("InteractionEditor", "setType", { parameter: p.id, type })} />
-            <span className="parameter-tools">
-              {index > 0 && <IconButton icon="up" label="Move earlier" onClick={() => void w.act("InteractionEditor", "moveParameter", { parameter: p.id, position: index - 1 }, { quiet: true })} />}
-              {index < i.parameters.length - 1 && (
-                <IconButton icon="down" label="Move later" onClick={() => void w.act("InteractionEditor", "moveParameter", { parameter: p.id, position: index + 1 }, { quiet: true })} />
-              )}
-              <IconButton icon="x" label="Remove Parameter" onClick={() => void w.act("InteractionEditor", "removeParameter", { parameter: p.id })} />
-            </span>
-            {index < i.parameters.length - 1 && <span className="comma">,</span>}
-          </span>
-        ))}
-        <button
-          className="add-parameter"
-          title="Add a Parameter"
-          onClick={() => {
-            const type = entities[0]!;
-            const taken = new Set(i.parameters.map((p) => p.name));
-            let name = lowerFirst(type.label);
-            for (let n = 2; taken.has(name); n++) name = `${lowerFirst(type.label)}${n}`;
-            void w.act("InteractionEditor", "addParameter", { interaction: i.id, name, type: type.id }, { quiet: true });
-          }}
-        >
-          <Icon name="plus" size={12} />
-        </button>
-        <span className="paren">)</span>
-        <span className="arrow">→</span>
-        <Picker value={i.output} choices={entities} onChange={(output) => output && void w.act("InteractionEditor", "setOutput", { interaction: i.id, output })} />
-        {i.primary && <Badge severity="info">Action</Badge>}
-        <span className="row-tail">
-          <Marks diagnostics={problems} />
-          <IconButton icon="trash" label="Delete Interaction" onClick={() => void w.act("InteractionEditor", "remove", { interaction: i.id }, { message: `Deleted Interaction ${i.name}` })} />
-        </span>
-      </div>
-      <Description id={i.id} className="row-description" />
-    </div>
-  );
-}
-
 function AxiomRow({ id, language }: { id: string; language: LanguageJson }) {
   const w = useWorkspace();
   const model = useModel();
@@ -340,6 +313,7 @@ function AxiomRow({ id, language }: { id: string; language: LanguageJson }) {
 
 function LanguageDiagram({ language, onAddEntity }: { language: LanguageJson; onAddEntity(name: string): void }) {
   const w = useWorkspace();
+  const model = useModel();
   const [view, setView] = useState<View>();
   useEffect(() => {
     void api.view(w.context, "language", language.id).then(setView, () => setView(undefined));
@@ -355,7 +329,7 @@ function LanguageDiagram({ language, onAddEntity }: { language: LanguageJson; on
         saved={w.layout.positions?.[key] ?? {}}
         onSelect={(subject) => w.reveal(subject)}
         onMove={(positions) => w.setLayout((l) => ({ ...l, positions: { ...l.positions, [key]: positions } }))}
-        onConnect={(a, b) => void addRelationship(w, language, a, b)}
+        onConnect={(a, b) => void addRelationship(w, model, language, a, b)}
         onCreate={() => {
           const taken = new Set(language.entities.map((e) => e.name));
           let name = "NewEntity";
@@ -372,8 +346,8 @@ function LanguageDiagram({ language, onAddEntity }: { language: LanguageJson; on
  * Order and `orderLines` (0..N) at OrderLine — or `parent` and `children` when an Entity
  * relates to itself. A name already reachable from the other side gets a number.
  */
-async function addRelationship(w: ReturnType<typeof useWorkspace>, language: LanguageJson, a: string, b: string) {
-  const name = (id: string) => language.entities.find((e) => e.id === id)?.name ?? "item";
+async function addRelationship(w: ReturnType<typeof useWorkspace>, model: ReturnType<typeof useModel>, language: LanguageJson, a: string, b: string) {
+  const name = (id: string) => model.vocabEntities(language.id).find((e) => e.id === id)?.name ?? "item";
   const reachable = (entity: string) =>
     new Set(language.relationships.flatMap((r) => r.ends.flatMap((end, i) => (end.entity === entity ? [r.ends[1 - i]!.name] : []))));
   const free = (wanted: string, from: string) => {

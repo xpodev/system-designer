@@ -4,12 +4,13 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, hostMode, type ContextInfo, type HostEvent, type OperationInfo, type PackageSummary } from "./api";
-import { DomainEditor } from "./editors/DomainEditor";
+import { ComponentEditor } from "./editors/ComponentEditor";
+import { ConfigurationEditor } from "./editors/ConfigurationEditor";
+import { DeploymentEditor } from "./editors/DeploymentEditor";
 import { LanguageEditor } from "./editors/LanguageEditor";
-import { MediationEditor } from "./editors/MediationEditor";
 import { SystemEditor } from "./editors/SystemEditor";
 import { TransformationEditor } from "./editors/TransformationEditor";
-import { Explorer } from "./Explorer";
+import { Explorer, uniqueName } from "./Explorer";
 import { tabKey, type Tab } from "./model";
 import { Palette, type Command } from "./Palette";
 import { Panel, type PanelTab } from "./Panel";
@@ -113,10 +114,10 @@ function Welcome(props: { contexts: ContextInfo[]; onContext(id: string): void; 
   return (
     <main className="welcome">
       <div className="welcome-mark">
-        <Icon name="Domain" size={40} />
+        <Icon name="Component" size={40} />
       </div>
       <h1>Systemathic</h1>
-      <p className="lead">Design a system as a precise model: closed vocabularies, the contexts that use them, and explicit crossings between them — checked, and exported as a contract.</p>
+      <p className="lead">Design a system as a precise model: core vocabularies and their extensions, the Components that implement them, and how those are put together and reach each other — checked, and exported as a contract.</p>
       {hostMode() === "browser" && (
         <p className="browser-note">
           Everything runs in this page: your Systems are kept in this browser, and their rules run here, in Python. Open files from your computer, and download what you
@@ -184,15 +185,16 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
   }, [w]);
 
   const commands = useMemo<Command[]>(() => {
-    const system = model.system.id;
-    const add = (operation: string, what: string) => async () => {
-      const edit = await w.act("SystemEditor", operation, { system, name: `New${what}` }, { quiet: true });
+    const root = model.system.root;
+    const taken = [...model.byId.keys()].map((id) => model.name(id));
+    const add = (operation: string, args: Record<string, unknown>, what: string) => async () => {
+      const edit = await w.act("ComponentEditor", operation, { ...args, name: uniqueName(what, taken) }, { quiet: true });
       if (edit) w.reveal(edit.elements[0]!);
     };
     return [
-      { label: "New Language", icon: "Language", hint: "command", run: add("addLanguage", "Language") },
-      { label: "New Domain", icon: "Domain", hint: "command", run: add("addDomain", "Domain") },
-      { label: "New Mediation", icon: "Mediation", hint: "command", run: () => w.open({ kind: "system" }, "#new-mediation") },
+      { label: "New Language in the root", icon: "Language", hint: "command", run: add("addLanguage", { component: root }, "Language") },
+      { label: "New Component in the root", icon: "Component", hint: "command", run: add("addComponent", { parent: root }, "Component") },
+      { label: "The root Component", icon: "Component", hint: "view", run: () => w.open({ kind: "component", id: root }) },
       { label: "Import from the catalog", icon: "catalog", hint: "command", run: () => props.onDialog("catalog") },
       { label: "Verify", icon: "play", hint: "command", run: () => void w.verify() },
       { label: "Edit the verification script", icon: "play", hint: "command", run: () => w.open({ kind: "script" }) },
@@ -206,7 +208,6 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
       { label: "Show Problems", icon: "error", hint: "command", run: () => showPanel("problems") },
       { label: "Show History", icon: "undo", hint: "command", run: () => showPanel("history") },
       { label: "System overview", icon: "System", hint: "view", run: () => w.open({ kind: "system" }) },
-      { label: "Domain map", icon: "diagram", hint: "view", run: () => w.open({ kind: "view", perspective: "domain-map" }) },
       { label: "Mediation stack", icon: "Mediation", hint: "view", run: () => w.open({ kind: "view", perspective: "mediation-stack" }) },
       { label: "Levels", icon: "table", hint: "view", run: () => w.open({ kind: "view", perspective: "levels" }) },
       { label: "Statistics", icon: "table", hint: "view", run: () => w.open({ kind: "view", perspective: "statistics" }) },
@@ -240,7 +241,7 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
       <header className="topbar">
         <IconButton icon="menu" label="Explorer" className="drawer-button" onClick={() => setDrawer(!drawer)} />
         <button className="brand" onClick={() => props.onContext(undefined)} title="All Systems">
-          <Icon name="Domain" size={18} /> <span className="brand-name">Systemathic</span>
+          <Icon name="Component" size={18} /> <span className="brand-name">Systemathic</span>
         </button>
         <select className="system-switch" value={w.context} onChange={(e) => props.onContext(e.target.value)} aria-label="System">
           {props.contexts.map((c) => (
@@ -345,14 +346,16 @@ function Editor({ tab, onCatalog }: { tab: Tab; onCatalog(): void }) {
   switch (tab.kind) {
     case "system":
       return <SystemEditor onCatalog={onCatalog} />;
+    case "component":
+      return <ComponentEditor id={tab.id} />;
     case "language":
       return <LanguageEditor id={tab.id} />;
-    case "domain":
-      return <DomainEditor id={tab.id} />;
     case "transformation":
       return <TransformationEditor id={tab.id} />;
-    case "mediation":
-      return <MediationEditor id={tab.id} />;
+    case "deployment":
+      return <DeploymentEditor id={tab.id} />;
+    case "configuration":
+      return <ConfigurationEditor id={tab.id} />;
     case "view":
       return <ViewTab perspective={tab.perspective} />;
     case "specification":
@@ -373,7 +376,7 @@ function tabTitle(tab: Tab, model: ReturnType<typeof useModel>): { icon: string;
     case "system":
       return { icon: "System", label: "Overview" };
     case "view":
-      return { icon: "diagram", label: { "domain-map": "Domain map", "mediation-stack": "Mediation stack", levels: "Levels", statistics: "Statistics" }[tab.perspective] ?? tab.perspective };
+      return { icon: "diagram", label: { "mediation-stack": "Mediation stack", levels: "Levels", statistics: "Statistics" }[tab.perspective] ?? tab.perspective };
     case "specification":
       return { icon: "specification", label: "Specification" };
     case "documentation":
@@ -518,10 +521,10 @@ function CatalogDialog({ close }: { close(): void }) {
   useEffect(() => void api.catalog().then(setAll), []);
   useEffect(() => void api.catalog(text, tag).then(setPackages), [text, tag]);
   const tags = [...new Set(all.flatMap((p) => p.tags))].sort();
-  const imported = new Set(w.model?.languages.map((l) => l.id));
+  const imported = new Set(w.model?.packages.map((c) => c.id));
   return (
     <Modal title="Catalog" close={close} wide>
-      <p className="muted">Standard Languages, Domains and Mediations to build on. Importing copies them into this System; what is already here is reused.</p>
+      <p className="muted">Standard packages to build on: Components with their Languages, Interactions and Mediums. Importing brings them in beside the root, which then imports from them; what is already here is reused.</p>
       <input autoFocus className="wide" value={text} onChange={(e) => setText(e.target.value)} placeholder="Search: http, network, data…" />
       <div className="tag-row">
         <button className={tag === "" ? "on" : ""} onClick={() => setTag("")}>
@@ -551,7 +554,7 @@ function CatalogDialog({ close }: { close(): void }) {
                 close();
               }}
             >
-              {imported.has(`lib.${p.id}`) ? "Import again" : "Import"}
+              {imported.has(`pkg.${p.id}`) ? "Import again" : "Import"}
             </button>
           </li>
         ))}

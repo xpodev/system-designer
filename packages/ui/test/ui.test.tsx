@@ -28,6 +28,9 @@ const root = fileURLToPath(new URL("../../../", import.meta.url));
 let url: string;
 let host: Host;
 let close: () => void;
+/** Where the host runs, and the game as the tests start from it. */
+let dir: string;
+let game: unknown;
 
 /** The host's event stream, as EventSource gives it to the page. */
 class HostEventSource {
@@ -45,11 +48,12 @@ class HostEventSource {
 }
 
 beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), "systemathic-ui-"));
+  dir = mkdtempSync(join(tmpdir(), "systemathic-ui-"));
   // The example, without whatever layout a person left in it while using the UI.
-  const game = JSON.parse(readFileSync(join(root, "examples/game.systemathic.json"), "utf8"));
-  game.attachments = game.attachments.filter((a: { owner: string }) => a.owner !== "ui");
-  writeFileSync(join(dir, "game.systemathic.json"), JSON.stringify(game));
+  const file = JSON.parse(readFileSync(join(root, "examples/game.systemathic.json"), "utf8"));
+  file.attachments = file.attachments.filter((a: { owner: string }) => a.owner !== "ui");
+  game = file;
+  writeFileSync(join(dir, "game.systemathic.json"), JSON.stringify(file));
   host = nodeHost({ cwd: dir });
   const served = await serve(host, { port: 0 });
   url = served.url;
@@ -62,8 +66,10 @@ beforeAll(async () => {
 afterAll(() => close?.());
 afterEach(() => cleanup());
 
-async function openGame() {
-  const { id } = await host.open("game.systemathic.json");
+/** Opens the game — a fresh copy of it, under `name`, for a test that leaves it changed. */
+async function openGame(name = "game.systemathic.json") {
+  if (name !== "game.systemathic.json") writeFileSync(join(dir, name), JSON.stringify(game));
+  const { id } = await host.open(name);
   window.history.replaceState(null, "", `#${id}`);
   render(<App />);
   await waitFor(() => expect(document.querySelector(".explorer")).not.toBeNull(), { timeout: 5000 });
@@ -75,21 +81,34 @@ async function openGame() {
 const explorerRow = (label: string) =>
   [...document.querySelectorAll<HTMLElement>(".explorer .tree-row")].find((row) => row.querySelector(".tree-label")?.textContent === label)!;
 
+/** The editor's title, once it shows `name`. */
+async function editorTitled(name: string): Promise<HTMLElement> {
+  return waitFor(() => {
+    const h1 = document.querySelector(".editor-header h1");
+    expect(h1?.textContent).toBe(name);
+    return h1!.closest(".editor") as HTMLElement;
+  });
+}
+
+/** Opens a Component's "more" menu item on a row. */
+function menuItem(row: HTMLElement, label: string): void {
+  fireEvent.click(within(row).getByRole("button", { name: "More" }));
+  fireEvent.click(within(row).getByText(label));
+}
+
+const root0 = (file: { design: { components: { languages: { entities: { name: string }[]; relationships: { id: string; ends: { name: string | null }[] }[] }[] }[] } }) => file.design.components[0]!;
+
 describe("the UI", () => {
   it("opens a System on its overview, with its health and its parts", async () => {
     await openGame();
     expect(await screen.findByText("Well-formed")).toBeTruthy();
-    expect(screen.getByText("5 Languages · 7 Domains · 2 Mediations")).toBeTruthy();
+    expect(screen.getByText("10 Components · 6 Languages · 4 Deployments")).toBeTruthy();
   });
 
   it("opens a Language from the Explorer, and edits it in place", async () => {
     const id = await openGame();
     fireEvent.click(explorerRow("Core"));
-    const editor = await waitFor(() => {
-      const h1 = document.querySelector(".editor-header h1");
-      expect(h1?.textContent).toBe("Core");
-      return h1!.closest(".editor") as HTMLElement;
-    });
+    const editor = await editorTitled("Core");
     const entities = () => within(editor.querySelector<HTMLElement>(".grid")!);
     expect(entities().getByText("Monster")).toBeTruthy();
 
@@ -98,10 +117,7 @@ describe("the UI", () => {
     const input = editor.querySelector<HTMLInputElement>(".add-input")!;
     fireEvent.change(input, { target: { value: "Item" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(async () => {
-      const file = await host.system(id);
-      expect(file.design.languages[0]!.entities.map((e) => e.name)).toContain("Item");
-    });
+    await waitFor(async () => expect(root0(await host.system(id)).languages[0]!.entities.map((e) => e.name)).toContain("Item"));
     await waitFor(() => expect(entities().getByText("Item")).toBeTruthy());
 
     // Rename it in place.
@@ -113,15 +129,37 @@ describe("the UI", () => {
 
     // Relate two Entities: the new Relationship's ends are named after them.
     fireEvent.click(within(editor).getByText("Relationship", { selector: ".add-inline, .add-inline *" }));
-    await waitFor(async () => expect((await host.system(id)).design.languages[0]!.relationships).toHaveLength(3));
-    const ends = (await host.system(id)).design.languages[0]!.relationships[2]!.ends.map((e) => e.name);
+    await waitFor(async () => expect(root0(await host.system(id)).languages[0]!.relationships).toHaveLength(3));
+    const ends = root0(await host.system(id)).languages[0]!.relationships[2]!.ends.map((e) => e.name);
     expect(ends).toEqual(["monster", "players"]);
+  });
+
+  it("extends: what a Language extends, and what each of its Entities extends, only from those", async () => {
+    const id = await openGame("extends.systemathic.json");
+    fireEvent.click(explorerRow("Core"));
+    const core = await editorTitled("Core");
+    // A core Language extends nothing, so its Entities offer nothing to extend.
+    expect(core.querySelector(".entity-extends")).toBeNull();
+    fireEvent.click(explorerRow("Combat"));
+    const combat = await editorTitled("Combat");
+    expect(within(combat.querySelector<HTMLElement>(".extends-row")!).getByText("Core")).toBeTruthy();
+    const row = [...combat.querySelectorAll<HTMLElement>(".grid tr")].find((r) => r.querySelector(".cell-main")?.textContent?.includes("CombatPlayer"))!;
+    const add = row.querySelector<HTMLSelectElement>(".entity-extends .chip-add")!;
+    // Only Entities of the Languages Combat extends: Core's and Fighting's.
+    expect([...add.options].map((o) => o.textContent).slice(1).sort()).toEqual(["Damage — Fighting", "Monster — Core", "Targetable — Fighting"]);
+    expect([...add.options].some((o) => o.textContent?.endsWith("— Combat"))).toBe(false);
+    fireEvent.change(add, { target: { value: "fighting.targetable" } });
+    await waitFor(async () => {
+      const file = await host.system(id);
+      const player = root0(file).languages[2]!.entities.find((e) => e.name === "CombatPlayer") as unknown as { extends: string[] };
+      expect(player.extends).toEqual(["core.player", "fighting.attacker", "fighting.targetable"]);
+    });
   });
 
   it("reads a Relationship as navigation, and leaves an end unnamed when its name is cleared", async () => {
     const id = await openGame();
     fireEvent.click(explorerRow("Core"));
-    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Core"));
+    await editorTitled("Core");
     // core.pack: leader (at Monster) and followers (at Monster). From a Monster, `.followers` reaches its followers.
     const row = await waitFor(() => {
       const found = [...document.querySelectorAll<HTMLElement>(".relationship")].find((r) => r.textContent?.includes("followers"));
@@ -130,7 +168,6 @@ describe("the UI", () => {
     });
     const sides = [...row.querySelectorAll<HTMLElement>(".navigation")].map((n) => n.textContent);
     expect(sides).toEqual([".followers", ".leader"]);
-    // Each line reads as what each Monster has: any number of followers, at most one leader.
     const ways = [...row.querySelectorAll<HTMLElement>(".way")];
     expect(ways.map((way) => way.querySelector(".way-target")?.textContent)).toEqual(["Monsters", "Monster"]);
     expect(ways.map((way) => way.querySelector<HTMLSelectElement>(".range-select")!.selectedOptions[0]!.textContent)).toEqual(["any number of (0..N)", "at most one (0..1)"]);
@@ -139,7 +176,7 @@ describe("the UI", () => {
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(async () => {
-      const pack = (await host.system(id)).design.languages[0]!.relationships.find((r) => r.id === "core.pack")!;
+      const pack = root0(await host.system(id)).languages[0]!.relationships.find((r) => r.id === "core.pack")!;
       expect(pack.ends.map((e) => e.name)).toEqual(["leader", null]);
     });
     await waitFor(() => expect(row.querySelector(".navigation.unnamed")?.textContent).toBe(".(unnamed)"));
@@ -148,21 +185,15 @@ describe("the UI", () => {
   it("describes things where they are edited, and reads them all in the Documentation", async () => {
     const id = await openGame();
     fireEvent.click(explorerRow("Core"));
-    const editor = await waitFor(() => {
-      const h1 = document.querySelector(".editor-header h1");
-      expect(h1?.textContent).toBe("Core");
-      return h1!.closest(".editor") as HTMLElement;
-    });
+    const editor = await editorTitled("Core");
     const monster = [...editor.querySelectorAll<HTMLElement>(".grid tr")].find((row) => row.querySelector(".cell-main")?.textContent?.includes("Monster"))!;
     fireEvent.click(within(monster).getByText("Add a description"));
     const area = monster.querySelector<HTMLTextAreaElement>(".prose-input")!;
     fireEvent.change(area, { target: { value: "Something to fight.\n\nIt has **hit points**." } });
     fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
-    // Kept by the Documentation, beside the design, and on the History like any Edit.
     const described = async () => ((await host.attachment(id, "documentation")) as { descriptions: Record<string, string> } | null)?.descriptions ?? {};
     await waitFor(async () => expect((await described())["core.monster"]).toBe("Something to fight.\n\nIt has **hit points**."));
     expect((await host.history(id)).at(-1)).toMatchObject({ summary: "describe Entity", elements: ["core.monster"] });
-    // Shown as prose, under its name.
     await waitFor(() => expect(monster.querySelector(".description strong")?.textContent).toBe("hit points"));
 
     fireEvent.click(explorerRow("Documentation"));
@@ -172,12 +203,11 @@ describe("the UI", () => {
       return found!;
     });
     expect(within(doc).getByText("Something to fight.")).toBeTruthy();
-    // The System is described from the document itself.
     fireEvent.click(within(doc).getByText("Describe this System: what it is, and what it is for"));
     const lead = doc.querySelector<HTMLTextAreaElement>(".prose-input")!;
     fireEvent.change(lead, { target: { value: "A small game." } });
     fireEvent.blur(lead);
-    await waitFor(async () => expect((await described()).game).toBe("A small game."));
+    await waitFor(async () => expect((await described())["game.system"]).toBe("A small game."));
     const markdown = (await host.documentation(id)).markdown;
     expect(markdown).toContain("# Game\n\nA small game.\n");
     expect(markdown).toContain("- **Monster** — Something to fight.\n\n  It has **hit points**.\n");
@@ -204,75 +234,117 @@ describe("the UI", () => {
     fireEvent.click(document.querySelector(".statusbar .status-errors")!);
     const problem = await screen.findByText("min <= max, where max is present");
     fireEvent.click(problem);
-    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Core"));
+    await editorTitled("Core");
     await act(async () => {
       await host.undo(id, session);
     });
     await waitFor(() => expect(document.querySelector(".statusbar .status-errors")).toBeNull());
   });
 
-  it("maps a Transformation's items, and shows what is missing", async () => {
-    await openGame();
-    fireEvent.click(explorerRow("CombatInUnity"));
-    fireEvent.click(await screen.findByText("Combat as GameObjects", { selector: ".cell-main" }));
-    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Combat as GameObjects"));
-    expect(screen.getByText(/missing, of 5 items of Combat/)).toBeTruthy();
-    expect(document.querySelectorAll(".mapping-row.is-missing")).toHaveLength(2);
-  });
-
-  it("edits a Domain: what it uses, what that puts in scope, a new Transformation", async () => {
-    const id = await openGame();
-    fireEvent.click(explorerRow("Unity"));
-    const domainRow = [...document.querySelectorAll<HTMLElement>(".explorer .tree-row")].filter((row) => row.querySelector(".tree-label")?.textContent === "Unity")[1]!;
-    fireEvent.click(domainRow);
-    await waitFor(() => expect(document.querySelector(".editor-kind")?.textContent).toBe("Domain"));
-    const add = document.querySelectorAll<HTMLSelectElement>(".chip-add")[0]!;
-    fireEvent.change(add, { target: { value: "transport" } });
-    await waitFor(async () => expect((await host.system(id)).design.domains.find((d) => d.id === "d.unity")!.languages).toEqual(["unity", "transport"]));
-    await waitFor(() => expect(document.querySelectorAll(".scope-item")).toHaveLength(2));
-    fireEvent.click(screen.getByText("Transformation", { selector: ".add-inline, .add-inline *" }));
-    const [from, to] = document.querySelectorAll<HTMLSelectElement>(".new-row .picker");
-    fireEvent.change(from!, { target: { value: "unity" } });
-    fireEvent.change(to!, { target: { value: "transport" } });
-    fireEvent.click(screen.getByText("Create"));
-    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Unity as Transport"));
-  });
-
-  it("makes a Mediation's witness in one step", async () => {
-    const id = await openGame();
-    const session = (await host.startSession(id, "test")).session;
-    await host.apply(id, session, "TransformationEditor", "remove", { transformation: "network-over-transport" });
-    const mediation = await host.apply(id, session, "SystemEditor", "addMediation", { system: "game", what: "d.network", how: "d.transport", mediator: "d.network-over-transport" });
-    // The new Mediation has no witness yet: once the page shows that error, it has read the change.
-    await waitFor(() => expect(document.querySelector(".statusbar .status-errors")).not.toBeNull(), { timeout: 5000 });
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    const input = await screen.findByPlaceholderText("Go to anything, or type a command…");
-    fireEvent.change(input, { target: { value: "network / transport" } });
+  it("edits a Component in the order of design: what it uses, its Interactions, its Transformations", async () => {
+    const id = await openGame("component.systemathic.json");
+    fireEvent.click(explorerRow("Server"));
+    const editor = await editorTitled("Server");
+    const kinds = [...editor.querySelectorAll(".editor-section h3")].map((h) => h.textContent?.replace(/\d+$/, ""));
+    expect(kinds).toEqual(["Languages", "Uses", "Imports", "Interactions", "Components", "Transformations", "Mediums", "Deployments"]);
+    expect(editor.querySelector(".breadcrumb")?.textContent).toContain("Game");
+    const uses = editor.querySelectorAll<HTMLSelectElement>(".chip-add")[0]!;
+    fireEvent.change(uses, { target: { value: "core" } });
+    await waitFor(async () => expect(root0(await host.system(id)).components.find((c) => c.id === "game.server")!.uses).toEqual(["combat", "core"]));
+    fireEvent.click(within(editor).getByText("Interaction", { selector: ".add-inline, .add-inline *" }));
+    const input = editor.querySelector<HTMLInputElement>(".add-input")!;
+    fireEvent.change(input, { target: { value: "heal" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await screen.findByText("Not witnessed.");
-    fireEvent.click(screen.getByText("Create witness"));
-    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Network as Transport"));
-    const file = await host.system(id);
-    const holder = file.design.domains.find((d) => d.id === "d.network-over-transport")!;
-    expect(holder.transformations.map((t) => [t.source, t.target, t.reverse !== null])).toEqual([["network", "transport", true]]);
-    expect(mediation.elements[0]).toBeTruthy();
+    await waitFor(async () => expect(root0(await host.system(id)).components.find((c) => c.id === "game.server")!.interactions.map((i) => i.name)).toEqual(["attack", "heal"]));
+    fireEvent.click(screen.getByText("Transformation", { selector: ".add-inline, .add-inline *" }));
+    const [from, to] = document.querySelectorAll<HTMLSelectElement>(".new-transformation .picker");
+    fireEvent.change(from!, { target: { value: "core" } });
+    fireEvent.change(to!, { target: { value: "combat" } });
+    fireEvent.click(screen.getByText("Create"));
+    await editorTitled("Core as Combat");
+  });
+
+  it("maps a realization's items, and shows what is deliberately left out", async () => {
+    await openGame();
+    fireEvent.click(explorerRow("CombatOverNetwork"));
+    fireEvent.click(await screen.findByText("Combat down to Network", { selector: ".cell-main" }));
+    await editorTitled("Combat down to Network");
+    expect(screen.getByText(/missing, of 3 items of Combat/)).toBeTruthy();
+    expect(document.querySelectorAll(".mapping-row.is-missing")).toHaveLength(0);
+    expect(document.querySelectorAll(".mapping-row.is-deferred")).toHaveLength(1);
+  });
+
+  it("connects in a Deployment, and asks before adding the import the Connection needs", async () => {
+    const id = await openGame("connect.systemathic.json");
+    const session = (await host.startSession(id, "test")).session;
+    await act(async () => {
+      await host.apply(id, session, "DeploymentEditor", "remove", { item: "game.local.client-attacks" });
+      await host.apply(id, session, "InteractionEditor", "unimportInteraction", { component: "game.client", interaction: "game.server.attack" });
+      await host.apply(id, session, "InteractionEditor", "unimportInteraction", { component: "game.client.input", interaction: "game.server.attack" });
+    });
+    fireEvent.click(explorerRow("Local"));
+    const editor = await editorTitled("Local");
+    const client = [...editor.querySelectorAll<HTMLElement>(".instance-row")].find((r) => r.textContent?.includes("client"))!;
+    menuItem(client, "Connect to server");
+    const panel = await waitFor(() => {
+      const found = editor.querySelector<HTMLElement>(".connect-panel");
+      expect(found?.textContent).toContain("Client does not import attack");
+      return found!;
+    });
+    fireEvent.click(within(panel).getByText("Connect"));
+    await waitFor(async () => {
+      const file = await host.system(id);
+      const game = root0(file) as unknown as { components: { id: string; imports: { interactions: string[] } }[]; deployments: { id: string; connections: unknown[] }[] };
+      expect(game.components.find((c) => c.id === "game.client")!.imports.interactions).toEqual(["game.server.attack"]);
+      expect(game.deployments.find((d) => d.id === "game.local")!.connections).toHaveLength(1);
+    });
+  });
+
+  it("shows a Connection's stack: a broken level in red, and a realization made in one step", async () => {
+    const id = await openGame("stack.systemathic.json");
+    const session = (await host.startSession(id, "test")).session;
+    await act(async () => {
+      await host.apply(id, session, "MediationEditor", "realize", { mediation: "game.online.client-2-attacks#m0" });
+      await host.apply(id, session, "MediumEditor", "remove", { medium: "pkg.link.medium" });
+    });
+    fireEvent.click(explorerRow("Online"));
+    const editor = await editorTitled("Online");
+    await waitFor(() => expect(editor.querySelectorAll(".mediation-level.broken")).toHaveLength(2));
+    const card = [...editor.querySelectorAll<HTMLElement>(".connection-card")].find((c) => c.textContent?.includes("client-2"))!;
+    fireEvent.click(within(card).getByText("Create realization"));
+    await waitFor(async () => {
+      const file = await host.system(id);
+      const online = (root0(file) as unknown as { deployments: { id: string; connections: { id: string; mediations: { down: string | null }[] }[] }[] }).deployments.find((d) => d.id === "game.online")!;
+      expect(online.connections.find((c) => c.id === "game.online.client-2-attacks")!.mediations[0]!.down).toBeTruthy();
+    });
+  });
+
+  it("puts the whole System together in a Configuration, one Instance at a time", async () => {
+    const id = await openGame("configuration.systemathic.json");
+    fireEvent.click(explorerRow("Release"));
+    const editor = await editorTitled("Release");
+    const rows = [...editor.querySelectorAll<HTMLElement>(".choice-row")].map((r) => r.querySelector("strong")?.textContent);
+    // Each Instance's choice, and beneath it, the choices for the Instances of the Deployment chosen.
+    expect(rows).toEqual(["Game", "server", "physics", "client-1", "physics", "input", "client-2", "physics", "input"]);
+    const client2 = [...editor.querySelectorAll<HTMLElement>(".choice-row")].find((r) => r.querySelector("strong")?.textContent === "client-2")!;
+    fireEvent.change(client2.querySelector("select")!, { target: { value: "" } });
+    await waitFor(async () => expect((await host.system(id)).design.configurations[0]!.root.choices).toHaveLength(2));
   });
 
   it("edits the verification script, with its rules beside it", async () => {
     await openGame();
     fireEvent.click(explorerRow("Verification script"));
     await waitFor(() => expect(document.querySelector(".cm-editor")).not.toBeNull(), { timeout: 10_000 });
-    expect(document.querySelector(".cm-content")?.textContent).toContain("every_domain_uses_a_language");
-    await screen.findByText("every_domain_uses_a_language", { selector: ".rule-list code" }, { timeout: 10_000 });
-    // A standard rule of the profile says what it checks, and, folded, what it is for.
+    expect(document.querySelector(".cm-content")?.textContent).toContain("every_component_uses_a_language");
+    await screen.findByText("every_component_uses_a_language", { selector: ".rule-list code" }, { timeout: 10_000 });
     const opacity = await waitFor(() => {
       const found = [...document.querySelectorAll<HTMLDetailsElement>(".profile-rules details")].find((d) => d.querySelector("summary")?.textContent?.includes("opacity"));
       expect(found).toBeTruthy();
       return found!;
     }, { timeout: 10_000 });
     expect(opacity.open).toBe(false);
-    expect(opacity.querySelector(".rule-about")?.textContent).toMatch(/^Every Mediation is opaque/);
-    expect(opacity.querySelector(".prose")?.textContent).toContain("This is what makes a");
+    expect(opacity.querySelector(".rule-about")?.textContent).toMatch(/^Every mediated Connection is opaque/);
+    expect(opacity.querySelector(".prose")?.textContent).toContain("This is what makes a how swappable");
     fireEvent.click(screen.getByText("Save", { selector: ".editor-actions button, .editor-actions button *" }));
     await waitFor(async () => expect(await host.attachment((await host.contexts())[0]!.id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" }));
   }, 20_000);
@@ -284,7 +356,7 @@ describe("the UI", () => {
       "from systemathic.std import *",
       "",
       "profile = Profile(*standard_rules)",
-      "strict = Profile(*standard_rules, completeness.at(ERROR))",
+      'strict = Profile(*standard_rules, mediation_primitives("In-process"))',
       "",
     ].join("\n");
     await host.saveScript(id, "game.rules.py", source);
@@ -308,7 +380,6 @@ describe("the UI", () => {
 
   it("says so when the host is older than the page, rather than breaking", async () => {
     const current = globalThis.fetch;
-    // An older host: no file listing, and Systems without who is editing them.
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path.startsWith("/api/files")) return new Response(JSON.stringify({ error: "no route" }), { status: 404 });
@@ -333,17 +404,16 @@ describe("the UI", () => {
     await openGame();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const input = await screen.findByPlaceholderText("Go to anything, or type a command…");
-    fireEvent.change(input, { target: { value: "network / transport" } });
+    fireEvent.change(input, { target: { value: "online" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("Network / Transport"));
-    expect(screen.getByText("Witnessed")).toBeTruthy();
+    await editorTitled("Online");
+    expect(screen.getAllByText("Connections").length).toBeGreaterThan(0);
   });
 
   it("verifies, and shows the result", async () => {
     await openGame();
     fireEvent.click(document.querySelector(".system-row")!);
     fireEvent.click(await screen.findByText("Verify", { selector: ".health-card button" }));
-    // Whichever profile an earlier test left it with: what matters is that the result shows.
     await screen.findByText(/^\d+ rule errors?, \d+ warnings?$/, {}, { timeout: 15000 });
   }, 20_000);
 });

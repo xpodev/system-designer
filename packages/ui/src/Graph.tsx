@@ -60,12 +60,17 @@ export function Graph(props: {
   onMove(positions: Positions): void;
   /** Dragging from one box's handle onto another: what to make of it. Without it, boxes have no handles. */
   onConnect?(source: string, target: string): void;
+  /** Which boxes have a handle to drag from: by default, Entities. */
+  connectable?(item: Item): boolean;
+  /** What a handle says it does. */
+  handleHint?: string;
   /** A double click on empty space, with where it was. */
   onCreate?(at: [number, number]): void;
   /** Some Items are not boxes but text beside a box (an Interaction's signature). */
   height?: number;
 }) {
   const { view, saved, selected, onSelect, onMove, onConnect, onCreate } = props;
+  const connectable = props.connectable ?? ((item: Item) => item.kind === "Entity");
   const [linking, setLinking] = useState<{ from: string; x: number; y: number; sx: number; sy: number }>();
   const svg = useRef<SVGSVGElement>(null);
   const point = (event: { clientX: number; clientY: number }): [number, number] => {
@@ -178,7 +183,7 @@ export function Graph(props: {
             <text x={10} y={32} className="label">
               {item.label.length > 24 ? `${item.label.slice(0, 23)}…` : item.label}
             </text>
-            {onConnect && item.kind === "Entity" && (
+            {onConnect && connectable(item) && (
               <circle
                 className="handle"
                 cx={WIDTH}
@@ -191,7 +196,7 @@ export function Graph(props: {
                   setLinking({ from: item.subject, x, y, sx: x, sy: y });
                 }}
               >
-                <title>Drag onto an Entity to relate them</title>
+                <title>{props.handleHint ?? "Drag onto an Entity to relate them"}</title>
               </circle>
             )}
           </g>

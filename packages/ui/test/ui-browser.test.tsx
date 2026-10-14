@@ -44,15 +44,16 @@ describe("the UI, standing alone in the browser", () => {
     fireEvent.click(await screen.findByText("game.systemathic.json"));
     await waitFor(() => expect(document.querySelector(".explorer")).not.toBeNull(), { timeout: 5000 });
     fireEvent.click(await screen.findByText("Verify", { selector: ".health-card button" }));
-    await screen.findByText("0 rule errors, 1 warning", {}, { timeout: 60_000 });
+    await screen.findByText("0 rule errors, 0 warnings", {}, { timeout: 60_000 });
 
-    const languages = [...document.querySelectorAll<HTMLElement>(".explorer .tree-row.group")].find((row) => row.textContent?.startsWith("Languages"))!;
-    fireEvent.click(languages.querySelector(".row-add")!);
+    // The root Component's row, not the System's, which shares its name.
+    const root = [...document.querySelectorAll<HTMLElement>(".explorer li > .tree-row")].find((row) => row.querySelector(".tree-label")?.textContent === "Game")!;
+    fireEvent.click(root.querySelector<HTMLElement>(".row-add[aria-label='Add Language']")!);
     await waitFor(() => expect(document.querySelector(".editor-header h1")?.textContent).toBe("NewLanguage"));
     fireEvent.keyDown(window, { key: "s", ctrlKey: true });
     await screen.findByText("Saved game.systemathic.json");
     const kept = JSON.parse((await store.get("examples/game.systemathic.json"))!);
-    expect(kept.design.languages.map((l: { name: string }) => l.name)).toContain("NewLanguage");
+    expect(kept.design.components[0].languages.map((l: { name: string }) => l.name)).toContain("NewLanguage");
   }, 90_000);
 
   it("brings a System in from the computer", async () => {
@@ -60,7 +61,8 @@ describe("the UI, standing alone in the browser", () => {
     render(<App />);
     fireEvent.click(await screen.findByText("Open a file…"));
     const input = document.querySelector<HTMLInputElement>(".upload-row input[type=file]")!;
-    const file = { name: "shop.systemathic.json", format: "systemathic/1", design: { id: "shop", name: "Shop", languages: [], domains: [], mediations: [] }, attachments: [] };
+    const root = { id: "shop.root", name: "Shop", uses: [], imports: { components: [], transformations: [], interactions: [], mediums: [] }, languages: [], transformations: [], interactions: [], mediums: [], deployments: [], components: [] };
+    const file = { name: "shop.systemathic.json", format: "systemathic/2", design: { id: "shop", name: "Shop", root: "shop.root", components: [root], configurations: [] }, attachments: [] };
     const { name, ...content } = file;
     Object.defineProperty(input, "files", { value: [new dom.window.File([JSON.stringify(content)], name)] });
     fireEvent.change(input);

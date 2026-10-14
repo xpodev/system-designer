@@ -82,7 +82,7 @@ export interface PerspectiveInfo {
   perspective: string;
   title: string;
   about: string;
-  needs?: "language";
+  needs?: "Language" | "Component" | "Deployment";
 }
 
 export interface Diagnostic {
@@ -136,7 +136,7 @@ export const api = {
   system: (context: string) => host.system(context) as unknown as Promise<SystemFile>,
   history: (context: string) => host.history(context),
   diagnostics: (context: string) => host.diagnostics(context) as Promise<Diagnostic[]>,
-  view: (context: string, perspective: string, language?: string) => host.view(context, perspective, language) as unknown as Promise<View>,
+  view: (context: string, perspective: string, subject?: string) => host.view(context, perspective, subject) as unknown as Promise<View>,
   verify: (context: string) => host.verify(context),
   specification: (context: string) => host.specification(context),
   documentation: (context: string) => host.documentation(context),

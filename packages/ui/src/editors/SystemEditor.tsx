@@ -1,8 +1,9 @@
-/** The System overview: its health at a glance, its Languages, Domains and Mediations, and where to start. */
+/** The System overview: its health at a glance, its root and the packages beside it, its Configurations, and where to start. */
 import { useState } from "react";
 import { uniqueName } from "../Explorer";
-import { Badge, Icon, Picker, Section } from "../widgets";
-import { useFocusRow, useModel, useWorkspace } from "../workspace";
+import type { ComponentJson } from "../model";
+import { Badge, Icon, Marks, Picker, Section } from "../widgets";
+import { useModel, useWorkspace } from "../workspace";
 import { Description } from "../prose";
 import { EditorHeader } from "./common";
 
@@ -10,13 +11,16 @@ export function SystemEditor(props: { onCatalog(): void }) {
   const w = useWorkspace();
   const model = useModel();
   const system = model.system;
+  const root = model.root;
   const errors = w.diagnostics.filter((d) => d.severity === "error");
   const warnings = w.diagnostics.length - errors.length;
-  const empty = model.languages.length === 0 && model.domains.length === 0;
-  const taken = [...model.languages.map((l) => l.name), ...model.domains.map((d) => d.name)];
+  const components = model.components.length;
+  const deployments = model.components.reduce((n, c) => n + c.deployments.length, 0);
+  const empty = root !== undefined && root.languages.length === 0 && root.components.length === 0;
+  const taken = [...model.byId.keys()].map((id) => model.name(id));
 
-  const add = async (operation: "addLanguage" | "addDomain", what: string) => {
-    const edit = await w.act("SystemEditor", operation, { system: system.id, name: uniqueName(what, taken) }, { quiet: true });
+  const add = async (editor: string, operation: string, args: Record<string, unknown>, what: string) => {
+    const edit = await w.act(editor, operation, { ...args, name: uniqueName(what, taken) }, { quiet: true });
     if (edit) w.reveal(edit.elements[0]!);
   };
 
@@ -58,10 +62,10 @@ export function SystemEditor(props: { onCatalog(): void }) {
             </button>
           </div>
           <div className="health-card">
-            <Icon name="Language" size={22} />
+            <Icon name="Component" size={22} />
             <div>
               <strong>
-                {model.languages.length} Languages · {model.domains.length} Domains · {model.mediations.length} Mediations
+                {components} Component{components === 1 ? "" : "s"} · {model.languages.length} Language{model.languages.length === 1 ? "" : "s"} · {deployments} Deployment{deployments === 1 ? "" : "s"}
               </strong>
               <span>
                 {errors.length} errors, {warnings} warnings in all
@@ -70,70 +74,74 @@ export function SystemEditor(props: { onCatalog(): void }) {
           </div>
         </div>
 
-        {empty && (
+        {empty && root && (
           <div className="getting-started">
-            <h2>Start with a vocabulary</h2>
+            <h2>Design it as you think it through</h2>
             <ol>
               <li>
-                <strong>Add a Language</strong>: a closed vocabulary — the Entities a part of your system knows, and how they relate.
+                <strong>Core Languages</strong> define the concepts: closed vocabularies, each at one level of abstraction.
               </li>
               <li>
-                <strong>Add a Domain</strong> that uses it: a bounded context, the unit a team or a module owns.
+                <strong>Extensions</strong> give them depth: Languages that build on others, adding Entities and Relationships.
               </li>
               <li>
-                <strong>Cross explicitly</strong>: Transformations show how one Language appears in another; Mediations say which "what" is carried out over which "how".
+                <strong>Components</strong> give them an implementation: each uses Languages, offers Interactions, imports what it depends on — and is built the same way inside.
+              </li>
+              <li>
+                <strong>Deployments</strong> say how a Component is put together: which parts exist, how they reach each other, and over what.
               </li>
             </ol>
             <div className="row-buttons start">
-              <button className="primary" onClick={() => void add("addLanguage", "Language")}>
-                <Icon name="plus" /> Add a Language
+              <button className="primary" onClick={() => void add("ComponentEditor", "addLanguage", { component: root.id }, "Language")}>
+                <Icon name="plus" /> Add a core Language
               </button>
-              <button onClick={props.onCatalog}>Or import one from the catalog</button>
+              <button onClick={props.onCatalog}>Or import a package from the catalog</button>
             </div>
           </div>
         )}
 
         <div className="three-columns">
-          <Section title="Languages" icon="Language" count={model.languages.length} actions={<button className="small" onClick={() => void add("addLanguage", "Language")}>+ Language</button>}>
-            <ul className="card-list">
-              {model.languages.map((l) => (
-                <li key={l.id}>
-                  <button onClick={() => w.open({ kind: "language", id: l.id })}>
-                    <span className="card-title">{l.name}</span>
-                    <span className="muted">
-                      {l.entities.length} entities, {l.interactions.length} interactions
-                    </span>
-                    {w.about(l.id).length > 0 && <Badge severity="error">{w.about(l.id).length}</Badge>}
-                  </button>
-                </li>
-              ))}
-            </ul>
+          <Section title="The root" icon="Component" hint="everything the design says is inside it">
+            {root && (
+              <ul className="card-list">
+                <ComponentCard component={root} />
+                {root.components.map((c) => (
+                  <ComponentCard key={c.id} component={c} nested />
+                ))}
+              </ul>
+            )}
+            {root && (
+              <div className="row-buttons start">
+                <button className="small" onClick={() => void add("ComponentEditor", "addLanguage", { component: root.id }, "Language")}>
+                  + Language
+                </button>
+                <button className="small" onClick={() => void add("ComponentEditor", "addComponent", { parent: root.id }, "Component")}>
+                  + Component
+                </button>
+              </div>
+            )}
           </Section>
-          <Section title="Domains" icon="Domain" count={model.domains.length} actions={<button className="small" onClick={() => void add("addDomain", "Domain")}>+ Domain</button>}>
+          <Section title="Packages" icon="Package" count={model.packages.length} hint="brought in beside the root" actions={<button className="small" onClick={props.onCatalog}>+ From the catalog</button>}>
             <ul className="card-list">
-              {model.domains.map((d) => (
-                <li key={d.id}>
-                  <button onClick={() => w.open({ kind: "domain", id: d.id })}>
-                    <span className="card-title">{d.name}</span>
-                    <span className="muted">uses {d.languages.map((l) => model.name(l)).join(", ") || "nothing yet"}</span>
-                  </button>
-                </li>
+              {model.packages.map((c) => (
+                <ComponentCard key={c.id} component={c} />
               ))}
             </ul>
+            {model.packages.length === 0 && <p className="muted">None yet. The root imports from them as from siblings.</p>}
           </Section>
-          <Section title="Mediations" icon="Mediation" count={model.mediations.length}>
+          <Section title="Configurations" icon="Configuration" count={model.configurations.length} hint="the whole System, put together">
             <ul className="card-list">
-              {model.mediations.map((m) => (
-                <li key={m.id}>
-                  <button onClick={() => w.open({ kind: "mediation", id: m.id })}>
-                    <span className="card-title">{model.name(m.id)}</span>
-                    <span className="muted">by {model.name(m.mediator)}</span>
-                    {model.witnesses(m).length === 0 && <Badge severity="error">no witness</Badge>}
+              {model.configurations.map((c) => (
+                <li key={c.id}>
+                  <button onClick={() => w.open({ kind: "configuration", id: c.id })}>
+                    <span className="card-title">{c.name}</span>
+                    <span className="muted">the root as {model.name(c.root.deployment)}</span>
+                    <Marks diagnostics={w.about(c.id)} />
                   </button>
                 </li>
               ))}
             </ul>
-            <NewMediation />
+            <NewConfiguration />
           </Section>
         </div>
       </div>
@@ -141,29 +149,44 @@ export function SystemEditor(props: { onCatalog(): void }) {
   );
 }
 
-function NewMediation() {
+function ComponentCard({ component, nested }: { component: ComponentJson; nested?: boolean }) {
   const w = useWorkspace();
   const model = useModel();
-  const ref = useFocusRow("#new-mediation");
-  const [what, setWhat] = useState<string>();
-  const [how, setHow] = useState<string>();
-  const [mediator, setMediator] = useState<string>();
-  if (model.domains.length < 2) return <p className="muted">A Mediation relates Domains: add at least two.</p>;
-  const domains = model.domains.map((d) => ({ id: d.id, label: d.name }));
-  const create = async () => {
-    if (!what || !how || !mediator) return;
-    const edit = await w.act("SystemEditor", "addMediation", { system: model.system.id, what, how, mediator }, { quiet: true });
-    if (edit) w.open({ kind: "mediation", id: edit.elements[0]! });
-  };
+  const problems = w.about(component.id);
   return (
-    <div ref={ref} className="new-mediation">
-      <Picker value={what} choices={domains} placeholder="what" onChange={setWhat} />
-      <span className="muted">over</span>
-      <Picker value={how} choices={domains} placeholder="how" onChange={setHow} />
-      <span className="muted">by</span>
-      <Picker value={mediator} choices={domains} placeholder="mediator" onChange={setMediator} />
-      <button className="primary small" disabled={!what || !how || !mediator} onClick={create}>
-        Add Mediation
+    <li className={nested ? "nested" : ""}>
+      <button onClick={() => w.open({ kind: "component", id: component.id })}>
+        <Icon name={nested ? "Component" : model.packages.includes(component) ? "Package" : "Component"} size={14} />
+        <span className="card-title">{component.name}</span>
+        <span className="muted">
+          {component.languages.length ? `${component.languages.map((l) => l.name).join(", ")} · ` : ""}
+          {component.interactions.length} interaction{component.interactions.length === 1 ? "" : "s"}
+        </span>
+        {problems.length > 0 && <Badge severity="error">{problems.length}</Badge>}
+      </button>
+    </li>
+  );
+}
+
+function NewConfiguration() {
+  const w = useWorkspace();
+  const model = useModel();
+  const [deployment, setDeployment] = useState<string>();
+  const options = model.root?.deployments ?? [];
+  if (options.length === 0) return <p className="muted">A Configuration starts with a Deployment of the root: add one first.</p>;
+  const taken = model.configurations.map((c) => c.name);
+  return (
+    <div className="new-mediation">
+      <Picker value={deployment} choices={options.map((d) => ({ id: d.id, label: d.name }))} placeholder="the root as…" onChange={setDeployment} />
+      <button
+        className="primary small"
+        disabled={!deployment}
+        onClick={async () => {
+          const edit = await w.act("ConfigurationEditor", "addConfiguration", { system: model.system.id, name: uniqueName("Configuration", taken), deployment }, { quiet: true });
+          if (edit) w.open({ kind: "configuration", id: edit.elements[0]! });
+        }}
+      >
+        Add Configuration
       </button>
     </div>
   );

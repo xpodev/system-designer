@@ -479,8 +479,15 @@ code,
 .kind-icon.Formula {
   color: var(--k-formula);
 }
-.kind-icon.Domain,
-.editor-icon.Domain {
+.kind-icon.Component,
+.editor-icon.Component,
+.kind-icon.Package,
+.editor-icon.Package,
+.kind-icon.Deployment,
+.editor-icon.Deployment,
+.kind-icon.Instance,
+.kind-icon.Configuration,
+.editor-icon.Configuration {
   color: var(--k-domain);
 }
 .kind-icon.Transformation,
@@ -488,7 +495,9 @@ code,
   color: var(--k-transformation);
 }
 .kind-icon.Mediation,
-.editor-icon.Mediation {
+.editor-icon.Mediation,
+.kind-icon.Medium,
+.editor-icon.Medium {
   color: var(--k-mediation);
 }
 .editor-icon.System {
@@ -1817,7 +1826,8 @@ td > .row-description {
   stroke: var(--line);
   stroke-width: 1.5;
 }
-.graph .node.Domain rect {
+.graph .node.Component rect,
+.graph .node.Instance rect {
   stroke: var(--k-domain);
 }
 .graph .node.Language rect {
@@ -2627,7 +2637,8 @@ tr:hover .add-description.row-description,
 .icon.k-language {
   color: var(--k-language);
 }
-.icon.k-domain {
+.icon.k-domain,
+.icon.k-component {
   color: var(--k-domain);
 }
 .icon.k-mediation {
@@ -2839,4 +2850,139 @@ details.rules-run .rule-docs {
     height: auto;
     padding: 2px 0;
   }
+}
+
+/* Components, Deployments and Configurations */
+.breadcrumb .link-chip {
+  margin-right: 2px;
+}
+.import-row,
+.extends-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+.import-row .label,
+.extends-row .label {
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 108px;
+}
+.entity-extends {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 13px;
+}
+.card-list li.nested {
+  margin-left: 18px;
+}
+.medium-row,
+.instance-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.connect-panel {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0 14px;
+}
+.connect-panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.connect-panel header .icon-button {
+  margin-left: auto;
+}
+.what-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.what-choices .label {
+  color: var(--muted);
+  font-size: 13px;
+}
+label.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+label.check.confirm {
+  display: flex;
+  margin: 6px 0;
+  color: var(--warning);
+}
+.connection-card {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+.connection-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mediation-stack {
+  margin: 8px 0 4px 18px;
+  padding: 0;
+}
+.mediation-level {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 8px;
+  margin: 3px 0;
+  border-left: 3px solid var(--k-mediation);
+  border-radius: 4px;
+  background: var(--hover);
+}
+.mediation-level.broken {
+  border-left-color: var(--error);
+  background: var(--error-soft);
+  color: var(--error);
+}
+.mediation-level.unrealized {
+  border-left-style: dashed;
+}
+.mediation-level .level-what {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.stack-tail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0 18px;
+}
+.choice-tree {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+.graph .link.unstated path {
+  stroke-dasharray: 4 4;
+}
+.graph .link.broken path {
+  stroke: var(--error);
 }

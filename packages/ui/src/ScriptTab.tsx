@@ -64,8 +64,8 @@ export function ScriptTab() {
   const [source, setSource] = useState<string>();
   const [check, setCheck] = useState<Check>();
   const [busy, setBusy] = useState(false);
-  const names = useRef({ domains: [] as string[], languages: [] as string[] });
-  names.current = { domains: model.domains.map((d) => d.name), languages: model.languages.map((l) => l.name) };
+  const names = useRef({ components: [] as string[], languages: [] as string[] });
+  names.current = { components: model.components.map((c) => c.name), languages: model.languages.map((l) => l.name) };
   const saveRef = useRef<() => Promise<boolean>>(async () => false);
 
   useEffect(() => {
@@ -101,11 +101,11 @@ export function ScriptTab() {
       { delay: 500 },
     );
     const complete = async (context: CompletionContext): Promise<CompletionResult | null> => {
-      const quoted = context.matchBefore(/\.(domain|language)\(\s*["']([^"']*)$/);
+      const quoted = context.matchBefore(/\.(component|language)\(\s*["']([^"']*)$/);
       if (quoted) {
-        const kind = quoted.text.startsWith(".domain") ? "domains" : "languages";
+        const kind = quoted.text.startsWith(".component") ? "components" : "languages";
         const typed = quoted.text.match(/["']([^"']*)$/)![1]!;
-        return { from: context.pos - typed.length, options: names.current[kind].map((label) => ({ label, type: "text", detail: kind === "domains" ? "Domain" : "Language" })), validFor: /^[^"']*$/ };
+        return { from: context.pos - typed.length, options: names.current[kind].map((label) => ({ label, type: "text", detail: kind === "components" ? "Component" : "Language" })), validFor: /^[^"']*$/ };
       }
       const word = context.matchBefore(/\.?\w*/);
       if (!word || (word.from === word.to && !context.explicit)) return null;

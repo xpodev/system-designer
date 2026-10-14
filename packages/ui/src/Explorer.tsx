@@ -1,9 +1,10 @@
 /**
- * The Explorer: the whole System as a tree. A click opens what it is in its editor; each node
+ * The Explorer: the whole System as a tree — the root Component, nested as it is, then the
+ * packages beside it and the Configurations. A click opens what it is in its editor; each node
  * offers what can be added to it, and its context menu what can be done with it.
  */
 import { useMemo, useState, type ReactNode } from "react";
-import { tabKey, type Tab } from "./model";
+import { tabKey, type ComponentJson, type Tab } from "./model";
 import { Icon, MenuList, type MenuItem } from "./widgets";
 import { useWorkspace } from "./workspace";
 
@@ -36,87 +37,107 @@ export function Explorer() {
     });
 
   const nodes = useMemo<Node[]>(() => {
-    const system = model.system.id;
+    const taken = [...model.byId.keys()].map((id) => model.name(id));
     const remove = (editor: string, arg: string, id: string, what: string): MenuItem => ({
       label: `Delete ${what}`,
       icon: "trash",
       danger: true,
       onSelect: () => void w.act(editor, "remove", { [arg]: id }, { message: `Deleted ${what} ${model.name(id)}` }),
     });
-    const languages: Node = {
-      id: "#languages",
-      label: "Languages",
-      icon: "Language",
-      add: [{ label: "Language", run: () => void addNamed("SystemEditor", "addLanguage", { system }, "Language") }],
-      children: model.languages.map((l) => ({
-        id: l.id,
-        label: l.name,
-        icon: "Language",
-        tab: { kind: "language", id: l.id },
-        subject: l.id,
-        add: [{ label: "Entity", run: () => void addNamed("LanguageEditor", "addEntity", { language: l.id }, "Entity", l.id) }],
-        menu: [
-          { label: "Open", icon: "open", onSelect: () => w.open({ kind: "language", id: l.id }) },
-          { label: "Add Entity", icon: "Entity", onSelect: () => void addNamed("LanguageEditor", "addEntity", { language: l.id }, "Entity", l.id) },
-          remove("LanguageEditor", "language", l.id, "Language"),
-        ],
-        children: [
-          ...l.entities.map((e) => ({ id: e.id, label: e.name, icon: "Entity", subject: e.id })),
-          ...l.relationships.map((r) => ({ id: r.id, label: model.name(r.id), icon: "Relationship", subject: r.id })),
-          ...l.interactions.map((i) => ({ id: i.id, label: `${i.name}()`, icon: "Interaction", subject: i.id })),
-          ...l.formulas.map((f) => ({ id: f.id, label: f.text, icon: "Formula", subject: f.id })),
-        ],
-      })),
-    };
-    const domains: Node = {
-      id: "#domains",
-      label: "Domains",
-      icon: "Domain",
-      add: [{ label: "Domain", run: () => void addNamed("SystemEditor", "addDomain", { system }, "Domain") }],
-      children: model.domains.map((d) => ({
-        id: d.id,
-        label: d.name,
-        icon: "Domain",
-        tab: { kind: "domain", id: d.id },
-        subject: d.id,
-        detail: model.rolesOf(d.id).some((r) => r.role === "mediator") ? "mediator" : undefined,
-        menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "domain", id: d.id }) }, remove("DomainEditor", "domain", d.id, "Domain")],
-        children: d.transformations.map((t) => ({
-          id: t.id,
-          label: t.name,
-          icon: "Transformation",
-          tab: { kind: "transformation", id: t.id },
-          subject: t.id,
-          detail: `${model.name(t.source)} → ${model.name(t.target)}`,
-          menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "transformation", id: t.id }) }, remove("TransformationEditor", "transformation", t.id, "Transformation")],
-        })),
-      })),
-    };
-    const mediations: Node = {
-      id: "#mediations",
-      label: "Mediations",
-      icon: "Mediation",
-      add: model.domains.length >= 2 ? [{ label: "Mediation", run: () => w.open({ kind: "system" }, "#new-mediation") }] : [],
-      children: model.mediations.map((m) => ({
-        id: m.id,
-        label: model.name(m.id),
-        icon: "Mediation",
-        tab: { kind: "mediation", id: m.id },
-        subject: m.id,
-        detail: `by ${model.name(m.mediator)}`,
-        menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "mediation", id: m.id }) }, remove("MediationEditor", "mediation", m.id, "Mediation")],
-      })),
-    };
-    return [languages, domains, mediations];
-
-    async function addNamed(editor: string, operation: string, args: Record<string, unknown>, what: string, parent?: string) {
-      const name = uniqueName(what, model.languages.flatMap((l) => [l.name, ...l.entities.map((e) => e.name)]).concat(model.domains.map((d) => d.name)));
-      const edit = await w.act(editor, operation, { ...args, name });
+    const addNamed = async (editor: string, operation: string, args: Record<string, unknown>, what: string, parent?: string) => {
+      const edit = await w.act(editor, operation, { ...args, name: uniqueName(what, taken) });
       const id = edit?.elements[0];
       if (!id) return;
       if (parent) w.setLayout((l) => ({ ...l, collapsed: [...new Set([...(l.collapsed ?? []), parent])] }));
       w.reveal(id);
-    }
+    };
+
+    const component = (c: ComponentJson, isPackage = false): Node => {
+      const adds = [
+        { label: "Language", run: () => void addNamed("ComponentEditor", "addLanguage", { component: c.id }, "Language", c.id) },
+        { label: "Component", run: () => void addNamed("ComponentEditor", "addComponent", { parent: c.id }, "Component", c.id) },
+        { label: "Deployment", run: () => void addNamed("DeploymentEditor", "addDeployment", { component: c.id }, "Deployment", c.id) },
+      ];
+      return {
+        id: c.id,
+        label: c.name,
+        icon: isPackage ? "Package" : "Component",
+        tab: { kind: "component", id: c.id },
+        subject: c.id,
+        detail: isPackage ? "package" : undefined,
+        add: adds.slice(0, 2),
+        menu: [
+          { label: "Open", icon: "open", onSelect: () => w.open({ kind: "component", id: c.id }) },
+          ...adds.map((a) => ({ label: `Add ${a.label}`, icon: a.label, onSelect: a.run })),
+          ...(c.id === model.system.root ? [] : [remove("ComponentEditor", "component", c.id, "Component")]),
+        ],
+        children: [
+          ...c.languages.map((l) => ({
+            id: l.id,
+            label: l.name,
+            icon: "Language",
+            tab: { kind: "language", id: l.id } as Tab,
+            subject: l.id,
+            detail: l.extends.length ? `extends ${l.extends.map((x) => model.name(x)).join(", ")}` : undefined,
+            add: [{ label: "Entity", run: () => void addNamed("LanguageEditor", "addEntity", { language: l.id }, "Entity", l.id) }],
+            menu: [
+              { label: "Open", icon: "open", onSelect: () => w.open({ kind: "language", id: l.id }) },
+              { label: "Add Entity", icon: "Entity", onSelect: () => void addNamed("LanguageEditor", "addEntity", { language: l.id }, "Entity", l.id) },
+              remove("LanguageEditor", "language", l.id, "Language"),
+            ],
+            children: [
+              ...l.entities.map((e) => ({ id: e.id, label: e.name, icon: "Entity", subject: e.id })),
+              ...l.relationships.map((r) => ({ id: r.id, label: model.name(r.id), icon: "Relationship", subject: r.id })),
+              ...l.formulas.map((f) => ({ id: f.id, label: f.text, icon: "Formula", subject: f.id })),
+            ],
+          })),
+          ...c.interactions.map((i) => ({ id: i.id, label: `${i.name}()`, icon: "Interaction", subject: i.id, detail: model.name(i.language) })),
+          ...c.transformations.map((t) => ({
+            id: t.id,
+            label: t.name,
+            icon: "Transformation",
+            tab: { kind: "transformation", id: t.id } as Tab,
+            subject: t.id,
+            detail: `${model.name(t.source)} → ${model.name(t.target)}`,
+            menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "transformation", id: t.id }) }, remove("TransformationEditor", "transformation", t.id, "Transformation")],
+          })),
+          ...c.mediums.map((m) => ({ id: m.id, label: m.name, icon: "Medium", subject: m.id, detail: `over ${model.name(m.language)}` })),
+          ...c.deployments.map((d) => ({
+            id: d.id,
+            label: d.name,
+            icon: "Deployment",
+            tab: { kind: "deployment", id: d.id } as Tab,
+            subject: d.id,
+            detail: `${d.instances.length} instance${d.instances.length === 1 ? "" : "s"}`,
+            menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "deployment", id: d.id }) }, remove("DeploymentEditor", "item", d.id, "Deployment")],
+          })),
+          ...c.components.map((child) => component(child)),
+        ],
+      };
+    };
+
+    const root = model.root;
+    const packages: Node = {
+      id: "#packages",
+      label: "Packages",
+      icon: "Package",
+      detail: "beside the root",
+      children: model.packages.map((p) => component(p, true)),
+    };
+    const configurations: Node = {
+      id: "#configurations",
+      label: "Configurations",
+      icon: "Configuration",
+      children: model.configurations.map((c) => ({
+        id: c.id,
+        label: c.name,
+        icon: "Configuration",
+        tab: { kind: "configuration", id: c.id } as Tab,
+        subject: c.id,
+        menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "configuration", id: c.id }) }, remove("ConfigurationEditor", "configuration", c.id, "Configuration")],
+      })),
+    };
+    return [...(root ? [component(root)] : []), ...(model.packages.length ? [packages] : []), ...(model.configurations.length ? [configurations] : [])];
   }, [model, w]);
 
   const matches = (node: Node): boolean => !filter || node.label.toLowerCase().includes(filter.toLowerCase()) || (node.children ?? []).some(matches);
@@ -125,8 +146,9 @@ export function Explorer() {
   const row = (node: Node, depth: number): ReactNode => {
     if (!matches(node)) return null;
     const isGroup = node.id.startsWith("#");
-    // Groups start open and everything else closed; a toggle flips that.
-    const open = filter ? true : isGroup ? !collapsed.has(node.id) : collapsed.has(node.id);
+    // Groups and the root start open, everything else closed; a toggle flips that.
+    const startsOpen = isGroup || node.id === model.system.root;
+    const open = filter ? true : startsOpen ? !collapsed.has(node.id) : collapsed.has(node.id);
     const hasChildren = (node.children ?? []).length > 0;
     const diagnostics = node.subject ? w.about(node.subject) : [];
     const own = diagnostics.some((d) => d.severity === "error") ? "error" : diagnostics.length ? "warning" : "";
@@ -176,6 +198,7 @@ export function Explorer() {
                 key={a.label}
                 className="row-add"
                 title={`Add ${a.label}`}
+                aria-label={`Add ${a.label}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   a.run();
@@ -205,7 +228,6 @@ export function Explorer() {
       <h4 className="explorer-heading">Views</h4>
       <ul className="tree">
         {[
-          ["domain-map", "Domain map", "diagram"],
           ["mediation-stack", "Mediation stack", "Mediation"],
           ["levels", "Levels", "table"],
           ["statistics", "Statistics", "table"],
@@ -249,7 +271,7 @@ function countMarks(nodes: Node[], about: (id: string) => unknown[]): number {
   return nodes.reduce((sum, n) => sum + (n.subject ? about(n.subject).length : 0) + countMarks(n.children ?? [], about), 0);
 }
 
-/** `New Entity`, `New Entity 2`, … whichever is free. */
+/** `NewEntity`, `NewEntity2`, … whichever is free. */
 export function uniqueName(what: string, taken: readonly string[]): string {
   const base = `New${what}`;
   if (!taken.includes(base)) return base;

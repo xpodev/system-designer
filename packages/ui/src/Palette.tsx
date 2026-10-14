@@ -12,7 +12,7 @@ export interface Command {
   run(): void;
 }
 
-const GO: Kind[] = ["Language", "Entity", "Relationship", "Interaction", "Formula", "Domain", "Transformation", "Mediation"];
+const GO: readonly string[] = ["Component", "Language", "Entity", "Relationship", "Interaction", "Formula", "Transformation", "Medium", "Deployment", "Instance", "Connection", "Configuration"];
 
 export function Palette({ commands, close }: { commands: Command[]; close(): void }) {
   const w = useWorkspace();
@@ -25,7 +25,7 @@ export function Palette({ commands, close }: { commands: Command[]; close(): voi
     const places: Command[] = [];
     for (const [id, at] of model.byId) {
       if (!GO.includes(at.kind)) continue;
-      const where = "language" in at ? at.language.name : "domain" in at && at.kind === "Transformation" ? at.domain.name : undefined;
+      const where = "language" in at && at.kind !== "Language" ? at.language.name : "component" in at && at.kind !== "Component" ? at.component.name : undefined;
       places.push({ label: model.name(id), icon: at.kind, hint: where ? `${at.kind} in ${where}` : at.kind, run: () => w.reveal(id) });
     }
     return [...commands, ...places];
