@@ -1,6 +1,7 @@
 """Bring a System file forward from `systemathic/2` to `systemathic/3` (docs/format.md).
 
-    python scripts/migrate.py FILE [FILE ...]          rewrite each file in place
+    python scripts/migrate.py FILE [FILE ...]                       rewrite each file in place
+    python scripts/migrate.py --signatures SIGS.json FILE [FILE ...]   with more signatures
 
 What changes:
 - the System's `components` become its `root` and its `packages`;
@@ -8,8 +9,9 @@ What changes:
 - a Formula loses `constrains`; an Interaction loses `primary` and `compares`;
 - a Transformation's source and target Languages, mappings, context and deferrals become a
   signature: one Parameter and an output. A signature cannot be read off two Languages, so
-  each Transformation must be listed in SIGNATURES, by id; an unlisted one stops the
-  migration;
+  each Transformation must be listed in SIGNATURES, by id, or in a signatures file —
+  `{"<transformation id>": ["<parameter name>", "<parameter type id>", "<output id>"]}`;
+  an unlisted one stops the migration;
 - an Instance gains a range, `1..1`; a Connection's `toInstance` becomes `to`;
 - the System's `configurations` become the `configurations` attachment, each Choice naming
   the Component that fills it;
@@ -213,6 +215,10 @@ def migrate(file: dict) -> dict:
 
 
 def main(paths: list[str]) -> int:
+    if paths[:1] == ["--signatures"] and len(paths) >= 2:
+        extra = json.loads(Path(paths[1]).read_text(encoding="utf-8"))
+        SIGNATURES.update({id: tuple(signature) for id, signature in extra.items()})
+        paths = paths[2:]
     if not paths:
         print(__doc__)
         return 2
