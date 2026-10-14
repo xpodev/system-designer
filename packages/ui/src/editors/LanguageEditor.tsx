@@ -2,7 +2,7 @@
  * The Language editor: what a Language extends, its Entities — each with what it extends —
  * Relationships and Axioms, each edited in place, with the Language as a diagram above them
  * when wanted, and the Interactions offered over it. It speaks to the LanguageEditor,
- * EntityEditor, RelationshipEditor, FormulaEditor and StdEditor of the host.
+ * EntityEditor, RelationshipEditor and FormulaEditor of the host.
  */
 import { useEffect, useState } from "react";
 import { api, type View } from "../api";
@@ -172,8 +172,6 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
   const model = useModel();
   const ref = useFocusRow(id);
   const entity = language.entities.find((e) => e.id === id)!;
-  const comparisons = model.interactionsOver(language.id).concat(language.extends.flatMap((l) => model.interactionsOver(l)));
-  const comparison = comparisons.find((i) => i.compares.includes(id));
   const uses = model.usesOf(id);
   // An Entity extends only Entities of the Languages its own extends: none, for a core Language.
   const extendable = [...new Set(language.extends.flatMap((l) => model.vocab(l)))].flatMap((l) => l.entities.map((e) => ({ id: e.id, label: e.name, hint: l.name })));
@@ -206,14 +204,9 @@ function EntityRow({ id, language }: { id: string; language: LanguageJson }) {
         <Description id={id} className="row-description" />
       </td>
       <td className="cell-muted">{uses === 0 ? "unused" : `${uses} use${uses === 1 ? "" : "s"}`}</td>
-      <td className="cell-muted">{comparison ? <span title="Std: this Language's own notion of sameness for it">compared by {comparison.name}</span> : null}</td>
       <td className="cell-actions">
         <Menu
           items={[
-            ...comparisons
-              .filter((i) => i.id !== comparison?.id)
-              .map((i) => ({ label: `Compare by ${i.name}`, icon: "Interaction", onSelect: () => void w.act("StdEditor", "setComparison", { entity: id, interaction: i.id }) })),
-            ...(comparison ? [{ label: "No comparison", icon: "x", onSelect: () => void w.act("StdEditor", "setComparison", { entity: id }) }] : []),
             { label: "Delete Entity", icon: "trash", danger: true, onSelect: () => void w.act("EntityEditor", "remove", { entity: id }, { message: `Deleted Entity ${entity.name}` }) },
           ]}
         />
@@ -296,16 +289,6 @@ function AxiomRow({ id, language }: { id: string; language: LanguageJson }) {
         ))}
         <Description id={id} className="row-description" />
       </div>
-      <label className="constrains" title="The Relationship this axiom is about, if one">
-        on
-        <Picker
-          value={formula.constrains}
-          allowNone
-          placeholder="the whole Language"
-          choices={language.relationships.map((r) => ({ id: r.id, label: model.name(r.id) }))}
-          onChange={(relationship) => void w.act("FormulaEditor", "constrain", relationship ? { formula: id, relationship } : { formula: id })}
-        />
-      </label>
       <IconButton icon="trash" label="Delete Axiom" onClick={() => void w.act("FormulaEditor", "remove", { formula: id }, { message: "Deleted Axiom" })} />
     </div>
   );

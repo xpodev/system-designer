@@ -29,7 +29,7 @@ export function DeploymentEditor({ id }: { id: string }) {
   const deployment = at.deployment;
   const deployed = at.component;
   // What may be placed: the deployed Component's children, and the Components it imports.
-  const placeable = [...deployed.components, ...deployed.imports.components.flatMap((c) => model.component(c) ?? [])];
+  const placeable = [...deployed.components, ...model.importedComponents(deployed.id)];
 
   return (
     <div className="editor">
@@ -99,11 +99,16 @@ function DeploymentCanvas({ deployment, onConnect }: { deployment: DeploymentJso
   );
 }
 
-/** What a Connection to `to` can carry: the Interactions offered there. */
+/** What a Connection to `to` can carry: the Interactions offered there — an Instance's Component's own and those it exports, or the deployed Component's own and those it imports. */
 function offeredAt(model: ReturnType<typeof useModel>, deployed: ComponentJson, to: string): string[] {
   const at = model.get(to);
-  if (at?.kind === "Instance") return model.component(at.instance.of)?.interactions.map((i) => i.id) ?? [];
-  if (to === deployed.id) return [...deployed.interactions.map((i) => i.id), ...deployed.imports.interactions, ...deployed.imports.components.flatMap((c) => model.component(c)?.interactions.map((i) => i.id) ?? [])];
+  if (at?.kind === "Instance") {
+    const of = model.component(at.instance.of);
+    if (!of) return [];
+    const exported = of.exports.map((e) => model.resolve(e.id)).filter((x): x is string => x !== undefined && model.kind(x) === "Interaction");
+    return [...new Set([...of.interactions.map((i) => i.id), ...exported])];
+  }
+  if (to === deployed.id) return [...new Set([...deployed.interactions.map((i) => i.id), ...model.imported(deployed.id, "Interaction")])];
   return [];
 }
 
@@ -250,7 +255,7 @@ function ConnectionCard({ connection, deployment, deployed }: { connection: Conn
   const w = useWorkspace();
   const model = useModel();
   const ref = useFocusRow(connection.id);
-  const to = connection.toInstance ?? connection.toComponent ?? undefined;
+  const to = connection.to ?? connection.toComponent ?? undefined;
   const mediums = model.access(deployed.id, "mediums");
   const problems = [...w.about(connection.id), ...connection.mediations.flatMap((m) => w.about(m.id))];
   return (

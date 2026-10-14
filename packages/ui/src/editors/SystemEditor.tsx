@@ -135,7 +135,7 @@ export function SystemEditor(props: { onCatalog(): void }) {
                 <li key={c.id}>
                   <button onClick={() => w.open({ kind: "configuration", id: c.id })}>
                     <span className="card-title">{c.name}</span>
-                    <span className="muted">the root as {model.name(c.root.deployment)}</span>
+                    <span className="muted">{c.root.deployment ? `the root as ${model.name(c.root.deployment)}` : "the root, left open"}</span>
                     <Marks diagnostics={w.about(c.id)} />
                   </button>
                 </li>
@@ -172,7 +172,7 @@ function NewConfiguration() {
   const w = useWorkspace();
   const model = useModel();
   const [deployment, setDeployment] = useState<string>();
-  const options = model.root?.deployments ?? [];
+  const options = model.root.deployments;
   if (options.length === 0) return <p className="muted">A Configuration starts with a Deployment of the root: add one first.</p>;
   const taken = model.configurations.map((c) => c.name);
   return (
@@ -182,7 +182,7 @@ function NewConfiguration() {
         className="primary small"
         disabled={!deployment}
         onClick={async () => {
-          const edit = await w.act("ConfigurationEditor", "addConfiguration", { system: model.system.id, name: uniqueName("Configuration", taken), deployment }, { quiet: true });
+          const edit = await w.act("ConfigurationEditor", "addConfiguration", { name: uniqueName("Configuration", taken), deployment }, { quiet: true });
           if (edit) w.open({ kind: "configuration", id: edit.elements[0]! });
         }}
       >

@@ -69,7 +69,7 @@ export function Explorer() {
         menu: [
           { label: "Open", icon: "open", onSelect: () => w.open({ kind: "component", id: c.id }) },
           ...adds.map((a) => ({ label: `Add ${a.label}`, icon: a.label, onSelect: a.run })),
-          ...(c.id === model.system.root ? [] : [remove("ComponentEditor", "component", c.id, "Component")]),
+          ...(c.id === model.root.id ? [] : [remove("ComponentEditor", "component", c.id, "Component")]),
         ],
         children: [
           ...c.languages.map((l) => ({
@@ -98,8 +98,8 @@ export function Explorer() {
             icon: "Transformation",
             tab: { kind: "transformation", id: t.id } as Tab,
             subject: t.id,
-            detail: `${model.name(t.source)} → ${model.name(t.target)}`,
-            menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "transformation", id: t.id }) }, remove("TransformationEditor", "transformation", t.id, "Transformation")],
+            detail: model.crossing(t),
+            menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "transformation", id: t.id }) }, remove("FunctionEditor", "function", t.id, "Transformation")],
           })),
           ...c.mediums.map((m) => ({ id: m.id, label: m.name, icon: "Medium", subject: m.id, detail: `over ${model.name(m.language)}` })),
           ...c.deployments.map((d) => ({
@@ -147,7 +147,7 @@ export function Explorer() {
     if (!matches(node)) return null;
     const isGroup = node.id.startsWith("#");
     // Groups and the root start open, everything else closed; a toggle flips that.
-    const startsOpen = isGroup || node.id === model.system.root;
+    const startsOpen = isGroup || node.id === model.root.id;
     const open = filter ? true : startsOpen ? !collapsed.has(node.id) : collapsed.has(node.id);
     const hasChildren = (node.children ?? []).length > 0;
     const diagnostics = node.subject ? w.about(node.subject) : [];

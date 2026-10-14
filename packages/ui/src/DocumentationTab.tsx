@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { api, type Documentation } from "./api";
-import { DESCRIBABLE } from "./model";
+import { DESCRIBABLE, type ChoiceJson } from "./model";
 import { Description, Prose } from "./prose";
 import { Badge, download, Icon } from "./widgets";
 import { useModel, useWorkspace } from "./workspace";
@@ -99,7 +99,6 @@ function Document({ doc }: { doc: Documentation }) {
                   {entity.name}
                 </Name>
                 {entity.extends.length > 0 && <span className="doc-meta"> : {entity.extends.join(", ")}</span>}
-                {entity.comparedBy && <span className="doc-meta"> compared by {entity.comparedBy}</span>}
               </dt>
               <dd>
                 <Description id={entity.id} />
@@ -134,7 +133,6 @@ function Document({ doc }: { doc: Documentation }) {
                 <Name id={axiom.id} className="mono">
                   {axiom.text}
                 </Name>
-                {axiom.constrains && <span className="doc-meta"> on {axiom.constrains}</span>}
               </dt>
               <dd>
                 <Description id={axiom.id} invite="Say what this axiom means" />
@@ -154,8 +152,9 @@ function Document({ doc }: { doc: Documentation }) {
       <Description id={component.id} invite="Describe this Component" />
       <p className="doc-meta">
         Uses {component.uses.join(", ") || "no Language yet"}
-        {component.imports.length > 0 && <>; imports {component.imports.join(", ")}</>}.
+        {component.imports.length > 0 && <>; imports {component.imports.join("; ")}</>}.
       </p>
+      {component.exports.length > 0 && <p className="doc-meta">Exports {component.exports.join(", ")}.</p>}
       {component.languages.map(languageSection)}
       {component.interactions.length > 0 && (
         <>
@@ -167,7 +166,6 @@ function Document({ doc }: { doc: Documentation }) {
                   <Name id={interaction.id} className="mono">
                     {interaction.signature}
                   </Name>
-                  {interaction.action && <Badge severity="info">Action on {interaction.action}</Badge>}
                 </dt>
                 <dd>
                   <Description id={interaction.id} />
@@ -183,22 +181,10 @@ function Document({ doc }: { doc: Documentation }) {
             <Icon name="Transformation" size={15} /> <Name id={t.id}>{t.name}</Name>{" "}
             <span className="doc-meta">
               {t.source} → {t.target}
-              {t.context.length > 0 && `, keeping ${t.context.join(", ")}`}
             </span>
           </h4>
+          <p className="mono doc-meta">{t.signature}</p>
           <Description id={t.id} invite="Describe this Transformation" />
-          {(t.mappings.length > 0 || t.deferred.length > 0) && (
-            <ul className="mappings">
-              {t.mappings.map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-              {t.deferred.map((d) => (
-                <li key={d} className="deferred">
-                  {d} — deliberately left unmapped
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       ))}
       {component.mediums.map((m) => (
@@ -267,16 +253,16 @@ function Document({ doc }: { doc: Documentation }) {
       {packages.length > 0 && <h2>Packages</h2>}
       {flat(packages).map(({ component, depth }) => componentSection(component, depth))}
 
-      {doc.configurations.length > 0 && <h2>Configurations</h2>}
-      {doc.configurations.map((c) => (
+      {model.configurations.length > 0 && <h2>Configurations</h2>}
+      {model.configurations.map((c) => (
         <section key={c.id} className="doc-section">
           <h3>
             <Icon name="Configuration" size={18} /> <Name id={c.id}>{c.name}</Name>
           </h3>
           <Description id={c.id} invite="Describe this Configuration" />
           <ul className="mappings">
-            {c.choices.map((choice) => (
-              <li key={choice}>{choice}</li>
+            {choiceLines(model, c.root).map((line) => (
+              <li key={line}>{line}</li>
             ))}
           </ul>
         </section>
@@ -326,4 +312,11 @@ export function RuleDoc({ rule, open, onName }: { rule: { name: string; severity
       )}
     </div>
   );
+}
+
+/** A Configuration's Choices, one line each, down the tree: `server is filled by Server, as Single`. */
+function choiceLines(model: ReturnType<typeof useModel>, choice: ChoiceJson): string[] {
+  const as = choice.deployment === null ? "left open" : `as ${model.name(choice.deployment)}`;
+  const line = choice.instance === null ? `the root, ${as}` : `${model.name(choice.instance)} is filled by ${model.name(choice.component)}, ${as}`;
+  return [line, ...choice.choices.flatMap((c) => choiceLines(model, c))];
 }

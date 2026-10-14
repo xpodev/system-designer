@@ -106,7 +106,7 @@ export function addConfiguration(session: EditSession, name: string, deployment?
   if (root === undefined) throw new ArgumentError("the System has no root to configure");
   const id = fresh(context, `${context.system ?? "system"}.${slug(name)}`);
   const configuration: Configuration = { id, name, rules: [], root: { id: `${id}#root`, instance: null, component: root, deployment: deployment ?? null, choices: [] } };
-  return session.record("addition", `addConfiguration ${name}`, [], () => write(context, [...configurations(context), configuration], [root]));
+  return session.record("addition", `addConfiguration ${name}`, [id], () => write(context, [...configurations(context), configuration], [root]));
 }
 
 export function renameConfiguration(session: EditSession, id: string, name: string): Edit {

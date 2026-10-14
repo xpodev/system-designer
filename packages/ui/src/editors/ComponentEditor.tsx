@@ -1,12 +1,12 @@
 /**
  * The Component editor: a Component in the order a design is thought through — the Languages
- * it defines (core ones, then extensions), the Languages it uses and what it imports, the
- * Interactions it offers, the Components nested in it, the Transformations and Mediums it
- * holds, and the Deployments that put it together.
+ * it defines (core ones, then extensions), the Languages it uses and what it implements, what
+ * it exports (its API) and what it imports, the Interactions it offers, the Components nested
+ * in it, the Transformations and Mediums it holds, and the Deployments that put it together.
  */
 import { useState } from "react";
 import { uniqueName } from "../Explorer";
-import type { ComponentJson, ImportKind, InteractionJson } from "../model";
+import type { ComponentJson, FunctionJson, ImportJson, InteractionJson } from "../model";
 import { Description } from "../prose";
 import { AddInline, Badge, Chips, Icon, IconButton, InlineText, Marks, Menu, Picker, Section, type Choice } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
@@ -14,20 +14,13 @@ import { EditorHeader, Problems } from "./common";
 
 const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
-const IMPORTS: { kind: ImportKind; label: string; icon: string; editor: string; operation: string; unimport: string; arg: string }[] = [
-  { kind: "components", label: "Components", icon: "Component", editor: "ComponentEditor", operation: "import", unimport: "unimport", arg: "item" },
-  { kind: "interactions", label: "Interactions", icon: "Interaction", editor: "InteractionEditor", operation: "importInteraction", unimport: "unimportInteraction", arg: "interaction" },
-  { kind: "transformations", label: "Transformations", icon: "Transformation", editor: "ComponentEditor", operation: "import", unimport: "unimport", arg: "item" },
-  { kind: "mediums", label: "Mediums", icon: "Medium", editor: "MediumEditor", operation: "importMedium", unimport: "unimportMedium", arg: "medium" },
-];
-
 export function ComponentEditor({ id }: { id: string }) {
   const w = useWorkspace();
   const model = useModel();
   const at = model.get(id);
   if (at?.kind !== "Component") return <p className="empty">This Component no longer exists.</p>;
   const c = at.component;
-  const isRoot = id === model.system.root;
+  const isRoot = id === model.root.id;
   const isPackage = !at.parent && !isRoot;
   const ancestry = model.ancestry(id).slice(1).reverse();
   const scope = model.scope(id);
@@ -111,32 +104,27 @@ export function ComponentEditor({ id }: { id: string }) {
               empty="No Language yet."
             />
           </Section>
-          <Section title="Imports" icon="link" hint="what it depends on: its siblings', and what its parents import">
-            {IMPORTS.map((k) => {
-              const values = c.imports[k.kind];
-              const choices = model.importable(id, k.kind).map((x) => ({ id: x, label: model.name(x), hint: model.componentOf(x)?.id === x ? undefined : `of ${model.componentOf(x)?.name}` }));
-              if (values.length === 0 && choices.length === 0) return null;
-              return (
-                <div key={k.kind} className="import-row">
-                  <span className="label">{k.label}</span>
-                  <Chips
-                    values={values}
-                    label={(x) => model.name(x)}
-                    icon={k.icon}
-                    choices={choices}
-                    onAdd={(x) => void w.act(k.editor, k.operation, { component: id, [k.arg]: x })}
-                    onRemove={(x) => void w.act(k.editor, k.unimport, { component: id, [k.arg]: x })}
-                    onOpen={(x) => w.reveal(x)}
-                    addLabel={k.label.slice(0, -1)}
-                  />
-                </div>
-              );
-            })}
-            {IMPORTS.every((k) => c.imports[k.kind].length === 0 && model.importable(id, k.kind).length === 0) && <span className="muted">Nothing to import: it has no siblings, and its parents import nothing.</span>}
+          <Section title="Implements" icon="Component" hint="the interfaces it may stand in for, wherever they are placed">
+            <Chips
+              values={c.implements}
+              label={(x) => model.name(x)}
+              icon="Component"
+              choices={model.components.filter((k) => k.id !== id && !model.ancestry(id).includes(k)).map((k) => ({ id: k.id, label: k.name }))}
+              onAdd={(implemented) => void w.act("ComponentEditor", "implement", { component: id, implemented })}
+              onRemove={(implemented) => void w.act("ComponentEditor", "unimplement", { component: id, implemented })}
+              onOpen={(x) => w.open({ kind: "component", id: x })}
+              addLabel="Component"
+              empty="Nothing: it is its own."
+            />
           </Section>
         </div>
 
-        <Section title="Interactions" icon="Interaction" count={c.interactions.length} hint="its API: what it offers, each over one Language it uses">
+        <div className="two-columns">
+          <Exports component={c} />
+          <Imports component={c} />
+        </div>
+
+        <Section title="Interactions" icon="Interaction" count={c.interactions.length} hint="what it offers, each over one Language it uses; what it exports of them is its API">
           {c.interactions.map((i) => (
             <InteractionCard key={i.id} interaction={i} component={c} />
           ))}
@@ -208,6 +196,122 @@ export function ComponentEditor({ id }: { id: string }) {
   );
 }
 
+/** What a Component exports: its API. Nothing else of it is reachable from outside it. */
+function Exports({ component: c }: { component: ComponentJson }) {
+  const w = useWorkspace();
+  const model = useModel();
+  const direct = new Set(c.exports.flatMap((e) => Object.entries(e).filter(([key]) => key !== "id").map(([, target]) => target)));
+  const choices: Choice[] = model
+    .exportable(c.id)
+    .filter((x) => !direct.has(x))
+    .map((x) => {
+      const reexport = model.kind(x) === "Export";
+      const what = reexport ? model.resolve(x) : x;
+      return { id: x, label: model.name(what), hint: reexport ? `re-export, from ${model.exporter(x)?.name}` : model.kind(x) };
+    });
+  return (
+    <Section title="Exports" icon="link" count={c.exports.length} hint="its API: what others may reach of it — its own, its children, or what they export">
+      <Chips
+        values={c.exports.map((e) => e.id)}
+        label={(e) => exportLabel(model, e)}
+        icon="link"
+        choices={choices}
+        onAdd={(item) => void w.act("ComponentEditor", "export", { component: c.id, item })}
+        onRemove={(exported) => void w.act("ComponentEditor", "unexport", { export: exported })}
+        onOpen={(e) => {
+          const target = model.resolve(e);
+          if (target) w.reveal(target);
+        }}
+        addLabel="Export"
+        empty="Nothing: no other Component reaches it."
+      />
+    </Section>
+  );
+}
+
+/** An Export as it reads: what it exports, and whose Export it re-exports. */
+function exportLabel(model: ReturnType<typeof useModel>, exported: string): string {
+  const at = model.get(exported);
+  const again = at?.kind === "Export" ? at.export.export : undefined;
+  return again === undefined ? model.name(exported) : `${model.name(exported)} (from ${model.exporter(again)?.name ?? "?"})`;
+}
+
+/** What a Component imports: from which Components, and which of their Exports it takes. */
+function Imports({ component: c }: { component: ComponentJson }) {
+  const w = useWorkspace();
+  const model = useModel();
+  const importable = model.importable(c.id);
+  const from = new Set(c.imports.map((i) => i.from));
+  const fresh = importable.filter((k) => !from.has(k.id));
+  // Everything inside a Component it may import from, that it does not reach yet: to reach it, exported up the way.
+  const reached = new Set(model.imported(c.id));
+  const inside = (k: ComponentJson): ComponentJson[] => k.components.flatMap((child) => [child, ...inside(child)]);
+  const reachable: Choice[] = importable
+    .flatMap((k) => [k, ...inside(k)])
+    .flatMap((k) => [...k.languages, ...k.interactions, ...k.transformations, ...k.mediums].map((x) => ({ x, k })))
+    .filter(({ x }) => !reached.has(x.id))
+    .map(({ x, k }) => ({ id: x.id, label: x.name, hint: `${model.kind(x.id)} of ${k.name}` }));
+  return (
+    <Section title="Imports" icon="link" count={c.imports.length} hint="what it depends on: its siblings' Exports, and what its parents import from">
+      {c.imports.map((i) => (
+        <ImportRow key={i.id} component={c} imported={i} />
+      ))}
+      <div className="new-row">
+        {fresh.length > 0 && (
+          <Picker
+            value={undefined}
+            placeholder="Import from…"
+            choices={fresh.map((k) => ({ id: k.id, label: k.name }))}
+            onChange={(item) => item && void w.act("ComponentEditor", "import", { component: c.id, item })}
+          />
+        )}
+        {reachable.length > 0 && (
+          <Picker
+            value={undefined}
+            placeholder="Reach…"
+            choices={reachable}
+            onChange={(item) => item && void w.act("ComponentEditor", "reach", { component: c.id, item }, { message: `Reached ${model.name(item)}, exported on the way` })}
+          />
+        )}
+      </div>
+      {c.imports.length === 0 && importable.length === 0 && <span className="muted">Nothing to import: it has no siblings, and its parents import nothing.</span>}
+    </Section>
+  );
+}
+
+/** One Import: the Component it is from, and the Exports it takes — none, for the Component as a whole. */
+function ImportRow({ component: c, imported: i }: { component: ComponentJson; imported: ImportJson }) {
+  const w = useWorkspace();
+  const model = useModel();
+  const from = model.component(i.from);
+  const offered = (from?.exports ?? []).filter((e) => !i.exports.includes(e.id)).map((e) => ({ id: e.id, label: exportLabel(model, e.id), hint: model.kind(model.resolve(e.id) ?? "") }));
+  return (
+    <div className="import-row row">
+      <span className="label">
+        <button className="link-chip" onClick={() => w.open({ kind: "component", id: i.from })}>
+          {model.name(i.from)}
+        </button>
+      </span>
+      <Chips
+        values={i.exports}
+        label={(e) => exportLabel(model, e)}
+        icon="link"
+        choices={offered}
+        onAdd={(item) => void w.act("ComponentEditor", "import", { component: c.id, item })}
+        onRemove={(item) => void w.act("ComponentEditor", "unimport", { component: c.id, item })}
+        onOpen={(e) => {
+          const target = model.resolve(e);
+          if (target) w.reveal(target);
+        }}
+        addLabel="Export"
+        empty="the Component as a whole"
+      />
+      <Marks diagnostics={w.about(i.id)} />
+      <IconButton icon="x" label={`Stop importing from ${model.name(i.from)}`} onClick={() => void w.act("ComponentEditor", "unimport", { component: c.id, item: i.from })} />
+    </div>
+  );
+}
+
 function NewInteraction({ component }: { component: ComponentJson }) {
   const w = useWorkspace();
   const model = useModel();
@@ -239,66 +343,76 @@ function InteractionCard({ interaction, component }: { interaction: InteractionJ
   const i = interaction;
   const entities: Choice[] = model.vocabEntities(i.language).map((e) => ({ id: e.id, label: e.name }));
   const problems = [...w.about(i.id), ...i.parameters.flatMap((p) => w.about(p.id))];
+  const exported = component.exports.some((e) => e.interaction === i.id);
   return (
     <div ref={ref} className={`interaction-card row ${problems.length ? "has-problems" : ""}`}>
       <div className="signature">
         <Icon name="Interaction" />
-        <InlineText className="interaction-name" value={i.name} onCommit={(name) => void w.act("InteractionEditor", "rename", { item: i.id, name })} />
-        <span className="paren">(</span>
-        {i.parameters.map((p, index) => (
-          <span key={p.id} className={`parameter ${i.primary === p.id ? "primary" : ""}`}>
-            <button
-              className="star"
-              title={i.primary === p.id ? "The primary Parameter: this is an Action on it (click to unset)" : "Make this the primary Parameter (an Action)"}
-              onClick={() => void w.act("StdEditor", "setPrimary", i.primary === p.id ? { interaction: i.id } : { interaction: i.id, parameter: p.id })}
-            >
-              <Icon name="star" size={12} />
-            </button>
-            <InlineText value={p.name} onCommit={(name) => void w.act("InteractionEditor", "rename", { item: p.id, name })} />
-            <span className="colon">:</span>
-            <Picker value={p.type} choices={entities} onChange={(type) => type && void w.act("InteractionEditor", "setType", { parameter: p.id, type })} />
-            <span className="parameter-tools">
-              {index > 0 && <IconButton icon="up" label="Move earlier" onClick={() => void w.act("InteractionEditor", "moveParameter", { parameter: p.id, position: index - 1 }, { quiet: true })} />}
-              {index < i.parameters.length - 1 && (
-                <IconButton icon="down" label="Move later" onClick={() => void w.act("InteractionEditor", "moveParameter", { parameter: p.id, position: index + 1 }, { quiet: true })} />
-              )}
-              <IconButton icon="x" label="Remove Parameter" onClick={() => void w.act("InteractionEditor", "removeParameter", { parameter: p.id })} />
-            </span>
-            {index < i.parameters.length - 1 && <span className="comma">,</span>}
-          </span>
-        ))}
-        {entities.length > 0 && (
-          <button
-            className="add-parameter"
-            title="Add a Parameter"
-            onClick={() => {
-              const type = entities[0]!;
-              const used = new Set(i.parameters.map((p) => p.name));
-              let name = lowerFirst(type.label);
-              for (let n = 2; used.has(name); n++) name = `${lowerFirst(type.label)}${n}`;
-              void w.act("InteractionEditor", "addParameter", { interaction: i.id, name, type: type.id }, { quiet: true });
-            }}
-          >
-            <Icon name="plus" size={12} />
-          </button>
-        )}
-        <span className="paren">)</span>
-        <span className="arrow">→</span>
-        <Picker value={i.output} choices={entities} onChange={(output) => output && void w.act("InteractionEditor", "setOutput", { interaction: i.id, output })} />
+        <InlineText className="interaction-name" value={i.name} onCommit={(name) => void w.act("FunctionEditor", "rename", { item: i.id, name })} />
+        <Signature f={i} entities={entities} />
         <span className="muted">over</span>
         <Picker
           value={i.language}
           choices={component.uses.map((l) => ({ id: l, label: model.name(l) }))}
           onChange={(language) => language && void w.act("InteractionEditor", "setLanguage", { interaction: i.id, language })}
         />
-        {i.primary && <Badge severity="info">Action</Badge>}
+        {exported ? <Badge severity="info">exported</Badge> : <span className="muted" title="Only the Components nested in this one reach it">internal</span>}
         <span className="row-tail">
           <Marks diagnostics={problems} />
-          <IconButton icon="trash" label="Delete Interaction" onClick={() => void w.act("InteractionEditor", "remove", { interaction: i.id }, { message: `Deleted Interaction ${i.name}` })} />
+          <IconButton icon="trash" label="Delete Interaction" onClick={() => void w.act("FunctionEditor", "remove", { function: i.id }, { message: `Deleted Interaction ${i.name}` })} />
         </span>
       </div>
       <Description id={i.id} className="row-description" />
     </div>
+  );
+}
+
+/** A Function's Parameters, each with its Entity, and its output, or none: edited through the FunctionEditor. */
+export function Signature({ f, entities, outputs = entities }: { f: FunctionJson; entities: Choice[]; outputs?: Choice[] }) {
+  const w = useWorkspace();
+  return (
+    <>
+      <span className="paren">(</span>
+      {f.parameters.map((p, index) => (
+        <span key={p.id} className="parameter">
+          <InlineText value={p.name} onCommit={(name) => void w.act("FunctionEditor", "rename", { item: p.id, name })} />
+          <span className="colon">:</span>
+          <Picker value={p.type} choices={entities} onChange={(type) => type && void w.act("FunctionEditor", "setType", { parameter: p.id, type })} />
+          <span className="parameter-tools">
+            {index > 0 && <IconButton icon="up" label="Move earlier" onClick={() => void w.act("FunctionEditor", "moveParameter", { parameter: p.id, position: index - 1 }, { quiet: true })} />}
+            {index < f.parameters.length - 1 && (
+              <IconButton icon="down" label="Move later" onClick={() => void w.act("FunctionEditor", "moveParameter", { parameter: p.id, position: index + 1 }, { quiet: true })} />
+            )}
+            <IconButton icon="x" label="Remove Parameter" onClick={() => void w.act("FunctionEditor", "removeParameter", { parameter: p.id })} />
+          </span>
+          {index < f.parameters.length - 1 && <span className="comma">,</span>}
+        </span>
+      ))}
+      {entities.length > 0 && (
+        <button
+          className="add-parameter"
+          title="Add a Parameter"
+          onClick={() => {
+            const type = entities[0]!;
+            const used = new Set(f.parameters.map((p) => p.name));
+            let name = lowerFirst(type.label);
+            for (let n = 2; used.has(name); n++) name = `${lowerFirst(type.label)}${n}`;
+            void w.act("FunctionEditor", "addParameter", { function: f.id, name, type: type.id }, { quiet: true });
+          }}
+        >
+          <Icon name="plus" size={12} />
+        </button>
+      )}
+      <span className="paren">)</span>
+      <span className="arrow">→</span>
+      <Picker
+        value={f.output ?? undefined}
+        allowNone
+        placeholder="nothing"
+        choices={outputs}
+        onChange={(output) => void w.act("FunctionEditor", "setOutput", output ? { function: f.id, output } : { function: f.id })}
+      />
+    </>
   );
 }
 
@@ -341,20 +455,13 @@ function TransformationRow({ id }: { id: string }) {
   const at = model.get(id);
   if (at?.kind !== "Transformation") return null;
   const t = at.transformation;
-  const source = model.language(t.source);
-  const items = source ? source.entities.length + source.relationships.length : 0;
-  const covered = t.entityMappings.length + t.relationshipMappings.length + t.deferred.length;
-  const problems = w.diagnostics.filter((d) => d.subjects.some((s) => s === id || s.startsWith(`${id}#`)));
+  const problems = [...w.about(id), ...t.parameters.flatMap((p) => w.about(p.id))];
   return (
     <div ref={ref} className="transformation-row row" onClick={() => w.open({ kind: "transformation", id })}>
       <Icon name="Transformation" />
       <span className="cell-main">{t.name}</span>
-      <span className="muted">
-        {model.name(t.source)} → {model.name(t.target)}
-      </span>
-      <span className="coverage-mini" title={`${covered} of ${items} source items mapped or deferred`}>
-        <span style={{ width: `${items ? (100 * Math.min(covered, items)) / items : 100}%` }} />
-      </span>
+      <span className="muted">{model.crossing(t)}</span>
+      <span className="mono muted">{model.signature(t)}</span>
       {problems.length > 0 && <Badge severity={problems.some((p) => p.severity === "error") ? "error" : "warning"}>{problems.length}</Badge>}
       <IconButton icon="chevron" label="Open" onClick={() => w.open({ kind: "transformation", id })} />
     </div>
@@ -365,9 +472,11 @@ function NewTransformation({ component, languages }: { component: string; langua
   const w = useWorkspace();
   const model = useModel();
   const [open, setOpen] = useState(false);
-  const [source, setSource] = useState<string>();
-  const [target, setTarget] = useState<string>();
-  const choices = languages.map((l) => ({ id: l, label: model.name(l) }));
+  const [input, setInput] = useState<string>();
+  const [output, setOutput] = useState<string>();
+  // Any Entity of a Language it uses: an input of one, and an output of another.
+  const choices = [...new Set(languages.flatMap((l) => model.vocabEntities(l)))].map((e) => ({ id: e.id, label: e.name, hint: model.languageOf(e.id)?.name }));
+  const across = input !== undefined && output !== undefined && model.languageOf(input)?.id !== model.languageOf(output)?.id;
   if (!open)
     return (
       <button className="add-inline" onClick={() => setOpen(true)} disabled={languages.length === 0} title={languages.length === 0 ? "Use Languages first" : undefined}>
@@ -375,19 +484,19 @@ function NewTransformation({ component, languages }: { component: string; langua
       </button>
     );
   const create = async () => {
-    if (!source || !target) return;
-    const name = `${model.name(source)} as ${model.name(target)}`;
-    const edit = await w.act("ComponentEditor", "addTransformation", { component, name, source, target }, { quiet: true });
+    if (!input || !output) return;
+    const name = `${model.languageOf(input)?.name ?? "?"} as ${model.languageOf(output)?.name ?? "?"}`;
+    const edit = await w.act("ComponentEditor", "addTransformation", { component, name, input, output }, { quiet: true });
     setOpen(false);
-    setSource(undefined);
-    setTarget(undefined);
+    setInput(undefined);
+    setOutput(undefined);
     if (edit) w.open({ kind: "transformation", id: edit.elements[0]! });
   };
   return (
     <div className="new-row new-transformation">
-      From <Picker value={source} choices={choices} placeholder="source Language" onChange={setSource} /> to{" "}
-      <Picker value={target} choices={choices} placeholder="target Language" onChange={setTarget} />
-      <button className="primary" disabled={!source || !target} onClick={create}>
+      From <Picker value={input} choices={choices} placeholder="an input Entity" onChange={setInput} /> to{" "}
+      <Picker value={output} choices={choices} placeholder="an output Entity, of another Language" onChange={setOutput} />
+      <button className="primary" disabled={!across} title={across ? undefined : "The output is of another Language than the input"} onClick={create}>
         Create
       </button>
       <button onClick={() => setOpen(false)}>Cancel</button>

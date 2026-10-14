@@ -96,7 +96,7 @@ function menuItem(row: HTMLElement, label: string): void {
   fireEvent.click(within(row).getByText(label));
 }
 
-const root0 = (file: { design: { components: { languages: { entities: { name: string }[]; relationships: { id: string; ends: { name: string | null }[] }[] }[] }[] } }) => file.design.components[0]!;
+const root0 = (file: { design: { root: { languages: { entities: { name: string }[]; relationships: { id: string; ends: { name: string | null }[] }[] }[] } } }) => file.design.root;
 
 describe("the UI", () => {
   it("opens a System on its overview, with its health and its parts", async () => {
@@ -246,7 +246,7 @@ describe("the UI", () => {
     fireEvent.click(explorerRow("Server"));
     const editor = await editorTitled("Server");
     const kinds = [...editor.querySelectorAll(".editor-section h3")].map((h) => h.textContent?.replace(/\d+$/, ""));
-    expect(kinds).toEqual(["Languages", "Uses", "Imports", "Interactions", "Components", "Transformations", "Mediums", "Deployments"]);
+    expect(kinds).toEqual(["Languages", "Uses", "Implements", "Exports", "Imports", "Interactions", "Components", "Transformations", "Mediums", "Deployments"]);
     expect(editor.querySelector(".breadcrumb")?.textContent).toContain("Game");
     const uses = editor.querySelectorAll<HTMLSelectElement>(".chip-add")[0]!;
     fireEvent.change(uses, { target: { value: "core" } });
@@ -258,20 +258,39 @@ describe("the UI", () => {
     await waitFor(async () => expect(root0(await host.system(id)).components.find((c) => c.id === "game.server")!.interactions.map((i) => i.name)).toEqual(["attack", "heal"]));
     fireEvent.click(screen.getByText("Transformation", { selector: ".add-inline, .add-inline *" }));
     const [from, to] = document.querySelectorAll<HTMLSelectElement>(".new-transformation .picker");
-    fireEvent.change(from!, { target: { value: "core" } });
-    fireEvent.change(to!, { target: { value: "combat" } });
+    fireEvent.change(from!, { target: { value: "core.monster" } });
+    fireEvent.change(to!, { target: { value: "combat.combat-monster" } });
     fireEvent.click(screen.getByText("Create"));
     await editorTitled("Core as Combat");
   });
 
-  it("maps a realization's items, and shows what is deliberately left out", async () => {
+  it("shows a realization's signature, the way back, and what it realizes", async () => {
     await openGame();
     fireEvent.click(explorerRow("CombatOverNetwork"));
     fireEvent.click(await screen.findByText("Combat down to Network", { selector: ".cell-main" }));
-    await editorTitled("Combat down to Network");
-    expect(screen.getByText(/missing, of 3 items of Combat/)).toBeTruthy();
-    expect(document.querySelectorAll(".mapping-row.is-missing")).toHaveLength(0);
-    expect(document.querySelectorAll(".mapping-row.is-deferred")).toHaveLength(1);
+    const editor = await editorTitled("Combat down to Network");
+    expect(editor.querySelector(".editor-header")?.textContent).toContain("Combat → Network");
+    expect(within(editor).getByText("Network up to Combat", { selector: ".card-title" })).toBeTruthy();
+    expect(editor.querySelectorAll(".parameter")).toHaveLength(1);
+  });
+
+  it("exports a Component's API, and reaches inside another through what it exports", async () => {
+    const id = await openGame("exports.systemathic.json");
+    const session = (await host.startSession(id, "test")).session;
+    await act(async () => {
+      const inner = (await host.apply(id, session, "ComponentEditor", "addComponent", { parent: "game.server", name: "Inner" })).elements[0]!;
+      await host.apply(id, session, "ComponentEditor", "use", { component: inner, language: "combat" });
+      await host.apply(id, session, "InteractionEditor", "addInteraction", { component: inner, language: "combat", name: "parry", output: "fighting.damage" });
+    });
+    fireEvent.click(explorerRow("Client"));
+    const editor = await editorTitled("Client");
+    const reach = [...editor.querySelectorAll<HTMLSelectElement>(".picker")].find((p) => p.textContent?.includes("Reach…"))!;
+    fireEvent.change(reach, { target: { value: "game.server.inner.parry" } });
+    await waitFor(async () => {
+      const server = (await host.system(id)).design.root.components.find((c: { id: string }) => c.id === "game.server") as { exports: { export?: string }[] };
+      expect(server.exports.some((e) => e.export === "game.server.inner:game.server.inner.parry")).toBe(true);
+    });
+    await waitFor(() => expect(within(editor).getAllByText(/parry \(from Inner\)/).length).toBeGreaterThan(0));
   });
 
   it("connects in a Deployment, and asks before adding the import the Connection needs", async () => {
@@ -279,8 +298,8 @@ describe("the UI", () => {
     const session = (await host.startSession(id, "test")).session;
     await act(async () => {
       await host.apply(id, session, "DeploymentEditor", "remove", { item: "game.local.client-attacks" });
-      await host.apply(id, session, "InteractionEditor", "unimportInteraction", { component: "game.client", interaction: "game.server.attack" });
-      await host.apply(id, session, "InteractionEditor", "unimportInteraction", { component: "game.client.input", interaction: "game.server.attack" });
+      await host.apply(id, session, "ComponentEditor", "unimport", { component: "game.client", item: "game.server:game.server.attack" });
+      await host.apply(id, session, "ComponentEditor", "unimport", { component: "game.client.input", item: "game.server:game.server.attack" });
     });
     fireEvent.click(explorerRow("Local"));
     const editor = await editorTitled("Local");
@@ -294,8 +313,8 @@ describe("the UI", () => {
     fireEvent.click(within(panel).getByText("Connect"));
     await waitFor(async () => {
       const file = await host.system(id);
-      const game = root0(file) as unknown as { components: { id: string; imports: { interactions: string[] } }[]; deployments: { id: string; connections: unknown[] }[] };
-      expect(game.components.find((c) => c.id === "game.client")!.imports.interactions).toEqual(["game.server.attack"]);
+      const game = root0(file) as unknown as { components: { id: string; imports: { from: string; exports: string[] }[] }[]; deployments: { id: string; connections: unknown[] }[] };
+      expect(game.components.find((c) => c.id === "game.client")!.imports.find((i) => i.from === "game.server")!.exports).toEqual(["game.server:game.server.attack"]);
       expect(game.deployments.find((d) => d.id === "game.local")!.connections).toHaveLength(1);
     });
   });
@@ -327,8 +346,9 @@ describe("the UI", () => {
     // Each Instance's choice, and beneath it, the choices for the Instances of the Deployment chosen.
     expect(rows).toEqual(["Game", "server", "physics", "client-1", "physics", "input", "client-2", "physics", "input"]);
     const client2 = [...editor.querySelectorAll<HTMLElement>(".choice-row")].find((r) => r.querySelector("strong")?.textContent === "client-2")!;
-    fireEvent.change(client2.querySelector("select")!, { target: { value: "" } });
-    await waitFor(async () => expect((await host.system(id)).design.configurations[0]!.root.choices).toHaveLength(2));
+    menuItem(client2, "Remove this occupant's Choice");
+    const stored = async () => (await host.system(id)).attachments.find((a: { owner: string }) => a.owner === "configurations")!.data as { configurations: { root: { choices: unknown[] } }[] };
+    await waitFor(async () => expect((await stored()).configurations[0]!.root.choices).toHaveLength(2));
   });
 
   it("edits the verification script, with its rules beside it", async () => {

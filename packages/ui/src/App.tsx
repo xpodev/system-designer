@@ -185,7 +185,7 @@ function Shell(props: { contexts: ContextInfo[]; onContext(id: string | undefine
   }, [w]);
 
   const commands = useMemo<Command[]>(() => {
-    const root = model.system.root;
+    const root = model.root.id;
     const taken = [...model.byId.keys()].map((id) => model.name(id));
     const add = (operation: string, args: Record<string, unknown>, what: string) => async () => {
       const edit = await w.act("ComponentEditor", operation, { ...args, name: uniqueName(what, taken) }, { quiet: true });
