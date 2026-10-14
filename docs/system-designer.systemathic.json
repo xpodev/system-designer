@@ -7,14 +7,17 @@
       "id": "system.root",
       "name": "System Designer",
       "uses": [],
-      "imports": {
-        "components": [
-          "pkg.http"
-        ],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [],
+      "imports": [
+        {
+          "id": "system.root<pkg.http",
+          "from": "pkg.http",
+          "exports": [
+            "pkg.http:lib.http",
+            "pkg.http:pkg.http.medium"
+          ]
+        }
+      ],
       "implements": [],
       "languages": [],
       "interactions": [],
@@ -41,12 +44,33 @@
           "id": "system.root.systemathic",
           "name": "Systemathic",
           "uses": [],
-          "imports": {
-            "components": [],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.systemathic:system.root.systemathic.kernel",
+              "language": "system.root.systemathic.kernel"
+            },
+            {
+              "id": "system.root.systemathic:system.root.systemathic.functions",
+              "language": "system.root.systemathic.functions"
+            },
+            {
+              "id": "system.root.systemathic:system.root.systemathic.contexts",
+              "language": "system.root.systemathic.contexts"
+            },
+            {
+              "id": "system.root.systemathic:system.root.systemathic.deployment",
+              "language": "system.root.systemathic.deployment"
+            },
+            {
+              "id": "system.root.systemathic:system.root.systemathic.mediation",
+              "language": "system.root.systemathic.mediation"
+            },
+            {
+              "id": "system.root.systemathic:system.root.systemathic.systems",
+              "language": "system.root.systemathic.systems"
+            }
+          ],
+          "imports": [],
           "implements": [],
           "languages": [
             {
@@ -483,6 +507,16 @@
                   "extends": [
                     "system.root.systemathic.functions.function"
                   ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.export",
+                  "name": "Export",
+                  "extends": []
+                },
+                {
+                  "id": "system.root.systemathic.contexts.import",
+                  "name": "Import",
+                  "extends": []
                 }
               ],
               "relationships": [
@@ -601,63 +635,6 @@
                   ]
                 },
                 {
-                  "id": "system.root.systemathic.contexts.importers-importedcomponents",
-                  "ends": [
-                    {
-                      "id": "system.root.systemathic.contexts.importers-importedcomponents.importers",
-                      "name": "importers",
-                      "entity": "system.root.systemathic.contexts.component",
-                      "min": 0,
-                      "max": "N"
-                    },
-                    {
-                      "id": "system.root.systemathic.contexts.importers-importedcomponents.importedcomponents",
-                      "name": "importedComponents",
-                      "entity": "system.root.systemathic.contexts.component",
-                      "min": 0,
-                      "max": "N"
-                    }
-                  ]
-                },
-                {
-                  "id": "system.root.systemathic.contexts.importers-importedinteractions",
-                  "ends": [
-                    {
-                      "id": "system.root.systemathic.contexts.importers-importedinteractions.importers",
-                      "name": "importers",
-                      "entity": "system.root.systemathic.contexts.component",
-                      "min": 0,
-                      "max": "N"
-                    },
-                    {
-                      "id": "system.root.systemathic.contexts.importers-importedinteractions.importedinteractions",
-                      "name": "importedInteractions",
-                      "entity": "system.root.systemathic.contexts.interaction",
-                      "min": 0,
-                      "max": "N"
-                    }
-                  ]
-                },
-                {
-                  "id": "system.root.systemathic.contexts.importers-importedtransformations",
-                  "ends": [
-                    {
-                      "id": "system.root.systemathic.contexts.importers-importedtransformations.importers",
-                      "name": "importers",
-                      "entity": "system.root.systemathic.contexts.component",
-                      "min": 0,
-                      "max": "N"
-                    },
-                    {
-                      "id": "system.root.systemathic.contexts.importers-importedtransformations.importedtransformations",
-                      "name": "importedTransformations",
-                      "entity": "system.root.systemathic.contexts.transformation",
-                      "min": 0,
-                      "max": "N"
-                    }
-                  ]
-                },
-                {
                   "id": "system.root.systemathic.contexts.name",
                   "ends": [
                     {
@@ -694,6 +671,177 @@
                       "max": "N"
                     }
                   ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.exporter-exports",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.exporter-exports.exporter",
+                      "name": "exporter",
+                      "entity": "system.root.systemathic.contexts.component",
+                      "min": 1,
+                      "max": 1
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.exporter-exports.exports",
+                      "name": "exports",
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.export-component",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.export-component.item",
+                      "name": null,
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.export-component.component",
+                      "name": "component",
+                      "entity": "system.root.systemathic.contexts.component",
+                      "min": 0,
+                      "max": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.export-interaction",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.export-interaction.item",
+                      "name": null,
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.export-interaction.interaction",
+                      "name": "interaction",
+                      "entity": "system.root.systemathic.contexts.interaction",
+                      "min": 0,
+                      "max": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.export-transformation",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.export-transformation.item",
+                      "name": null,
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.export-transformation.transformation",
+                      "name": "transformation",
+                      "entity": "system.root.systemathic.contexts.transformation",
+                      "min": 0,
+                      "max": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.export-language",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.export-language.item",
+                      "name": null,
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.export-language.language",
+                      "name": "language",
+                      "entity": "system.root.systemathic.kernel.language",
+                      "min": 0,
+                      "max": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.export-reexports",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.export-reexports.export",
+                      "name": "export",
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": 1
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.export-reexports.reexports",
+                      "name": "reexports",
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.importer-imports",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.importer-imports.importer",
+                      "name": "importer",
+                      "entity": "system.root.systemathic.contexts.component",
+                      "min": 1,
+                      "max": 1
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.importer-imports.imports",
+                      "name": "imports",
+                      "entity": "system.root.systemathic.contexts.import",
+                      "min": 0,
+                      "max": "N"
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.import-from",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.import-from.item",
+                      "name": null,
+                      "entity": "system.root.systemathic.contexts.import",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.import-from.from",
+                      "name": "from",
+                      "entity": "system.root.systemathic.contexts.component",
+                      "min": 1,
+                      "max": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "system.root.systemathic.contexts.imports-exports",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.contexts.imports-exports.imports",
+                      "name": "imports",
+                      "entity": "system.root.systemathic.contexts.import",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.contexts.imports-exports.exports",
+                      "name": "exports",
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    }
+                  ]
                 }
               ],
               "formulas": [
@@ -707,7 +855,7 @@
                 },
                 {
                   "id": "system.root.systemathic.contexts.formula-3",
-                  "text": "all c in Component, x in c.implements. x in c.importedComponents"
+                  "text": "all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.*export.component"
                 },
                 {
                   "id": "system.root.systemathic.contexts.formula-4",
@@ -1013,25 +1161,6 @@
                   ]
                 },
                 {
-                  "id": "system.root.systemathic.mediation.importers-importedmediums",
-                  "ends": [
-                    {
-                      "id": "system.root.systemathic.mediation.importers-importedmediums.importers",
-                      "name": "importers",
-                      "entity": "system.root.systemathic.contexts.component",
-                      "min": 0,
-                      "max": "N"
-                    },
-                    {
-                      "id": "system.root.systemathic.mediation.importers-importedmediums.importedmediums",
-                      "name": "importedMediums",
-                      "entity": "system.root.systemathic.mediation.medium",
-                      "min": 0,
-                      "max": "N"
-                    }
-                  ]
-                },
-                {
                   "id": "system.root.systemathic.mediation.language",
                   "ends": [
                     {
@@ -1182,6 +1311,25 @@
                       "max": 1
                     }
                   ]
+                },
+                {
+                  "id": "system.root.systemathic.mediation.export-medium",
+                  "ends": [
+                    {
+                      "id": "system.root.systemathic.mediation.export-medium.item",
+                      "name": null,
+                      "entity": "system.root.systemathic.contexts.export",
+                      "min": 0,
+                      "max": "N"
+                    },
+                    {
+                      "id": "system.root.systemathic.mediation.export-medium.medium",
+                      "name": "medium",
+                      "entity": "system.root.systemathic.mediation.medium",
+                      "min": 0,
+                      "max": 1
+                    }
+                  ]
                 }
               ],
               "formulas": []
@@ -1271,14 +1419,26 @@
           "id": "system.root.systemathic-verification",
           "name": "Systemathic Verification",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.systemathic-verification:system.root.systemathic-verification.verification",
+              "language": "system.root.systemathic-verification.verification"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.systemathic-verification<system.root.systemathic",
+              "from": "system.root.systemathic",
+              "exports": [
+                "system.root.systemathic:system.root.systemathic.kernel",
+                "system.root.systemathic:system.root.systemathic.functions",
+                "system.root.systemathic:system.root.systemathic.contexts",
+                "system.root.systemathic:system.root.systemathic.deployment",
+                "system.root.systemathic:system.root.systemathic.mediation",
+                "system.root.systemathic:system.root.systemathic.systems"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -1376,14 +1536,21 @@
           "id": "system.root.systemathic-stdlib",
           "name": "Systemathic StdLib",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic-verification"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.systemathic-stdlib:system.root.systemathic-stdlib.standard-assertions",
+              "language": "system.root.systemathic-stdlib.standard-assertions"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.systemathic-stdlib<system.root.systemathic-verification",
+              "from": "system.root.systemathic-verification",
+              "exports": [
+                "system.root.systemathic-verification:system.root.systemathic-verification.verification"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -1437,14 +1604,25 @@
           "uses": [
             "system.root.systemathic-verifier.rules"
           ],
-          "imports": {
-            "components": [
-              "system.root.systemathic-verification"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.systemathic-verifier:system.root.systemathic-verifier.rules",
+              "language": "system.root.systemathic-verifier.rules"
+            },
+            {
+              "id": "system.root.systemathic-verifier:system.root.systemathic-verifier.verify",
+              "interaction": "system.root.systemathic-verifier.verify"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.systemathic-verifier<system.root.systemathic-verification",
+              "from": "system.root.systemathic-verification",
+              "exports": [
+                "system.root.systemathic-verification:system.root.systemathic-verification.verification"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -1513,22 +1691,84 @@
           "id": "system.root.tool",
           "name": "Tool",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic",
-              "system.root.systemathic-verifier",
-              "system.root.systemathic-stdlib",
-              "system.root.documentation",
-              "system.root.by-value",
-              "system.root.systemathic-metadata",
-              "system.root.systemathic-subjects",
-              "pkg.http",
-              "system.root.configurations"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [],
+          "imports": [
+            {
+              "id": "system.root.tool<system.root.systemathic",
+              "from": "system.root.systemathic",
+              "exports": [
+                "system.root.systemathic:system.root.systemathic.kernel",
+                "system.root.systemathic:system.root.systemathic.functions",
+                "system.root.systemathic:system.root.systemathic.contexts",
+                "system.root.systemathic:system.root.systemathic.deployment",
+                "system.root.systemathic:system.root.systemathic.mediation",
+                "system.root.systemathic:system.root.systemathic.systems"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.systemathic-verifier",
+              "from": "system.root.systemathic-verifier",
+              "exports": [
+                "system.root.systemathic-verifier:system.root.systemathic-verifier.rules"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.systemathic-stdlib",
+              "from": "system.root.systemathic-stdlib",
+              "exports": [
+                "system.root.systemathic-stdlib:system.root.systemathic-stdlib.standard-assertions"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.documentation",
+              "from": "system.root.documentation",
+              "exports": [
+                "system.root.documentation:system.root.documentation.documentation"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.by-value",
+              "from": "system.root.by-value",
+              "exports": [
+                "system.root.by-value:system.root.by-value.by-value"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.systemathic-metadata",
+              "from": "system.root.systemathic-metadata",
+              "exports": [
+                "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.systemathic-subjects",
+              "from": "system.root.systemathic-subjects",
+              "exports": [
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+              ]
+            },
+            {
+              "id": "system.root.tool<pkg.http",
+              "from": "pkg.http",
+              "exports": [
+                "pkg.http:lib.http",
+                "pkg.http:pkg.http.medium"
+              ]
+            },
+            {
+              "id": "system.root.tool<system.root.configurations",
+              "from": "system.root.configurations",
+              "exports": [
+                "system.root.configurations:system.root.configurations.configurations"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [],
           "interactions": [],
@@ -2566,14 +2806,34 @@
               "uses": [
                 "system.root.tool.repository.repository"
               ],
-              "imports": {
-                "components": [
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.repository:system.root.tool.repository.repository",
+                  "language": "system.root.tool.repository.repository"
+                },
+                {
+                  "id": "system.root.tool.repository:system.root.tool.repository.open",
+                  "interaction": "system.root.tool.repository.open"
+                },
+                {
+                  "id": "system.root.tool.repository:system.root.tool.repository.save",
+                  "interaction": "system.root.tool.repository.save"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.repository<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -2637,14 +2897,16 @@
               "uses": [
                 "system.root.tool.repository.repository"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.repository"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.json-file-repository<system.root.tool.repository",
+                  "from": "system.root.tool.repository",
+                  "exports": [
+                    "system.root.tool.repository:system.root.tool.repository.repository"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.repository"
               ],
@@ -2661,15 +2923,37 @@
               "uses": [
                 "system.root.systemathic.systems"
               ],
-              "imports": {
-                "components": [
-                  "system.root.systemathic-metadata",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.metadata-provider:system.root.tool.metadata-provider.load",
+                  "interaction": "system.root.tool.metadata-provider.load"
+                },
+                {
+                  "id": "system.root.tool.metadata-provider:system.root.tool.metadata-provider.save",
+                  "interaction": "system.root.tool.metadata-provider.save"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.metadata-provider<system.root.systemathic-metadata",
+                  "from": "system.root.systemathic-metadata",
+                  "exports": [
+                    "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.metadata-provider<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -2714,19 +2998,57 @@
                 "system.root.tool.editing.editing",
                 "system.root.systemathic.systems"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.metadata-provider",
-                  "system.root.systemathic-metadata",
-                  "system.root.documentation",
-                  "system.root.tool.editing",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.documentation-store:system.root.tool.documentation-store.documentation-editing",
+                  "language": "system.root.tool.documentation-store.documentation-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.documentation-store<system.root.tool.metadata-provider",
+                  "from": "system.root.tool.metadata-provider",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.documentation-store<system.root.systemathic-metadata",
+                  "from": "system.root.systemathic-metadata",
+                  "exports": [
+                    "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.documentation-store<system.root.documentation",
+                  "from": "system.root.documentation",
+                  "exports": [
+                    "system.root.documentation:system.root.documentation.documentation"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.documentation-store<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.documentation-store<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.documentation-store<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.metadata-provider",
                 "system.root.tool.reversible-edit"
@@ -2813,19 +3135,57 @@
                 "system.root.tool.editing.editing",
                 "system.root.systemathic.systems"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.metadata-provider",
-                  "system.root.systemathic-metadata",
-                  "system.root.by-value",
-                  "system.root.tool.editing",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.by-value-store:system.root.tool.by-value-store.by-value-editing",
+                  "language": "system.root.tool.by-value-store.by-value-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.by-value-store<system.root.tool.metadata-provider",
+                  "from": "system.root.tool.metadata-provider",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.by-value-store<system.root.systemathic-metadata",
+                  "from": "system.root.systemathic-metadata",
+                  "exports": [
+                    "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.by-value-store<system.root.by-value",
+                  "from": "system.root.by-value",
+                  "exports": [
+                    "system.root.by-value:system.root.by-value.by-value"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.by-value-store<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.by-value-store<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.by-value-store<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.metadata-provider",
                 "system.root.tool.reversible-edit"
@@ -2912,19 +3272,80 @@
                 "system.root.tool.editing.editing",
                 "system.root.systemathic.systems"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.repository",
-                  "system.root.tool.metadata-provider",
-                  "system.root.systemathic-metadata",
-                  "system.root.tool.editing",
-                  "system.root.tool.editor",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.workspace:system.root.tool.workspace.workspace",
+                  "language": "system.root.tool.workspace.workspace"
+                },
+                {
+                  "id": "system.root.tool.workspace:system.root.tool.workspace.new",
+                  "interaction": "system.root.tool.workspace.new"
+                },
+                {
+                  "id": "system.root.tool.workspace:system.root.tool.workspace.open",
+                  "interaction": "system.root.tool.workspace.open"
+                },
+                {
+                  "id": "system.root.tool.workspace:system.root.tool.workspace.save",
+                  "interaction": "system.root.tool.workspace.save"
+                },
+                {
+                  "id": "system.root.tool.workspace:system.root.tool.workspace.close",
+                  "interaction": "system.root.tool.workspace.close"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.workspace<system.root.tool.repository",
+                  "from": "system.root.tool.repository",
+                  "exports": [
+                    "system.root.tool.repository:system.root.tool.repository.repository",
+                    "system.root.tool.repository:system.root.tool.repository.open",
+                    "system.root.tool.repository:system.root.tool.repository.save"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.workspace<system.root.tool.metadata-provider",
+                  "from": "system.root.tool.metadata-provider",
+                  "exports": [
+                    "system.root.tool.metadata-provider:system.root.tool.metadata-provider.load",
+                    "system.root.tool.metadata-provider:system.root.tool.metadata-provider.save"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.workspace<system.root.systemathic-metadata",
+                  "from": "system.root.systemathic-metadata",
+                  "exports": [
+                    "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.workspace<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.workspace<system.root.tool.editor",
+                  "from": "system.root.tool.editor",
+                  "exports": [
+                    "system.root.tool.editor:system.root.tool.editor.startsession"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.workspace<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -3037,12 +3458,13 @@
               "uses": [
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.editing:system.root.tool.editing.editing",
+                  "language": "system.root.tool.editing.editing"
+                }
+              ],
+              "imports": [],
               "implements": [],
               "languages": [
                 {
@@ -3215,14 +3637,21 @@
               "uses": [
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.reversible-edit:system.root.tool.reversible-edit.apply",
+                  "interaction": "system.root.tool.reversible-edit.apply"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.reversible-edit<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -3256,14 +3685,30 @@
               "uses": [
                 "system.root.tool.source.sources"
               ],
-              "imports": {
-                "components": [
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.source:system.root.tool.source.sources",
+                  "language": "system.root.tool.source.sources"
+                },
+                {
+                  "id": "system.root.tool.source:system.root.tool.source.contents",
+                  "interaction": "system.root.tool.source.contents"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.source<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -3360,14 +3805,16 @@
               "uses": [
                 "system.root.tool.source.sources"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.source"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.catalog-source<system.root.tool.source",
+                  "from": "system.root.tool.source",
+                  "exports": [
+                    "system.root.tool.source:system.root.tool.source.sources"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.source"
               ],
@@ -3384,14 +3831,16 @@
               "uses": [
                 "system.root.tool.source.sources"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.source"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.file-source<system.root.tool.source",
+                  "from": "system.root.tool.source",
+                  "exports": [
+                    "system.root.tool.source:system.root.tool.source.sources"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.source"
               ],
@@ -3409,16 +3858,38 @@
                 "system.root.tool.kernel-editor.kernel-editing",
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.editing",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.kernel-editor:system.root.tool.kernel-editor.kernel-editing",
+                  "language": "system.root.tool.kernel-editor.kernel-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.kernel-editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.kernel-editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.kernel-editor<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.reversible-edit"
               ],
@@ -3869,17 +4340,45 @@
                 "system.root.tool.functions-editor.functions-editing",
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.kernel-editor",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic",
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.functions-editor:system.root.tool.functions-editor.functions-editing",
+                  "language": "system.root.tool.functions-editor.functions-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.functions-editor<system.root.tool.kernel-editor",
+                  "from": "system.root.tool.kernel-editor",
+                  "exports": [
+                    "system.root.tool.kernel-editor:system.root.tool.kernel-editor.kernel-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.functions-editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.functions-editor<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.functions-editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.reversible-edit"
               ],
@@ -4098,17 +4597,45 @@
                 "system.root.tool.contexts-editor.contexts-editing",
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.functions-editor",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic",
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.contexts-editor:system.root.tool.contexts-editor.contexts-editing",
+                  "language": "system.root.tool.contexts-editor.contexts-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.contexts-editor<system.root.tool.functions-editor",
+                  "from": "system.root.tool.functions-editor",
+                  "exports": [
+                    "system.root.tool.functions-editor:system.root.tool.functions-editor.functions-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.contexts-editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.contexts-editor<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.contexts-editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.reversible-edit"
               ],
@@ -4159,6 +4686,41 @@
                     {
                       "id": "system.root.tool.contexts-editor.contexts-editing.addtransformation",
                       "name": "AddTransformation",
+                      "extends": [
+                        "system.root.tool.editing.editing.edit"
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.addexport",
+                      "name": "AddExport",
+                      "extends": [
+                        "system.root.tool.editing.editing.edit"
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.removeexport",
+                      "name": "RemoveExport",
+                      "extends": [
+                        "system.root.tool.editing.editing.edit"
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.addimport",
+                      "name": "AddImport",
+                      "extends": [
+                        "system.root.tool.editing.editing.edit"
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.changeimport",
+                      "name": "ChangeImport",
+                      "extends": [
+                        "system.root.tool.editing.editing.edit"
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.removeimport",
+                      "name": "RemoveImport",
                       "extends": [
                         "system.root.tool.editing.editing.edit"
                       ]
@@ -4373,6 +4935,158 @@
                           "max": 1
                         }
                       ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.into-5",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.into-5.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.addexport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.into-5.into",
+                          "name": "into",
+                          "entity": "system.root.systemathic.contexts.component",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.export",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.export.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.addexport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.export.export",
+                          "name": "export",
+                          "entity": "system.root.systemathic.contexts.export",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.subject-3",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.subject-3.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.removeexport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.subject-3.subject",
+                          "name": "subject",
+                          "entity": "system.root.systemathic.contexts.export",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.into-6",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.into-6.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.addimport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.into-6.into",
+                          "name": "into",
+                          "entity": "system.root.systemathic.contexts.component",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.import",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.import.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.addimport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.import.import",
+                          "name": "import",
+                          "entity": "system.root.systemathic.contexts.import",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.subject-4",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.subject-4.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.changeimport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.subject-4.subject",
+                          "name": "subject",
+                          "entity": "system.root.systemathic.contexts.import",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.to-2",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.to-2.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.changeimport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.to-2.to",
+                          "name": "to",
+                          "entity": "system.root.systemathic.contexts.import",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
+                    },
+                    {
+                      "id": "system.root.tool.contexts-editor.contexts-editing.subject-5",
+                      "ends": [
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.subject-5.item",
+                          "name": null,
+                          "entity": "system.root.tool.contexts-editor.contexts-editing.removeimport",
+                          "min": 0,
+                          "max": "N"
+                        },
+                        {
+                          "id": "system.root.tool.contexts-editor.contexts-editing.subject-5.subject",
+                          "name": "subject",
+                          "entity": "system.root.systemathic.contexts.import",
+                          "min": 1,
+                          "max": 1
+                        }
+                      ]
                     }
                   ],
                   "formulas": []
@@ -4391,17 +5105,45 @@
                 "system.root.tool.deployment-editor.deployment-editing",
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.contexts-editor",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic",
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.deployment-editor:system.root.tool.deployment-editor.deployment-editing",
+                  "language": "system.root.tool.deployment-editor.deployment-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.deployment-editor<system.root.tool.contexts-editor",
+                  "from": "system.root.tool.contexts-editor",
+                  "exports": [
+                    "system.root.tool.contexts-editor:system.root.tool.contexts-editor.contexts-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.deployment-editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.deployment-editor<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.deployment-editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.reversible-edit"
               ],
@@ -4781,17 +5523,45 @@
                 "system.root.tool.mediation-editor.mediation-editing",
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.deployment-editor",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic",
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.mediation-editor:system.root.tool.mediation-editor.mediation-editing",
+                  "language": "system.root.tool.mediation-editor.mediation-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.mediation-editor<system.root.tool.deployment-editor",
+                  "from": "system.root.tool.deployment-editor",
+                  "exports": [
+                    "system.root.tool.deployment-editor:system.root.tool.deployment-editor.deployment-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mediation-editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.mediation-editor<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mediation-editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.reversible-edit"
               ],
@@ -5056,18 +5826,52 @@
                 "system.root.tool.source.sources",
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.source",
-                  "system.root.tool.mediation-editor",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic",
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.systems-editor:system.root.tool.systems-editor.systems-editing",
+                  "language": "system.root.tool.systems-editor.systems-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.systems-editor<system.root.tool.source",
+                  "from": "system.root.tool.source",
+                  "exports": [
+                    "system.root.tool.source:system.root.tool.source.sources"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.systems-editor<system.root.tool.mediation-editor",
+                  "from": "system.root.tool.mediation-editor",
+                  "exports": [
+                    "system.root.tool.mediation-editor:system.root.tool.mediation-editor.mediation-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.systems-editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.systems-editor<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.systems-editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.reversible-edit"
               ],
@@ -5195,16 +5999,39 @@
               "uses": [
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.editing",
-                  "system.root.tool.reversible-edit",
-                  "system.root.tool.edit-listener"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.editor:system.root.tool.editor.startsession",
+                  "interaction": "system.root.tool.editor.startsession"
+                },
+                {
+                  "id": "system.root.tool.editor:system.root.tool.editor.apply",
+                  "interaction": "system.root.tool.editor.apply"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.editor<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.editor<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": [
+                    "system.root.tool.reversible-edit:system.root.tool.reversible-edit.apply"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.editor<system.root.tool.edit-listener",
+                  "from": "system.root.tool.edit-listener",
+                  "exports": [
+                    "system.root.tool.edit-listener:system.root.tool.edit-listener.applied"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -5251,14 +6078,21 @@
               "uses": [
                 "system.root.tool.editing.editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.edit-listener:system.root.tool.edit-listener.applied",
+                  "interaction": "system.root.tool.edit-listener.applied"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.edit-listener<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -5287,15 +6121,39 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.systemathic",
-                  "system.root.systemathic-subjects"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.views:system.root.tool.views.views",
+                  "language": "system.root.tool.views.views"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.views<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.views<system.root.systemathic-subjects",
+                  "from": "system.root.systemathic-subjects",
+                  "exports": [
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -5614,18 +6472,59 @@
               "uses": [
                 "system.root.tool.diagnoser.diagnostics"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.views",
-                  "system.root.systemathic-verifier",
-                  "system.root.systemathic-stdlib",
-                  "system.root.systemathic",
-                  "system.root.tool.editing"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                  "language": "system.root.tool.diagnoser.diagnostics"
+                },
+                {
+                  "id": "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose",
+                  "interaction": "system.root.tool.diagnoser.diagnose"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.diagnoser<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.diagnoser<system.root.systemathic-verifier",
+                  "from": "system.root.systemathic-verifier",
+                  "exports": [
+                    "system.root.systemathic-verifier:system.root.systemathic-verifier.rules",
+                    "system.root.systemathic-verifier:system.root.systemathic-verifier.verify"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.diagnoser<system.root.systemathic-stdlib",
+                  "from": "system.root.systemathic-stdlib",
+                  "exports": [
+                    "system.root.systemathic-stdlib:system.root.systemathic-stdlib.standard-assertions"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.diagnoser<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.diagnoser<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -5868,14 +6767,21 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.views"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.perspective-kind:system.root.tool.perspective-kind.view",
+                  "interaction": "system.root.tool.perspective-kind.view"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.perspective-kind<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -5910,16 +6816,36 @@
                 "system.root.tool.views.views",
                 "system.root.tool.diagnoser.diagnostics"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.views",
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.diagnoser"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.perspectives:system.root.tool.perspectives.view",
+                  "interaction": "system.root.tool.perspectives.view"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.perspectives<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.perspectives<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": [
+                    "system.root.tool.perspective-kind:system.root.tool.perspective-kind.view"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.perspectives<system.root.tool.diagnoser",
+                  "from": "system.root.tool.diagnoser",
+                  "exports": [
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -5953,16 +6879,33 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.views",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.outline-view<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.outline-view<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.outline-view<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.perspective-kind"
               ],
@@ -5979,16 +6922,33 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.views",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.language-view<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.language-view<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.language-view<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.perspective-kind"
               ],
@@ -6005,16 +6965,33 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.views",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.component-view<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.component-view<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.component-view<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.perspective-kind"
               ],
@@ -6031,16 +7008,33 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.views",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.deployment-view<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.deployment-view<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.deployment-view<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.perspective-kind"
               ],
@@ -6057,16 +7051,33 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.views",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.mediation-stack-view<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.mediation-stack-view<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mediation-stack-view<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.perspective-kind"
               ],
@@ -6083,16 +7094,33 @@
               "uses": [
                 "system.root.tool.views.views"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.perspective-kind",
-                  "system.root.tool.views",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.statistics-view<system.root.tool.perspective-kind",
+                  "from": "system.root.tool.perspective-kind",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.statistics-view<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.statistics-view<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.perspective-kind"
               ],
@@ -6110,17 +7138,52 @@
                 "system.root.tool.exporter.specification",
                 "system.root.tool.diagnoser.diagnostics"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.views",
-                  "system.root.tool.diagnoser",
-                  "system.root.systemathic-verifier",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.exporter:system.root.tool.exporter.specification",
+                  "language": "system.root.tool.exporter.specification"
+                },
+                {
+                  "id": "system.root.tool.exporter:system.root.tool.exporter.specify",
+                  "interaction": "system.root.tool.exporter.specify"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.exporter<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.exporter<system.root.tool.diagnoser",
+                  "from": "system.root.tool.diagnoser",
+                  "exports": [
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.exporter<system.root.systemathic-verifier",
+                  "from": "system.root.systemathic-verifier",
+                  "exports": [
+                    "system.root.systemathic-verifier:system.root.systemathic-verifier.rules"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.exporter<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -6431,14 +7494,21 @@
               "uses": [
                 "system.root.tool.exporter.specification"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.exporter"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.specification-format:system.root.tool.specification-format.render",
+                  "interaction": "system.root.tool.specification-format.render"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.specification-format<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [
@@ -6467,15 +7537,21 @@
               "uses": [
                 "system.root.tool.exporter.specification"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.specification-format",
-                  "system.root.tool.exporter"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.markdown-format<system.root.tool.specification-format",
+                  "from": "system.root.tool.specification-format",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.markdown-format<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.specification-format"
               ],
@@ -6492,15 +7568,21 @@
               "uses": [
                 "system.root.tool.exporter.specification"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.specification-format",
-                  "system.root.tool.exporter"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.json-format<system.root.tool.specification-format",
+                  "from": "system.root.tool.specification-format",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.json-format<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.specification-format"
               ],
@@ -6517,14 +7599,16 @@
               "uses": [
                 "system.root.systemathic-verifier.rules"
               ],
-              "imports": {
-                "components": [
-                  "system.root.systemathic-verifier"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.python-verifier<system.root.systemathic-verifier",
+                  "from": "system.root.systemathic-verifier",
+                  "exports": [
+                    "system.root.systemathic-verifier:system.root.systemathic-verifier.rules"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.systemathic-verifier"
               ],
@@ -6541,17 +7625,57 @@
               "uses": [
                 "system.root.tool.documentation-writer.written-documentation"
               ],
-              "imports": {
-                "components": [
-                  "system.root.documentation",
-                  "system.root.tool.exporter",
-                  "system.root.systemathic-subjects",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.documentation-writer:system.root.tool.documentation-writer.written-documentation",
+                  "language": "system.root.tool.documentation-writer.written-documentation"
+                },
+                {
+                  "id": "system.root.tool.documentation-writer:system.root.tool.documentation-writer.write",
+                  "interaction": "system.root.tool.documentation-writer.write"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.documentation-writer<system.root.documentation",
+                  "from": "system.root.documentation",
+                  "exports": [
+                    "system.root.documentation:system.root.documentation.documentation"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.documentation-writer<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.documentation-writer<system.root.systemathic-subjects",
+                  "from": "system.root.systemathic-subjects",
+                  "exports": [
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                    "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.documentation-writer<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [
                 {
@@ -6602,29 +7726,133 @@
                 "system.root.tool.by-value-store.by-value-editing",
                 "system.root.tool.configuration-store.configuration-editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.workspace",
-                  "system.root.tool.editor",
-                  "system.root.tool.perspectives",
-                  "system.root.tool.diagnoser",
-                  "system.root.tool.exporter",
-                  "system.root.tool.specification-format",
-                  "system.root.tool.documentation-writer",
-                  "system.root.tool.source",
-                  "system.root.systemathic",
-                  "system.root.tool.edit-listener",
-                  "system.root.tool.systems-editor",
-                  "system.root.tool.documentation-store",
-                  "system.root.tool.by-value-store",
-                  "system.root.tool.editing",
-                  "system.root.tool.views",
-                  "system.root.tool.configuration-store"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.ui<system.root.tool.workspace",
+                  "from": "system.root.tool.workspace",
+                  "exports": [
+                    "system.root.tool.workspace:system.root.tool.workspace.workspace",
+                    "system.root.tool.workspace:system.root.tool.workspace.new",
+                    "system.root.tool.workspace:system.root.tool.workspace.open",
+                    "system.root.tool.workspace:system.root.tool.workspace.save",
+                    "system.root.tool.workspace:system.root.tool.workspace.close"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.editor",
+                  "from": "system.root.tool.editor",
+                  "exports": [
+                    "system.root.tool.editor:system.root.tool.editor.startsession",
+                    "system.root.tool.editor:system.root.tool.editor.apply"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.perspectives",
+                  "from": "system.root.tool.perspectives",
+                  "exports": [
+                    "system.root.tool.perspectives:system.root.tool.perspectives.view"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.diagnoser",
+                  "from": "system.root.tool.diagnoser",
+                  "exports": [
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification",
+                    "system.root.tool.exporter:system.root.tool.exporter.specify"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.specification-format",
+                  "from": "system.root.tool.specification-format",
+                  "exports": [
+                    "system.root.tool.specification-format:system.root.tool.specification-format.render"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.documentation-writer",
+                  "from": "system.root.tool.documentation-writer",
+                  "exports": [
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.written-documentation",
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.write"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.source",
+                  "from": "system.root.tool.source",
+                  "exports": [
+                    "system.root.tool.source:system.root.tool.source.sources",
+                    "system.root.tool.source:system.root.tool.source.contents"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.edit-listener",
+                  "from": "system.root.tool.edit-listener",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.systems-editor",
+                  "from": "system.root.tool.systems-editor",
+                  "exports": [
+                    "system.root.tool.systems-editor:system.root.tool.systems-editor.systems-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.documentation-store",
+                  "from": "system.root.tool.documentation-store",
+                  "exports": [
+                    "system.root.tool.documentation-store:system.root.tool.documentation-store.documentation-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.by-value-store",
+                  "from": "system.root.tool.by-value-store",
+                  "exports": [
+                    "system.root.tool.by-value-store:system.root.tool.by-value-store.by-value-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.ui<system.root.tool.configuration-store",
+                  "from": "system.root.tool.configuration-store",
+                  "exports": [
+                    "system.root.tool.configuration-store:system.root.tool.configuration-store.configuration-editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.edit-listener"
               ],
@@ -6651,29 +7879,133 @@
                 "system.root.tool.by-value-store.by-value-editing",
                 "system.root.tool.configuration-store.configuration-editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.workspace",
-                  "system.root.tool.editor",
-                  "system.root.tool.perspectives",
-                  "system.root.tool.diagnoser",
-                  "system.root.tool.exporter",
-                  "system.root.tool.specification-format",
-                  "system.root.tool.documentation-writer",
-                  "system.root.tool.source",
-                  "system.root.systemathic",
-                  "system.root.tool.edit-listener",
-                  "system.root.tool.systems-editor",
-                  "system.root.tool.documentation-store",
-                  "system.root.tool.by-value-store",
-                  "system.root.tool.editing",
-                  "system.root.tool.views",
-                  "system.root.tool.configuration-store"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.workspace",
+                  "from": "system.root.tool.workspace",
+                  "exports": [
+                    "system.root.tool.workspace:system.root.tool.workspace.workspace",
+                    "system.root.tool.workspace:system.root.tool.workspace.new",
+                    "system.root.tool.workspace:system.root.tool.workspace.open",
+                    "system.root.tool.workspace:system.root.tool.workspace.save",
+                    "system.root.tool.workspace:system.root.tool.workspace.close"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.editor",
+                  "from": "system.root.tool.editor",
+                  "exports": [
+                    "system.root.tool.editor:system.root.tool.editor.startsession",
+                    "system.root.tool.editor:system.root.tool.editor.apply"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.perspectives",
+                  "from": "system.root.tool.perspectives",
+                  "exports": [
+                    "system.root.tool.perspectives:system.root.tool.perspectives.view"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.diagnoser",
+                  "from": "system.root.tool.diagnoser",
+                  "exports": [
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification",
+                    "system.root.tool.exporter:system.root.tool.exporter.specify"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.specification-format",
+                  "from": "system.root.tool.specification-format",
+                  "exports": [
+                    "system.root.tool.specification-format:system.root.tool.specification-format.render"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.documentation-writer",
+                  "from": "system.root.tool.documentation-writer",
+                  "exports": [
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.written-documentation",
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.write"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.source",
+                  "from": "system.root.tool.source",
+                  "exports": [
+                    "system.root.tool.source:system.root.tool.source.sources",
+                    "system.root.tool.source:system.root.tool.source.contents"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.edit-listener",
+                  "from": "system.root.tool.edit-listener",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.systems-editor",
+                  "from": "system.root.tool.systems-editor",
+                  "exports": [
+                    "system.root.tool.systems-editor:system.root.tool.systems-editor.systems-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.documentation-store",
+                  "from": "system.root.tool.documentation-store",
+                  "exports": [
+                    "system.root.tool.documentation-store:system.root.tool.documentation-store.documentation-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.by-value-store",
+                  "from": "system.root.tool.by-value-store",
+                  "exports": [
+                    "system.root.tool.by-value-store:system.root.tool.by-value-store.by-value-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.mcp-server<system.root.tool.configuration-store",
+                  "from": "system.root.tool.configuration-store",
+                  "exports": [
+                    "system.root.tool.configuration-store:system.root.tool.configuration-store.configuration-editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.edit-listener"
               ],
@@ -6693,19 +8025,63 @@
                 "system.root.tool.exporter.specification",
                 "system.root.tool.documentation-writer.written-documentation"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.workspace",
-                  "system.root.tool.diagnoser",
-                  "system.root.tool.exporter",
-                  "system.root.tool.specification-format",
-                  "system.root.tool.documentation-writer",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.cli<system.root.tool.workspace",
+                  "from": "system.root.tool.workspace",
+                  "exports": [
+                    "system.root.tool.workspace:system.root.tool.workspace.workspace",
+                    "system.root.tool.workspace:system.root.tool.workspace.new",
+                    "system.root.tool.workspace:system.root.tool.workspace.open",
+                    "system.root.tool.workspace:system.root.tool.workspace.save",
+                    "system.root.tool.workspace:system.root.tool.workspace.close"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.cli<system.root.tool.diagnoser",
+                  "from": "system.root.tool.diagnoser",
+                  "exports": [
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.cli<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification",
+                    "system.root.tool.exporter:system.root.tool.exporter.specify"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.cli<system.root.tool.specification-format",
+                  "from": "system.root.tool.specification-format",
+                  "exports": [
+                    "system.root.tool.specification-format:system.root.tool.specification-format.render"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.cli<system.root.tool.documentation-writer",
+                  "from": "system.root.tool.documentation-writer",
+                  "exports": [
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.written-documentation",
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.write"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.cli<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [],
@@ -6730,28 +8106,121 @@
                 "system.root.tool.by-value-store.by-value-editing",
                 "system.root.tool.configuration-store.configuration-editing"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.workspace",
-                  "system.root.tool.editor",
-                  "system.root.tool.perspectives",
-                  "system.root.tool.diagnoser",
-                  "system.root.tool.exporter",
-                  "system.root.tool.specification-format",
-                  "system.root.tool.documentation-writer",
-                  "system.root.tool.source",
-                  "system.root.tool.edit-listener",
-                  "system.root.tool.editing",
-                  "system.root.tool.views",
-                  "system.root.tool.systems-editor",
-                  "system.root.tool.documentation-store",
-                  "system.root.tool.by-value-store",
-                  "system.root.tool.configuration-store"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "system.root.tool.api<system.root.tool.workspace",
+                  "from": "system.root.tool.workspace",
+                  "exports": [
+                    "system.root.tool.workspace:system.root.tool.workspace.workspace",
+                    "system.root.tool.workspace:system.root.tool.workspace.new",
+                    "system.root.tool.workspace:system.root.tool.workspace.open",
+                    "system.root.tool.workspace:system.root.tool.workspace.save",
+                    "system.root.tool.workspace:system.root.tool.workspace.close"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.editor",
+                  "from": "system.root.tool.editor",
+                  "exports": [
+                    "system.root.tool.editor:system.root.tool.editor.startsession",
+                    "system.root.tool.editor:system.root.tool.editor.apply"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.perspectives",
+                  "from": "system.root.tool.perspectives",
+                  "exports": [
+                    "system.root.tool.perspectives:system.root.tool.perspectives.view"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.diagnoser",
+                  "from": "system.root.tool.diagnoser",
+                  "exports": [
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnostics",
+                    "system.root.tool.diagnoser:system.root.tool.diagnoser.diagnose"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.exporter",
+                  "from": "system.root.tool.exporter",
+                  "exports": [
+                    "system.root.tool.exporter:system.root.tool.exporter.specification",
+                    "system.root.tool.exporter:system.root.tool.exporter.specify"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.specification-format",
+                  "from": "system.root.tool.specification-format",
+                  "exports": [
+                    "system.root.tool.specification-format:system.root.tool.specification-format.render"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.documentation-writer",
+                  "from": "system.root.tool.documentation-writer",
+                  "exports": [
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.written-documentation",
+                    "system.root.tool.documentation-writer:system.root.tool.documentation-writer.write"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.source",
+                  "from": "system.root.tool.source",
+                  "exports": [
+                    "system.root.tool.source:system.root.tool.source.sources",
+                    "system.root.tool.source:system.root.tool.source.contents"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.edit-listener",
+                  "from": "system.root.tool.edit-listener",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.views",
+                  "from": "system.root.tool.views",
+                  "exports": [
+                    "system.root.tool.views:system.root.tool.views.views"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.systems-editor",
+                  "from": "system.root.tool.systems-editor",
+                  "exports": [
+                    "system.root.tool.systems-editor:system.root.tool.systems-editor.systems-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.documentation-store",
+                  "from": "system.root.tool.documentation-store",
+                  "exports": [
+                    "system.root.tool.documentation-store:system.root.tool.documentation-store.documentation-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.by-value-store",
+                  "from": "system.root.tool.by-value-store",
+                  "exports": [
+                    "system.root.tool.by-value-store:system.root.tool.by-value-store.by-value-editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.api<system.root.tool.configuration-store",
+                  "from": "system.root.tool.configuration-store",
+                  "exports": [
+                    "system.root.tool.configuration-store:system.root.tool.configuration-store.configuration-editing"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.edit-listener"
               ],
@@ -6771,19 +8240,57 @@
                 "system.root.tool.editing.editing",
                 "system.root.systemathic.systems"
               ],
-              "imports": {
-                "components": [
-                  "system.root.tool.metadata-provider",
-                  "system.root.systemathic-metadata",
-                  "system.root.configurations",
-                  "system.root.tool.editing",
-                  "system.root.tool.reversible-edit",
-                  "system.root.systemathic"
-                ],
-                "interactions": [],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [
+                {
+                  "id": "system.root.tool.configuration-store:system.root.tool.configuration-store.configuration-editing",
+                  "language": "system.root.tool.configuration-store.configuration-editing"
+                }
+              ],
+              "imports": [
+                {
+                  "id": "system.root.tool.configuration-store<system.root.tool.metadata-provider",
+                  "from": "system.root.tool.metadata-provider",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.configuration-store<system.root.systemathic-metadata",
+                  "from": "system.root.systemathic-metadata",
+                  "exports": [
+                    "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.configuration-store<system.root.configurations",
+                  "from": "system.root.configurations",
+                  "exports": [
+                    "system.root.configurations:system.root.configurations.configurations"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.configuration-store<system.root.tool.editing",
+                  "from": "system.root.tool.editing",
+                  "exports": [
+                    "system.root.tool.editing:system.root.tool.editing.editing"
+                  ]
+                },
+                {
+                  "id": "system.root.tool.configuration-store<system.root.tool.reversible-edit",
+                  "from": "system.root.tool.reversible-edit",
+                  "exports": []
+                },
+                {
+                  "id": "system.root.tool.configuration-store<system.root.systemathic",
+                  "from": "system.root.systemathic",
+                  "exports": [
+                    "system.root.systemathic:system.root.systemathic.kernel",
+                    "system.root.systemathic:system.root.systemathic.functions",
+                    "system.root.systemathic:system.root.systemathic.contexts",
+                    "system.root.systemathic:system.root.systemathic.deployment",
+                    "system.root.systemathic:system.root.systemathic.mediation",
+                    "system.root.systemathic:system.root.systemathic.systems"
+                  ]
+                }
+              ],
               "implements": [
                 "system.root.tool.metadata-provider",
                 "system.root.tool.reversible-edit"
@@ -7028,15 +8535,39 @@
           "id": "system.root.systemathic-metadata",
           "name": "Systemathic Metadata",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic",
-              "system.root.systemathic-subjects"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata",
+              "language": "system.root.systemathic-metadata.metadata"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.systemathic-metadata<system.root.systemathic",
+              "from": "system.root.systemathic",
+              "exports": [
+                "system.root.systemathic:system.root.systemathic.kernel",
+                "system.root.systemathic:system.root.systemathic.functions",
+                "system.root.systemathic:system.root.systemathic.contexts",
+                "system.root.systemathic:system.root.systemathic.deployment",
+                "system.root.systemathic:system.root.systemathic.mediation",
+                "system.root.systemathic:system.root.systemathic.systems"
+              ]
+            },
+            {
+              "id": "system.root.systemathic-metadata<system.root.systemathic-subjects",
+              "from": "system.root.systemathic-subjects",
+              "exports": [
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -7086,15 +8617,34 @@
           "id": "system.root.by-value",
           "name": "By Value",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic-metadata",
-              "system.root.systemathic-subjects"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.by-value:system.root.by-value.by-value",
+              "language": "system.root.by-value.by-value"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.by-value<system.root.systemathic-metadata",
+              "from": "system.root.systemathic-metadata",
+              "exports": [
+                "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+              ]
+            },
+            {
+              "id": "system.root.by-value<system.root.systemathic-subjects",
+              "from": "system.root.systemathic-subjects",
+              "exports": [
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -7136,15 +8686,34 @@
           "id": "system.root.documentation",
           "name": "Documentation",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic-metadata",
-              "system.root.systemathic-subjects"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.documentation:system.root.documentation.documentation",
+              "language": "system.root.documentation.documentation"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.documentation<system.root.systemathic-metadata",
+              "from": "system.root.systemathic-metadata",
+              "exports": [
+                "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+              ]
+            },
+            {
+              "id": "system.root.documentation<system.root.systemathic-subjects",
+              "from": "system.root.systemathic-subjects",
+              "exports": [
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -7202,14 +8771,50 @@
           "id": "system.root.systemathic-subjects",
           "name": "Systemathic Subjects",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+              "language": "system.root.systemathic-subjects.subjects"
+            },
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+              "language": "system.root.systemathic-subjects.kernel-subjects"
+            },
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+              "language": "system.root.systemathic-subjects.functions-subjects"
+            },
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+              "language": "system.root.systemathic-subjects.contexts-subjects"
+            },
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+              "language": "system.root.systemathic-subjects.deployment-subjects"
+            },
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+              "language": "system.root.systemathic-subjects.mediation-subjects"
+            },
+            {
+              "id": "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects",
+              "language": "system.root.systemathic-subjects.systems-subjects"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.systemathic-subjects<system.root.systemathic",
+              "from": "system.root.systemathic",
+              "exports": [
+                "system.root.systemathic:system.root.systemathic.kernel",
+                "system.root.systemathic:system.root.systemathic.functions",
+                "system.root.systemathic:system.root.systemathic.contexts",
+                "system.root.systemathic:system.root.systemathic.deployment",
+                "system.root.systemathic:system.root.systemathic.mediation",
+                "system.root.systemathic:system.root.systemathic.systems"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -7580,16 +9185,41 @@
           "id": "system.root.configurations",
           "name": "Configurations",
           "uses": [],
-          "imports": {
-            "components": [
-              "system.root.systemathic-metadata",
-              "system.root.systemathic-subjects",
-              "system.root.systemathic-verifier"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "system.root.configurations:system.root.configurations.configurations",
+              "language": "system.root.configurations.configurations"
+            }
+          ],
+          "imports": [
+            {
+              "id": "system.root.configurations<system.root.systemathic-metadata",
+              "from": "system.root.systemathic-metadata",
+              "exports": [
+                "system.root.systemathic-metadata:system.root.systemathic-metadata.metadata"
+              ]
+            },
+            {
+              "id": "system.root.configurations<system.root.systemathic-subjects",
+              "from": "system.root.systemathic-subjects",
+              "exports": [
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.kernel-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.functions-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.contexts-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.deployment-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.mediation-subjects",
+                "system.root.systemathic-subjects:system.root.systemathic-subjects.systems-subjects"
+              ]
+            },
+            {
+              "id": "system.root.configurations<system.root.systemathic-verifier",
+              "from": "system.root.systemathic-verifier",
+              "exports": [
+                "system.root.systemathic-verifier:system.root.systemathic-verifier.rules"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [
             {
@@ -7792,12 +9422,17 @@
         "uses": [
           "lib.http"
         ],
-        "imports": {
-          "components": [],
-          "interactions": [],
-          "transformations": [],
-          "mediums": []
-        },
+        "exports": [
+          {
+            "id": "pkg.http:lib.http",
+            "language": "lib.http"
+          },
+          {
+            "id": "pkg.http:pkg.http.medium",
+            "medium": "pkg.http.medium"
+          }
+        ],
+        "imports": [],
         "implements": [],
         "languages": [
           {
@@ -8166,7 +9801,7 @@
           "system.root.systemathic-metadata": "Custom metadata on the things of a System: a **Custom Metadata** is about one Subject. Specific kinds are provided by other Components extending it (By Value, Documentation, UI layouts, …), each extending only the Subject layers it needs. Each provider stores and loads its own metadata, its own way; the Repository knows nothing of metadata.",
           "system.root.by-value": "A metadata type provider: marks an Entity as having no identity of its own. A Relationship to a by-value Entity has only one side: the end at it is navigated by its owner (0..1 optional, 1..1 required, 0..N list), and the end at the owner is unnamed. A presentation convenience: the core does not know it.",
           "system.root.documentation": "A metadata type provider: a Description, in prose, of anything in a System — the System itself, a Component, Language, Entity, Relationship, Formula, Function, Medium, Deployment, Instance, Connection, Mediation. Text is by value. Like every provider, it stores and loads its own metadata; the Repository knows nothing of it.",
-          "system.root.systemathic.contexts.component": "A unit of the design. From outside, a Component is only its Languages and Interactions: an interface. Its children, Transformations and Deployments are its own implementation of that interface, the default one. Other Components may **implement** it: each is an alternative implementation, with children of its own, that may stand wherever the Component is placed. An implementer imports what it implements and uses the Languages of its Interactions. Which implementation fills an Instance is chosen by the tool's Configuration.",
+          "system.root.systemathic.contexts.component": "A unit of the design. From outside, a Component is only what it **exports**: an interface. Its children, Transformations and Deployments are its own implementation of that interface, the default one. Other Components may **implement** it: each is an alternative implementation, with children of its own, that may stand wherever the Component is placed. An implementer imports what it implements and uses the Languages of the Interactions it exports. Which implementation fills an Instance is chosen by the tool's Configuration.",
           "system.root.systemathic.functions.function": "A signature: ordered Parameters, each of some Entity, and at most one output Entity. A Function without an output gives nothing back, such as an Interaction that only informs (`systemOpened(System)`). There is no Unit: it would have to belong to some Language, and returning another Language's Entity would make an Interaction a Transformation.",
           "system.root.tool.repository": "Interface: where Systems are stored. It stores the design only and knows nothing of metadata. `open` reads the System at a Location; `save` writes one there and gives back where it was saved. Implemented by JSON File Repository; others (browser storage, a database) are alternatives chosen by Configuration.",
           "system.root.tool.json-file-repository": "Implements Repository: a System as a JSON file, and a Location as its path. Writing a System as JSON takes a serializer — Systems / JSON — which is not designed yet.",
@@ -8189,16 +9824,16 @@
           "system.root.tool.default.listeners": "Range 0..N: every connected client.",
           "system.root.tool.default.editkinds": "Range 0..N: every Edit Kind present — the six concept editors, Documentation Store, By Value Store and Configuration Store.",
           "system.root.tool.functions-editor": "Implements Edit Kind for Functions: Parameters (added into a Function, changed — type, name, place — and removed), and any Function — Interaction or Transformation — changed or removed. Functions are added by Contexts, where their owner is.",
-          "system.root.tool.contexts-editor": "Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, imports, implements — and removed), and the Languages, Interactions and Transformations added into a Component.",
+          "system.root.tool.contexts-editor": "Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, implements — and removed), the Languages, Interactions and Transformations added into a Component, and its Exports and Imports, each added and removed.",
           "system.root.tool.deployment-editor": "Implements Edit Kind for Deployment: Deployments (into a Component), Instances and Connections (into a Deployment) — each added, changed and removed. Changing an Instance covers its name, what it places and its range; changing a Connection, its ends and its What.",
           "system.root.tool.mediation-editor": "Implements Edit Kind for Mediation: Mediums (into a Component) and Mediations (into a Connection) — each added, changed (a Medium's Language and call; a Mediation's how, down, up and place in the stack) and removed.",
           "system.root.tool.views": "The vocabulary of points of view on a System, on its own so that Perspectives and every Perspective Kind share it without depending on each other. A **View** is one point of view (its **Perspective**: which, and optionally of which Subject) as **Items**, in an outline of parents and children, and **Links** between them; each Item is about a Subject, and carries **Marks** (diagnostics shown where they are). A View has no positions, sizes or colours: how it is drawn is the client's business, and an LLM reads the same View as data. Text is by value.",
           "system.root.tool.diagnoser": "What is wrong with a System. `diagnose` verifies it, through the Systemathic Verifier, against its **structural** Rule — every formula of the Systemathic Languages, as StdLib Formula Assertions, always checked — and against the Rules it is given (the Configuration's profile), and reports each failed Assertion as a **Diagnostic**: its Severity, the Subjects it is about, a message, and Suggestions to fix it, each of which may carry the Edit that fixes it, ready to `apply`. A structural error is a Diagnostic of severity error from the structural Rule; it blocks exporting a Specification, never editing.",
           "system.root.tool.perspective-kind": "Interface: one point of view on a System. `view` gives the View a Perspective asks for. Implemented by Outline View, Language View, Component View, Deployment View, Mediation Stack View and Statistics View; a new point of view is a new implementation, and nothing else changes.",
           "system.root.tool.perspectives": "The one seam clients read a System through. `view` asks the Perspective Kind for the Perspective given, and puts the Diagnoser's Diagnostics on its Items as Marks — so every point of view shows what is wrong where it is.",
-          "system.root.tool.outline-view": "Implements Perspective Kind: Everything in the System as a tree: its Components, nested, each with its Languages, Interactions, Mediums, imports and Deployments.",
+          "system.root.tool.outline-view": "Implements Perspective Kind: Everything in the System as a tree: its Components, nested, each with its Languages, Interactions, Mediums, Exports, Imports and Deployments.",
           "system.root.tool.language-view": "Implements Perspective Kind: One Language: its Entities and what they extend, the Relationships between them, its Formulas, and the Interactions over it.",
-          "system.root.tool.component-view": "Implements Perspective Kind: One Component: its Languages and what they extend, its children, the Languages each uses, what each imports and implements.",
+          "system.root.tool.component-view": "Implements Perspective Kind: One Component: its Languages and what they extend, its children, the Languages each uses, what each imports from whom, and what it implements.",
           "system.root.tool.deployment-view": "Implements Perspective Kind: One Deployment: its Instances, with their ranges, and its Connections — each with its What and the Mediations it runs over.",
           "system.root.tool.mediation-stack-view": "Implements Perspective Kind: Which Language is mediated over which, through which Medium, by level from the top.",
           "system.root.tool.statistics-view": "Implements Perspective Kind: Counts, depths, fan-in and fan-out.",
@@ -8222,7 +9857,9 @@
           "system.root.configurations.configurations.configuration": "One way to put the whole System together, and the Rules it must satisfy. Its root Choice is for the System's root Component.",
           "system.root.configurations.configurations.choice": "Which Component fills one occupant of an Instance (the Instance's own Component, or one implementing it), and which of that Component's Deployments it runs as; the Choices below it are for the Instances of that Deployment. A Component without Deployments is chosen with none.",
           "system.root.tool.configuration-store": "Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.",
-          "system.root.tool.configuration-store.configuration-editing": "The kinds of Edit of Configurations, in the pattern every editor follows: AddConfiguration (the Configuration, by value), ChangeConfiguration and RemoveConfiguration; AddChoice (into the Choice above it), ChangeChoice and RemoveChoice."
+          "system.root.tool.configuration-store.configuration-editing": "The kinds of Edit of Configurations, in the pattern every editor follows: AddConfiguration (the Configuration, by value), ChangeConfiguration and RemoveConfiguration; AddChoice (into the Choice above it), ChangeChoice and RemoveChoice.",
+          "system.root.systemathic.contexts.export": "Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, one of its children, or an Export of a child, which it re-exports. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.",
+          "system.root.systemathic.contexts.import": "A Component's dependency on another — a sibling, one a Component it is nested in imports from, or one it reaches through an Export — taking some of its Exports. An Import of nothing still lets the importer place Instances of the Component, and import from what it exports."
         }
       }
     },

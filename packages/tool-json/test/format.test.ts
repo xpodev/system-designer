@@ -60,7 +60,6 @@ describe("System files, systemathic/3", () => {
     const file = structuredClone(game);
     const [, , , server, client] = file.design.root.components;
     client.implements = ["game.server"];
-    client.imports.components.push("game.server");
     file.design.root.deployments[0].instances[1].max = "N";
     server.interactions[0].output = null;
     const { system, problems } = readSystem(file);

@@ -32,6 +32,17 @@ Agreed, and now in [foundation.md](foundation.md) and `schema/`, which
    Transformations whose signatures lead back.
 10. **The Kernel derives what it can.** What a Formula mentions is parsed from its text, not
     stored; a Bound is a number, ordered as numbers are; `max` is `0..1`, and absent means N.
+11. **Exports and Imports.** A Component's API is its **Exports**: each of one of its own
+    Languages, Interactions, Transformations or Mediums, one of its children, or a child's
+    Export, re-exported. What is not exported, nothing outside reaches; children still reach
+    their ancestors' parts directly. An **Import** is from one Component — which the importer
+    may then place, and import from further — and takes some of its Exports, or none. A
+    Component may import from its siblings, from what a Component it is nested in imports
+    from, and from a Component it, or one it is nested in, reaches through an Export. They
+    replace the four `imported…` relationships (W5, W9, W10, W12, W14 rewritten; W15 new),
+    and the std rule `exports_interfaces` finds an exported Component with children.
+    `scripts/migrate.py` brings files forward: whatever was imported from a Component, it now
+    exports.
 
 ## Stand-ins in the design
 
@@ -68,6 +79,13 @@ Beyond the foundation changes, the tool itself:
   It should be relative to the System's file.
 
 ## Open in the design
+
+- **The design's API.** Exports and Imports were brought in mechanically: each Component exports
+  what another imported from it, and an import of a whole Component became an Import of its
+  Languages, Transformations and Mediums and of the Interactions its Connections use. Which
+  Exports each part's API should have is still to be read through.
+- **Describing Exports and Imports.** Systemathic Subjects does not include Export and Import, so
+  they cannot be documented on their own.
 
 - **Systems / JSON.** Writing a System as JSON takes a Transformation that is not designed yet;
   nor is how an Edit kind's own content is written, for kinds that extensions add.

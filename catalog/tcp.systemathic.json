@@ -9,12 +9,29 @@
       "uses": [
         "lib.tcp"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.tcp:lib.tcp",
+          "language": "lib.tcp"
+        },
+        {
+          "id": "pkg.tcp:pkg.tcp.connect",
+          "interaction": "pkg.tcp.connect"
+        },
+        {
+          "id": "pkg.tcp:pkg.tcp.exchange",
+          "interaction": "pkg.tcp.exchange"
+        },
+        {
+          "id": "pkg.tcp:pkg.tcp.close",
+          "interaction": "pkg.tcp.close"
+        },
+        {
+          "id": "pkg.tcp:pkg.tcp.medium",
+          "medium": "pkg.tcp.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

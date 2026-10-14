@@ -1,4 +1,4 @@
-import { mediationStack, nameOf, parameters } from "@systemathic/core";
+import { imported, importedComponents, mediationStack, nameOf, parameters } from "@systemathic/core";
 import { diagnose } from "@systemathic/diagnoser";
 import { Target, undo } from "@systemathic/editing";
 import { newSystem } from "@systemathic/tool";
@@ -76,9 +76,9 @@ describe("concept editors", () => {
   });
 
   it("connect, and bring the import and the use the Connection needs only when asked", () => {
-    const { target, s, online, clientInstance, serverInstance, attack, client, combat } = game();
+    const { target, s, online, clientInstance, serverInstance, attack, client, combat, server } = game();
     ComponentEditor.unuse(s, client, combat);
-    InteractionEditor.unimportInteraction(s, client, attack);
+    ComponentEditor.unimportItem(s, client, server);
     expect(DeploymentEditor.needs(target.graph, clientInstance, [attack])).toEqual({ imports: [attack], uses: [combat] });
     DeploymentEditor.connect(s, online, clientInstance, serverInstance, [attack]);
     expect(wrong(target)).toContain("W10");
@@ -99,7 +99,29 @@ describe("concept editors", () => {
     expect([typeOf(down!), outputOf(down!)]).toEqual([["Attacker"], "Message"]);
     expect([typeOf(up!), outputOf(up!)]).toEqual([["Message"], "Damage"]);
     expect(target.graph.navigate(holder!, "parent")).toEqual([root]);
-    for (const end of [client, server]) expect(target.graph.navigate(end, "importedTransformations")).toEqual(target.graph.navigate(mediation, "down").concat(target.graph.navigate(mediation, "up")));
+    for (const end of [client, server]) expect(imported(target.graph, end, "Transformation")).toEqual(target.graph.navigate(mediation, "down").concat(target.graph.navigate(mediation, "up")));
+  });
+
+  it("export, re-export and reach: a Component reaches inside another only through what it exports", () => {
+    const { target, s, server, client, combat, damage } = game();
+    const inner = created(ComponentEditor.addComponent(s, server, "Inner"));
+    ComponentEditor.use(s, inner, combat);
+    const parry = created(InteractionEditor.addInteraction(s, inner, combat, "parry", damage));
+    ComponentEditor.reachItem(s, client, parry);
+    expect(imported(target.graph, client, "Interaction")).toContain(parry);
+    const [own] = target.graph.navigate(inner, "exports");
+    const reexport = target.graph.navigate(server, "exports").find((e) => target.graph.navigate(e, "export").includes(own!));
+    expect(reexport).toBeDefined();
+    expect(wrong(target)).toEqual([]);
+    // Taking inner's own Export, from a Component the Client cannot import from, is ill-formed.
+    ComponentEditor.importItem(s, client, own!);
+    expect(wrong(target)).toContain("W9");
+    undo(s);
+    // Removing inner's Export takes the re-export with it; the Client's Import keeps the rest.
+    ComponentEditor.unexport(s, own!);
+    expect(target.graph.has(reexport!)).toBe(false);
+    expect(imported(target.graph, client, "Interaction")).not.toContain(parry);
+    expect(imported(target.graph, client, "Interaction")).not.toEqual([]);
   });
 
   it("leave a Mediation broken in its stack when its Medium goes, and undo it exactly", () => {
@@ -192,7 +214,7 @@ describe("concept editors", () => {
     const backup = created(ComponentEditor.addComponent(s, root, "Backup"));
     ComponentEditor.implement(s, backup, server);
     expect(target.graph.navigate(backup, "implements")).toEqual([server]);
-    expect(target.graph.navigate(backup, "importedComponents")).toEqual([server]);
+    expect(importedComponents(target.graph, backup)).toEqual([server]);
     expect(wrong(target)).toEqual(["W14"]);
     ComponentEditor.use(s, backup, target.graph.navigate(server, "uses")[0]!);
     expect(wrong(target)).toEqual([]);

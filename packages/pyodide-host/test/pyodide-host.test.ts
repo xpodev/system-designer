@@ -27,7 +27,7 @@ describe("RuleHost in WebAssembly", () => {
   it("verifies the tool's design against its own profile, as Python does", async () => {
     const script = { path: "docs/system-designer.rules.py", source: text("docs/system-designer.rules.py") };
     const profile = await verifier.profile(script);
-    expect(profile.rules).toHaveLength(16);
+    expect(profile.rules).toHaveLength(17);
     const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
     expect(run.violations).toEqual([]);

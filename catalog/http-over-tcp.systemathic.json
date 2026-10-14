@@ -9,12 +9,21 @@
       "uses": [
         "lib.http"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.http:lib.http",
+          "language": "lib.http"
+        },
+        {
+          "id": "pkg.http:pkg.http.exchange",
+          "interaction": "pkg.http.exchange"
+        },
+        {
+          "id": "pkg.http:pkg.http.medium",
+          "medium": "pkg.http.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {
@@ -230,12 +239,29 @@
         "uses": [
           "lib.tcp"
         ],
-        "imports": {
-          "components": [],
-          "interactions": [],
-          "transformations": [],
-          "mediums": []
-        },
+        "exports": [
+          {
+            "id": "pkg.tcp:lib.tcp",
+            "language": "lib.tcp"
+          },
+          {
+            "id": "pkg.tcp:pkg.tcp.connect",
+            "interaction": "pkg.tcp.connect"
+          },
+          {
+            "id": "pkg.tcp:pkg.tcp.exchange",
+            "interaction": "pkg.tcp.exchange"
+          },
+          {
+            "id": "pkg.tcp:pkg.tcp.close",
+            "interaction": "pkg.tcp.close"
+          },
+          {
+            "id": "pkg.tcp:pkg.tcp.medium",
+            "medium": "pkg.tcp.medium"
+          }
+        ],
+        "imports": [],
         "implements": [],
         "languages": [
           {
@@ -434,15 +460,32 @@
           "lib.http",
           "lib.tcp"
         ],
-        "imports": {
-          "components": [
-            "pkg.http",
-            "pkg.tcp"
-          ],
-          "interactions": [],
-          "transformations": [],
-          "mediums": []
-        },
+        "exports": [
+          {
+            "id": "pkg.http-over-tcp:pkg.http-over-tcp.down",
+            "transformation": "pkg.http-over-tcp.down"
+          },
+          {
+            "id": "pkg.http-over-tcp:pkg.http-over-tcp.up",
+            "transformation": "pkg.http-over-tcp.up"
+          }
+        ],
+        "imports": [
+          {
+            "id": "pkg.http-over-tcp<pkg.http",
+            "from": "pkg.http",
+            "exports": [
+              "pkg.http:lib.http"
+            ]
+          },
+          {
+            "id": "pkg.http-over-tcp<pkg.tcp",
+            "from": "pkg.tcp",
+            "exports": [
+              "pkg.tcp:lib.tcp"
+            ]
+          }
+        ],
         "implements": [],
         "languages": [],
         "interactions": [],

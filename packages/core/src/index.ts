@@ -15,13 +15,16 @@ export {
   access,
   accessibleTransformations,
   ancestry,
+  exportable,
   importable,
-  importableComponents,
-  importableTransformations,
+  imported,
+  importedComponents,
+  offered,
+  resolve,
   scope,
   siblings,
   topLevel,
 } from "./contexts/scope.js";
 export { parameters, setParameters } from "./functions/parameters.js";
-export { accessibleInteractions, importableInteractions } from "./contexts/interactions.js";
-export { accessibleMediums, importableMediums, mediationStack, setMediationStack } from "./mediation/scope.js";
+export { accessibleInteractions } from "./contexts/interactions.js";
+export { accessibleMediums, mediationStack, setMediationStack } from "./mediation/scope.js";

@@ -30,8 +30,9 @@ describe("specification", () => {
     expect(text("transformation:game.combat-over-network.down")).toBe("Transformation Combat down to Network(monster: CombatMonster): EntityId: from Combat to Network.");
     expect(text("scope:game.combat-over-network")).toBe("May use exactly the Languages Core, Fighting, Combat, Network, and nothing else.");
     expect(text("imports:game.client")).toBe(
-      "Imports the Components Physics, CombatOverNetwork, NetworkOverWire, In-process; the Interactions attack; the Transformations none; the Mediums none; it reaches nothing else of any other Component.",
+      "Imports from Physics; from CombatOverNetwork Combat down to Network, Network up to Combat; from NetworkOverWire Network down to Transport, Transport up to Network; from In-process In-process, In-process; from Server attack; it reaches nothing else of any other Component.",
     );
+    expect(text("exports:game.server")).toBe("Exports attack; nothing else of it is reachable from outside.");
     expect(text("connection:game.online.client-1-attacks")).toBe(
       "In Online, client-1 uses attack of server; it passes over Network (down by Combat down to Network, up by Network up to Combat), then Wire (down by Network down to Transport, up by Transport up to Network).",
     );

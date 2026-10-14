@@ -2,7 +2,7 @@
  * Statistics about a System: counts, depths, fan-in and fan-out. A Metric is one Measure of
  * one Subject.
  */
-import { ancestry, mediationStack, parameters, type Graph } from "@systemathic/core";
+import { ancestry, importedComponents, mediationStack, offered, parameters, type Graph } from "@systemathic/core";
 
 export type Measure =
   | "packages"
@@ -14,6 +14,7 @@ export type Measure =
   | "extends"
   | "interactions"
   | "imports"
+  | "exports"
   | "nesting depth"
   | "fan-in"
   | "fan-out"
@@ -31,14 +32,6 @@ export interface Metric {
   readonly value: number;
 }
 
-/** The ends through which a Component imports, and how to find the Component that offers what it imports. */
-const IMPORTS: readonly (readonly [end: string, owner: string | null])[] = [
-  ["importedComponents", null],
-  ["importedInteractions", "component"],
-  ["importedTransformations", "component"],
-  ["importedMediums", "component"],
-];
-
 export function metrics(graph: Graph): Metric[] {
   const found: Metric[] = [];
   const count = (subject: string, measure: Measure, value: number) => found.push({ subject, measure, value });
@@ -50,19 +43,13 @@ export function metrics(graph: Graph): Metric[] {
   }
   const importedFrom = new Map<string, Set<string>>();
   for (const component of graph.ofEntity("Component")) {
-    const from = new Set<string>();
-    let imports = 0;
-    for (const [end, owner] of IMPORTS) {
-      for (const item of graph.navigate(component, end)) {
-        imports++;
-        for (const offering of owner === null ? [item] : graph.navigate(item, owner)) from.add(offering);
-      }
-    }
+    const from = new Set(importedComponents(graph, component));
     importedFrom.set(component, from);
     for (const measure of ["languages", "components", "interactions", "deployments", "transformations", "implements"] as const) {
       count(component, measure, graph.navigate(component, measure).length);
     }
-    count(component, "imports", imports);
+    count(component, "imports", graph.navigate(component, "imports").length);
+    count(component, "exports", offered(graph, component).length);
     count(component, "nesting depth", ancestry(graph, component).length - 1);
     count(component, "fan-out", from.size);
   }

@@ -11,7 +11,7 @@
  * Target — the same Element, by id, Entity and name, as when "HTTP over TCP" is imported
  * over an HTTP imported before — is reused rather than copied again.
  */
-import { ancestry, copy, coreGraph, nameOf, setName, systemComposition, type Graph } from "@systemathic/core";
+import { ancestry, copy, coreGraph, imported, importedComponents, nameOf, setName, systemComposition, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { SystemEditor } from "@systemathic/editors";
 import type { SystemContext, ToolSystem } from "@systemathic/tool";
@@ -177,8 +177,8 @@ function owner(graph: Graph, id: string): string | undefined {
 
 /**
  * The smallest set of Components containing the selection's that is closed under what each
- * depends on: the Components it imports, those whose Interactions, Transformations and Mediums
- * it imports, those owning the Languages it uses or its Languages extend, and those whose
+ * depends on: the Components it imports from, those owning what it imports (and so the
+ * Components that re-export it), those owning the Languages it uses or its Languages extend, and those whose
  * Instances its Deployments place. Anything inside a Component selects it; a Component nested
  * in a chosen one comes with it.
  */
@@ -194,10 +194,8 @@ export function closure(graph: Graph, selection: readonly string[]): Set<string>
     const languages = inside.filter((id) => graph.get(id).entity === "Language");
     const users = inside.filter((id) => graph.get(id).entity === "Component");
     pending.push(
-      ...owners(users, "importedComponents"),
-      ...owners(owners(users, "importedInteractions"), "component"),
-      ...owners(owners(users, "importedTransformations"), "component"),
-      ...owners(owners(users, "importedMediums"), "component"),
+      ...users.flatMap((user) => importedComponents(graph, user)),
+      ...users.flatMap((user) => imported(graph, user)).flatMap((item) => graph.navigate(item, graph.get(item).entity === "Component" ? "parent" : "component")),
       ...owners(users, "implements"),
       ...owners(owners(users, "uses"), "component"),
       ...owners(owners(languages, "extends"), "component"),

@@ -9,12 +9,29 @@
       "uses": [
         "lib.websocket"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.websocket:lib.websocket",
+          "language": "lib.websocket"
+        },
+        {
+          "id": "pkg.websocket:pkg.websocket.open",
+          "interaction": "pkg.websocket.open"
+        },
+        {
+          "id": "pkg.websocket:pkg.websocket.send",
+          "interaction": "pkg.websocket.send"
+        },
+        {
+          "id": "pkg.websocket:pkg.websocket.close",
+          "interaction": "pkg.websocket.close"
+        },
+        {
+          "id": "pkg.websocket:pkg.websocket.medium",
+          "medium": "pkg.websocket.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

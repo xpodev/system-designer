@@ -167,7 +167,7 @@ exports[`diagnoser > diagnoses broken/w5.systemathic.json 1`] = `
   "found": [
     {
       "check": "W5",
-      "message": "A Component uses only Languages in its scope: its own and its parents', and those of the Components it imports",
+      "message": "A Component uses only Languages in its scope: its own and its parents', and those it imports",
       "subjects": [
         "game.server",
         "lib.network",
@@ -223,11 +223,11 @@ exports[`diagnoser > diagnoses broken/w9.systemathic.json 1`] = `
   "found": [
     {
       "check": "W9",
-      "message": "A nested Component imports only its siblings, or what a Component it is nested in imports",
+      "message": "A nested Component imports only from its siblings, from what a Component it is nested in imports from, or from a Component that it, or one it is nested in, imports",
       "subjects": [
         "game.physics",
         "game",
-        "game.client.input",
+        "game.physics<game.client.input",
       ],
     },
   ],
@@ -240,7 +240,7 @@ exports[`diagnoser > diagnoses broken/w10.systemathic.json 1`] = `
   "found": [
     {
       "check": "W10",
-      "message": "The Instance a Connection goes to offers its What",
+      "message": "The Instance a Connection goes to offers its What: its own, or one it exports",
       "subjects": [
         "game.online.client-2-attacks",
         "game.server.attack",
@@ -327,8 +327,33 @@ exports[`diagnoser > diagnoses broken/w14.systemathic.json 1`] = `
       "check": "W14",
       "message": "A Component imports what it implements",
       "subjects": [
-        "game.client",
+        "game.physics",
         "game.server",
+      ],
+    },
+    {
+      "check": "W14",
+      "message": "A Component uses the Language of every Interaction that what it implements exports",
+      "subjects": [
+        "game.physics",
+        "game.server",
+        "game.server.attack",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w15.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W15",
+      "message": "A Component exports only its own Transformations",
+      "subjects": [
+        "game.server:game.network-over-wire.down",
+        "game.network-over-wire.down",
       ],
     },
   ],

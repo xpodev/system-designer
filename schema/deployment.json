@@ -19,15 +19,15 @@
   ],
   "axioms": [
     {"id": "W2", "about": "An Instance's min <= max, where max is present", "formula": "all i in Instance, m in i.max. i.min <= m"},
-    {"id": "W10", "about": "An Instance is of a child of the deployed Component, or of a Component it imports", "formula": "all i in Instance. i.of in i.deployment.component.components or i.of in i.deployment.component.importedComponents"},
+    {"id": "W10", "about": "An Instance is of a child of the deployed Component, or of a Component it imports", "formula": "all i in Instance, k in i.deployment.component. i.of in k.components or i.of in k.imports.from or i.of in k.imports.exports.*export.component"},
     {"id": "W10", "about": "No two Instances of a Deployment share a name", "formula": "all a in Instance, b in Instance. (a != b and a.deployment == b.deployment) => a.name != b.name"},
     {"id": "W10", "about": "A Connection goes from an Instance of its own Deployment", "formula": "all c in Connection. c.from.deployment == c.deployment"},
     {"id": "W10", "about": "A Connection goes to exactly one thing: an Instance, or the deployed Component", "formula": "all c in Connection. (some c.to and no c.toComponent) or (no c.to and some c.toComponent)"},
     {"id": "W10", "about": "A Connection goes to an Instance of its own Deployment", "formula": "all c in Connection, t in c.to. t.deployment == c.deployment"},
     {"id": "W10", "about": "A Connection to a Component goes to the deployed Component", "formula": "all c in Connection, k in c.toComponent. k == c.deployment.component"},
-    {"id": "W10", "about": "The Instance a Connection goes to offers its What", "formula": "all c in Connection, i in c.what, t in c.to. i.component == t.of"},
-    {"id": "W10", "about": "The deployed Component a Connection goes to offers or imports its What", "formula": "all c in Connection, i in c.what, k in c.toComponent. i.component == k or i in k.importedInteractions or i.component in k.importedComponents"},
-    {"id": "W10", "about": "A Connection's What is accessible to the Component it goes from", "formula": "all c in Connection, i in c.what. i.component in c.from.of.*parent or i in c.from.of.importedInteractions or i.component in c.from.of.importedComponents"},
+    {"id": "W10", "about": "The Instance a Connection goes to offers its What: its own, or one it exports", "formula": "all c in Connection, i in c.what, t in c.to. i.component == t.of or i in t.of.exports.*export.interaction"},
+    {"id": "W10", "about": "The deployed Component a Connection goes to offers or imports its What", "formula": "all c in Connection, i in c.what, k in c.toComponent. i.component == k or i in k.imports.exports.*export.interaction"},
+    {"id": "W10", "about": "A Connection's What is accessible to the Component it goes from", "formula": "all c in Connection, i in c.what, f in c.from.of. i.component in f.*parent or i in f.imports.exports.*export.interaction"},
     {"id": "W10", "about": "A Connection's What is over one Language", "formula": "all c in Connection, a in c.what, b in c.what. a.language == b.language"}
   ]
 }

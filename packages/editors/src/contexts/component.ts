@@ -1,17 +1,19 @@
 /**
  * ComponentEditor (Contexts): a Component — its children, Languages and Transformations, the
- * Languages it uses, the Components and Transformations it imports, and the Components it
- * implements. Adding a Language or a Transformation is here because the Component owns it.
- * What layers above add to a Component — Deployments, Mediums — their own editors add.
+ * Languages it uses, what it exports and imports, and the Components it implements. Adding a
+ * Language or a Transformation is here because the Component owns it. What layers above add
+ * to a Component — Deployments, Mediums — their own editors add; a Medium is exported and
+ * imported here, like anything else a Component offers.
  */
 import { nameOf, remove as removeFromModel, setName, setParameters } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { addNamed, element, freshId, operation, str, text, type Operation } from "../operation.js";
+import { exportIn, follow, importIn, route, take } from "./exports.js";
 
 const EDITOR = "ComponentEditor";
 
-/** What a Component imports, by the Entity imported, as far as Contexts knows. */
-const IMPORTS: Record<string, string> = { Component: "importedComponents", Transformation: "importedTransformations" };
+/** What a Component may export: something of its own, a child, or a child's Export. */
+const EXPORTABLE = ["Component", "Language", "Interaction", "Transformation", "Medium", "Export"];
 
 export function addComponent(session: EditSession, parent: string, name: string): Edit {
   const id = freshId(session.target.graph, parent, name);
@@ -44,9 +46,10 @@ export function addTransformation(session: EditSession, component: string, name:
 
 /** Makes a Component an implementation of another: it imports it, and may stand wherever it is placed. */
 export function implement(session: EditSession, component: string, implemented: string): Edit {
+  const way = route(session.target.graph, component, implemented);
   return session.edit("change", "implement", [component, implemented], (graph) => {
     graph.connect(component, "implements", implemented);
-    graph.connect(component, "importedComponents", implemented);
+    follow(graph, component, way);
   });
 }
 
@@ -64,14 +67,44 @@ export function unuse(session: EditSession, component: string, language: string)
   return session.edit("change", "unuse", [component, language], (graph) => graph.disconnect(component, "uses", language));
 }
 
-/** Imports a Component or a Transformation. */
-export function importItem(session: EditSession, component: string, item: string): Edit {
-  return session.edit("change", "import", [component, item], (graph) => graph.connect(component, IMPORTS[graph.get(item).entity]!, item));
+/** Makes a Component export something: one of its own, a child, or a child's Export, to re-export it. */
+export function exportItem(session: EditSession, component: string, item: string): Edit {
+  const graph = session.target.graph;
+  const existing = graph.navigate(component, "exports").find((id) => graph.navigate(id, graph.get(item).entity.replace(/^./, (c) => c.toLowerCase())).includes(item));
+  const id = existing ?? `${component}:${item}`;
+  return session.edit("addition", "export", [id], (graph) => void exportIn(graph, component, item));
 }
 
-/** Stops importing a Component or a Transformation. What depended on it stays, and is diagnosed. */
+/** Removes an Export, with its re-exports. Imports that took it keep the rest. */
+export function unexport(session: EditSession, exported: string): Edit {
+  return session.edit("removal", "unexport", [exported], (graph) => void removeFromModel(graph, exported));
+}
+
+/** Imports from a Component — to place it, and to take its Exports — or takes an Export, in the Import from its exporter. */
+export function importItem(session: EditSession, component: string, item: string): Edit {
+  return session.edit("change", "import", [component, item], (graph) => {
+    if (graph.get(item).entity === "Export") take(graph, component, item);
+    else importIn(graph, component, item);
+  });
+}
+
+/** Stops importing from a Component, or stops taking an Export. What depended on it stays, and is diagnosed. */
 export function unimportItem(session: EditSession, component: string, item: string): Edit {
-  return session.edit("change", "unimport", [component, item], (graph) => graph.disconnect(component, IMPORTS[graph.get(item).entity]!, item));
+  return session.edit("change", "unimport", [component, item], (graph) => {
+    const imports = graph.navigate(component, "imports");
+    if (graph.get(item).entity === "Export") for (const id of imports) graph.disconnect(id, "exports", item);
+    else removeFromModel(graph, ...imports.filter((id) => graph.navigate(id, "from").includes(item)));
+  });
+}
+
+/**
+ * Makes a Component reach something inside another: its owner exports it, each Component
+ * the owner is nested in re-exports it, up to one the Component may import from, and the
+ * Component imports it from there.
+ */
+export function reachItem(session: EditSession, component: string, item: string): Edit {
+  const way = route(session.target.graph, component, item);
+  return session.edit("change", "reach", [component, item], (graph) => follow(graph, component, way));
 }
 
 /** Nests a Component in another, beside its new siblings. */
@@ -93,7 +126,7 @@ export function remove(session: EditSession, component: string): Edit {
 }
 
 const COMPONENT = element("component", "Component", "the Component");
-const IMPORTED = element("item", ["Component", "Transformation"], "the Component or Transformation");
+const IMPORTED = element("item", ["Component", "Export"], "the Component imported from, or the Export taken");
 
 export const componentEditor: readonly Operation[] = [
   operation(EDITOR, "addComponent", "addition", "Adds a child Component.", [element("parent", "Component", "the parent"), text("name", "the child's name")], (s, a) =>
@@ -127,11 +160,35 @@ export const componentEditor: readonly Operation[] = [
   operation(EDITOR, "unuse", "change", "Stops a Component using a Language.", [COMPONENT, element("language", "Language", "the Language")], (s, a) =>
     unuse(s, str(a, "component"), str(a, "language")),
   ),
-  operation(EDITOR, "import", "change", "Makes a Component import a Component or a Transformation.", [COMPONENT, IMPORTED], (s, a) =>
-    importItem(s, str(a, "component"), str(a, "item")),
+  operation(
+    EDITOR,
+    "export",
+    "addition",
+    "Makes a Component export one of its own Languages, Interactions, Transformations or Mediums, one of its children, or a child's Export (a re-export). What a Component does not export, nothing outside it can reach.",
+    [COMPONENT, element("item", EXPORTABLE, "what it exports")],
+    (s, a) => exportItem(s, str(a, "component"), str(a, "item")),
   ),
-  operation(EDITOR, "unimport", "change", "Stops a Component importing a Component or a Transformation.", [COMPONENT, IMPORTED], (s, a) =>
+  operation(EDITOR, "unexport", "removal", "Removes an Export, with its re-exports; Imports that took it keep the rest.", [element("export", "Export", "the Export")], (s, a) =>
+    unexport(s, str(a, "export")),
+  ),
+  operation(
+    EDITOR,
+    "import",
+    "change",
+    "Makes a Component import from another — a sibling, one a Component it is nested in imports from, or one it reaches through an Export — or take an Export, in its Import from the Export's Component.",
+    [COMPONENT, IMPORTED],
+    (s, a) => importItem(s, str(a, "component"), str(a, "item")),
+  ),
+  operation(EDITOR, "unimport", "change", "Stops a Component importing from a Component, or taking an Export.", [COMPONENT, IMPORTED], (s, a) =>
     unimportItem(s, str(a, "component"), str(a, "item")),
+  ),
+  operation(
+    EDITOR,
+    "reach",
+    "change",
+    "Makes a Component reach a Component, Language, Interaction, Transformation or Medium: exported by its owner, re-exported up to a Component it may import from, and imported from there.",
+    [COMPONENT, element("item", ["Component", "Language", "Interaction", "Transformation", "Medium"], "what it reaches")],
+    (s, a) => reachItem(s, str(a, "component"), str(a, "item")),
   ),
   operation(EDITOR, "move", "change", "Nests a Component in another.", [COMPONENT, element("parent", "Component", "the new parent")], (s, a) =>
     move(s, str(a, "component"), str(a, "parent")),

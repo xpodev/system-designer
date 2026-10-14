@@ -15,7 +15,7 @@ describe("suggestions", () => {
     const [w3] = diagnose(context("broken/w3.systemathic.json")).filter((d) => d.check === "W3");
     expect(w3!.suggestions).toEqual([{ message: "Rename one of the two ends", subjects: ["core.hunts.hunters", "core.pack.followers"] }]);
     const [w5] = diagnose(context("broken/w5.systemathic.json")).filter((d) => d.check === "W5");
-    expect(w5!.suggestions).toEqual([{ message: "Import the Component that defines the Language, or stop using it", subjects: ["game.server", "lib.network"] }]);
+    expect(w5!.suggestions).toEqual([{ message: "Import the Language from the Component that exports it, or stop using it", subjects: ["game.server", "lib.network"] }]);
   });
 
   it("say how to fix a range", () => {

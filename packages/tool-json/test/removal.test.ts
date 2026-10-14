@@ -41,9 +41,12 @@ describe("deletion", () => {
   it("deleting a Component takes everything it owns, its Instances and their Connections", () => {
     const system = load();
     const removed = remove(system.design, "game.server");
-    expect(removed).toEqual(expect.arrayContaining(["game.server", "game.server.attack", "game.server.single", "game.online.server", "game.online.client-1-attacks"]));
+    expect(removed).toEqual(
+      expect.arrayContaining(["game.server", "game.server.attack", "game.server:game.server.attack", "game.server.single", "game.online.server", "game.online.client-1-attacks"]),
+    );
     expect(system.design.has("game.online.client-1")).toBe(true);
-    expect(system.design.navigate("game.client", "importedInteractions")).toEqual([]);
+    expect(removed).toEqual(expect.arrayContaining(["game.client<game.server", "game.client.input<game.server"]));
+    expect(system.design.navigate("game.client", "imports")).not.toContain("game.client<game.server");
   });
 
   it("deleting an Instance takes its Connections", () => {

@@ -6,7 +6,7 @@
  * design check can (foundation.md, O1–O5), for specific Subjects. Every part has an id that
  * stays the same as long as the Elements it is about do, so a validator can refer to it.
  */
-import { describe as describeElement, mediationStack, nameOf, parameters, scope, type Graph } from "@systemathic/core";
+import { describe as describeElement, mediationStack, nameOf, parameters, resolve, scope, type Graph } from "@systemathic/core";
 import type { SystemContext } from "@systemathic/tool";
 import type { Profile } from "@systemathic/verifier";
 
@@ -155,22 +155,32 @@ function deploymentStatements(graph: Graph, deployment: string): Statement[] {
   return statements;
 }
 
-const IMPORTS = [
-  ["importedComponents", "the Components"],
-  ["importedInteractions", "the Interactions"],
-  ["importedTransformations", "the Transformations"],
-  ["importedMediums", "the Mediums"],
-] as const;
+/** What Exports resolve to, by name: `attack, step`. */
+function exportNames(graph: Graph, exports: readonly string[]): string {
+  return names(graph, exports.map((e) => resolve(graph, e)).filter((x): x is string => x !== undefined));
+}
 
 function component(graph: Graph, id: string): Section {
   const uses = graph.navigate(id, "uses");
   const visible = scope(graph, id);
-  const imported = IMPORTS.flatMap(([end]) => graph.navigate(id, end));
-  const importText = IMPORTS.map(([end, label]) => `${label} ${names(graph, graph.navigate(id, end))}`).join("; ");
+  const exports = graph.navigate(id, "exports");
+  const imports = graph.navigate(id, "imports");
+  const from = imports.flatMap((m) => graph.navigate(m, "from"));
+  const taken = imports.flatMap((m) => graph.navigate(m, "exports"));
+  const importText =
+    imports.length === 0
+      ? "nothing"
+      : imports
+          .map((m) => {
+            const takes = graph.navigate(m, "exports");
+            return `from ${name(graph, graph.navigate(m, "from")[0])}${takes.length > 0 ? ` ${exportNames(graph, takes)}` : ""}`;
+          })
+          .join("; ");
   const statements: Statement[] = [
     statement(`uses:${id}`, `Uses the Languages ${names(graph, uses)}.`, id, ...uses),
     statement(`scope:${id}`, `May use exactly the Languages ${names(graph, visible)}, and nothing else.`, id, ...visible),
-    statement(`imports:${id}`, `Imports ${importText}; it reaches nothing else of any other Component.`, id, ...imported),
+    statement(`exports:${id}`, `Exports ${exportNames(graph, exports)}; nothing else of it is reachable from outside.`, id, ...exports),
+    statement(`imports:${id}`, `Imports ${importText}; it reaches nothing else of any other Component.`, id, ...from, ...taken),
     ...graph.navigate(id, "implements").map((x) =>
       statement(`implements:${id}:${x}`, `Implements ${name(graph, x)}: it may stand wherever ${name(graph, x)} is placed.`, id, x),
     ),

@@ -1,6 +1,7 @@
 /**
- * InteractionEditor (Contexts): adding an Interaction to a Component, the Language it is over,
- * and the Interactions a Component imports. Its Parameters and output are the FunctionEditor's.
+ * InteractionEditor (Contexts): adding an Interaction to a Component, and the Language it is
+ * over. Its Parameters and output are the FunctionEditor's; exporting and importing it, the
+ * ComponentEditor's.
  */
 import type { Edit, EditSession } from "@systemathic/editing";
 import { addNamed, element, freshId, maybe, operation, str, text, type Operation } from "../operation.js";
@@ -24,16 +25,6 @@ export function setLanguage(session: EditSession, interaction: string, language:
   });
 }
 
-/** Makes a Component import an Interaction: one of a sibling's, or one a Component it is nested in imports. */
-export function importInteraction(session: EditSession, component: string, interaction: string): Edit {
-  return session.edit("change", "importInteraction", [component, interaction], (graph) => graph.connect(component, "importedInteractions", interaction));
-}
-
-/** Stops a Component importing an Interaction. Connections that used it stay, and are diagnosed. */
-export function unimportInteraction(session: EditSession, component: string, interaction: string): Edit {
-  return session.edit("change", "unimportInteraction", [component, interaction], (graph) => graph.disconnect(component, "importedInteractions", interaction));
-}
-
 const INTERACTION = element("interaction", "Interaction", "the Interaction");
 
 export const interactionEditor: readonly Operation[] = [
@@ -52,21 +43,5 @@ export const interactionEditor: readonly Operation[] = [
   ),
   operation(EDITOR, "setLanguage", "change", "Sets the Language an Interaction is over.", [INTERACTION, element("language", "Language", "the Language")], (s, a) =>
     setLanguage(s, str(a, "interaction"), str(a, "language")),
-  ),
-  operation(
-    EDITOR,
-    "importInteraction",
-    "change",
-    "Makes a Component import an Interaction of a sibling, or one a Component it is nested in imports.",
-    [element("component", "Component", "the importing Component"), INTERACTION],
-    (s, a) => importInteraction(s, str(a, "component"), str(a, "interaction")),
-  ),
-  operation(
-    EDITOR,
-    "unimportInteraction",
-    "change",
-    "Stops a Component importing an Interaction.",
-    [element("component", "Component", "the importing Component"), INTERACTION],
-    (s, a) => unimportInteraction(s, str(a, "component"), str(a, "interaction")),
   ),
 ];

@@ -9,12 +9,21 @@
       "uses": [
         "lib.ip"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.ip:lib.ip",
+          "language": "lib.ip"
+        },
+        {
+          "id": "pkg.ip:pkg.ip.route",
+          "interaction": "pkg.ip.route"
+        },
+        {
+          "id": "pkg.ip:pkg.ip.medium",
+          "medium": "pkg.ip.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

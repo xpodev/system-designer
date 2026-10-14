@@ -69,7 +69,7 @@ describe("Host", () => {
     await host.saveScript(id, fresh.path, fresh.source);
     expect(await host.attachment(id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" });
     expect(await host.script(id)).toMatchObject({ path: "game.rules.py", exists: true, source: fresh.source });
-    expect((await host.verify(id)).rules).toBe(8);
+    expect((await host.verify(id)).rules).toBe(9);
     const broken = await host.checkScript("from systemathic.std import *\nprofile = Profile(nothing)\n");
     expect(broken.problems[0]).toMatchObject({ line: 2, severity: "error" });
     expect((await host.symbols()).some((s) => s.name === "mediation_primitives")).toBe(true);
@@ -91,7 +91,7 @@ describe("Host", () => {
     const host = nodeHost({ cwd: workspace() });
     const { id } = await host.open("game.json");
     const run = await host.verify(id);
-    expect(run).toMatchObject({ profile: "standard", rules: 7, errors: 0, warnings: 0 });
+    expect(run).toMatchObject({ profile: "standard", rules: 8, errors: 0, warnings: 0 });
     expect(await host.diagnostics(id)).toEqual([]);
     const { session } = await host.startSession(id, "test");
     await host.apply(id, session, "ComponentEditor", "import", { component: "game.physics", item: "game.server" });

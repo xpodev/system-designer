@@ -9,12 +9,21 @@
       "uses": [
         "lib.in-process"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.in-process:lib.in-process",
+          "language": "lib.in-process"
+        },
+        {
+          "id": "pkg.in-process:pkg.in-process.pass",
+          "interaction": "pkg.in-process.pass"
+        },
+        {
+          "id": "pkg.in-process:pkg.in-process.medium",
+          "medium": "pkg.in-process.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

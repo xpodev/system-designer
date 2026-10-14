@@ -144,7 +144,7 @@ class Standard(unittest.TestCase):
 
     def test_cycles(self):
         file = copy.deepcopy(GAME)
-        find(file, "game.physics")["imports"]["components"].append("game.server")
+        find(file, "game.physics")["imports"].append({"id": "physics<server", "from": "game.server", "exports": []})
         result = found(file)
         self.assertEqual(result["imports_acyclic"], ["depend on each other: Physics, Server"])
         def projection(id: str, type_: str, output: str) -> dict:
@@ -165,9 +165,16 @@ class Standard(unittest.TestCase):
 
     def test_interactions_abstract(self):
         file = copy.deepcopy(GAME)
-        find(file, "game.client")["imports"]["interactions"].append("pkg.netstack.send")
-        find(file, "game.client")["imports"]["components"].append("pkg.netstack")
+        find(file, "pkg.netstack")["exports"].append({"id": "netstack:send", "interaction": "pkg.netstack.send"})
+        find(file, "game.client")["imports"].append({"id": "client<netstack", "from": "pkg.netstack", "exports": ["netstack:send"]})
         self.assertIn("Client imports send, over Network, which Mediations are over", found(file)["interactions_abstract"])
+
+    def test_exports_interfaces(self):
+        file = copy.deepcopy(GAME)
+        find(file, "game")["exports"].append({"id": "game:game.server", "component": "game.server"})
+        self.assertNotIn("exports_interfaces", found(file))
+        find(file, "game")["exports"].append({"id": "game:game.client", "component": "game.client"})
+        self.assertEqual(found(file)["exports_interfaces"], ["Game exports Client, which has children: an implementation"])
 
     def test_mediation_rules_take_their_arguments_and_have_none_by_default(self):
         with self.assertRaises(TypeError):
@@ -248,7 +255,7 @@ class Assist(unittest.TestCase):
         symbols = {(s["name"], s["kind"]): s for s in assist.symbols()}
         self.assertIn("L.*extends", symbols[("vocab", "function")]["doc"])
         self.assertEqual(symbols[("component", "method")]["detail"], "System.component(self, name: 'str') -> 'Element'")
-        self.assertIn(("importedInteractions", "property"), symbols)
+        self.assertIn(("imports", "property"), symbols)
         self.assertIn("by name", symbols[("mediation_primitives", "function")]["doc"])
         self.assertEqual(symbols[("opacity", "rule")]["detail"], "standard rule, error")
 
@@ -261,7 +268,7 @@ class RuleHost(unittest.TestCase):
     def test_runs_the_tool_designs_own_profile(self):
         result = self.run_host("run", str(DOCS / "system-designer.rules.py"), str(DOCS / "system-designer.systemathic.json"))
         self.assertEqual(result["profile"], "profile")
-        self.assertEqual(len(result["rules"]), 16)
+        self.assertEqual(len(result["rules"]), 17)
         self.assertEqual(result["violations"], [])
         self.assertEqual(result["failures"], [])
 
@@ -275,7 +282,7 @@ class RuleHost(unittest.TestCase):
     def test_describes_a_script(self):
         result = host.describe("std")
         self.assertEqual([p["name"] for p in result["profiles"]], ["standard"])
-        self.assertEqual(len(result["rules"]), 7)
+        self.assertEqual(len(result["rules"]), 8)
         opacity = result["rules"][0]
         self.assertEqual(opacity["about"], "Every mediated Connection is opaque: what uses and what offers do not know how they are connected.")
         self.assertIn("This is what makes a how swappable", opacity["doc"])

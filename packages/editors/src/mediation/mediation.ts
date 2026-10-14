@@ -3,9 +3,10 @@
  * optionally realized by a round trip of Transformations. The top one mediates the Connection's
  * What; each one below, the call of the Medium above it.
  */
-import { ancestry, mediationStack, nameOf, parameters, remove as removeFromModel, setMediationStack, setName, setParameters, type Graph } from "@systemathic/core";
+import { mediationStack, nameOf, parameters, remove as removeFromModel, setMediationStack, setName, setParameters, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { addNamed, element, freshId, index, maybe, operation, str, text, type Operation } from "../operation.js";
+import { reach } from "../contexts/exports.js";
 
 const EDITOR = "MediationEditor";
 
@@ -87,11 +88,9 @@ export function createRealization(session: EditSession, mediation: string, name?
   const up = freshId(graph, holder, `${title} up`);
   return session.edit("addition", `createRealization ${title}`, [holder, down, up], (graph) => {
     if (toComponent === undefined) addNamed(graph, "Component", holder, title, deployed, "components");
-    const within = new Set(ancestry(graph, holder));
     for (const language of [what, how]) {
       graph.connect(holder, "uses", language);
-      const [owner] = graph.navigate(language, "component");
-      if (owner !== undefined && !within.has(owner)) graph.connect(holder, "importedComponents", owner);
+      reach(graph, holder, language);
     }
     // The way down takes what the What takes, and gives what the call takes; the way up takes
     // what the call gives, and gives what the What gives. Where either is unknown, the
@@ -117,7 +116,7 @@ export function createRealization(session: EditSession, mediation: string, name?
     graph.connect(mediation, "up", up);
     if (toComponent !== undefined) return;
     const ends = [...graph.navigate(connection, "from"), ...graph.navigate(connection, "to")].flatMap((instance) => graph.navigate(instance, "of"));
-    for (const end of ends) for (const transformation of [down, up]) graph.connect(end, "importedTransformations", transformation);
+    for (const end of ends) for (const transformation of [down, up]) reach(graph, end, transformation);
   });
 }
 

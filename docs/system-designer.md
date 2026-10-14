@@ -7,7 +7,8 @@ This System has 51 Components, and 1 package beside its root.
 ## System Designer
 
 - Uses: none
-- Imports: HTTP (Component)
+- Exports: none
+- Imports: HTTP: HTTP (Language), HTTP (Medium)
 
 ### Deployment Product
 
@@ -18,6 +19,7 @@ This System has 51 Components, and 1 package beside its root.
 The Systemathic language package: one core Language (Kernel) and its extensions, layered Kernel → Functions → Contexts → Deployment → Mediation → Systems. Systems is the top Language and ties everything together into a System.
 
 - Uses: none
+- Exports: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Imports: none
 
 #### Kernel — a core Language
@@ -133,9 +135,11 @@ No Component uses it yet.
 
 No Component uses it yet.
 
-- **Component** — A unit of the design. From outside, a Component is only its Languages and Interactions: an interface. Its children, Transformations and Deployments are its own implementation of that interface, the default one. Other Components may **implement** it: each is an alternative implementation, with children of its own, that may stand wherever the Component is placed. An implementer imports what it implements and uses the Languages of its Interactions. Which implementation fills an Instance is chosen by the tool's Configuration.
+- **Component** — A unit of the design. From outside, a Component is only what it **exports**: an interface. Its children, Transformations and Deployments are its own implementation of that interface, the default one. Other Components may **implement** it: each is an alternative implementation, with children of its own, that may stand wherever the Component is placed. An implementer imports what it implements and uses the Languages of the Interactions it exports. Which implementation fills an Instance is chosen by the tool's Configuration.
 - **Interaction** : Function
 - **Transformation** : Function — A Function whose inputs are all of one Language and whose output is of a different Language. Nothing is required of how the two Languages relate: neither need extend the other.
+- **Export** — Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, one of its children, or an Export of a child, which it re-exports. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.
+- **Import** — A Component's dependency on another — a sibling, one a Component it is nested in imports from, or one it reaches through an Export — taking some of its Exports. An Import of nothing still lets the importer place Instances of the Component, and import from what it exports.
 
 **Component.components ⟷ Component.parent**
 
@@ -167,21 +171,6 @@ No Component uses it yet.
 - Each Interaction has exactly one Language, as language. `1..1`
 - Each Language has any number of Interactions, but cannot navigate to them. `0..N`
 
-**Component.importedComponents ⟷ Component.importers**
-
-- Each Component has any number of Components, as importedComponents. `0..N`
-- Each Component has any number of Components, as importers. `0..N`
-
-**Component.importedInteractions ⟷ Interaction.importers**
-
-- Each Component has any number of Interactions, as importedInteractions. `0..N`
-- Each Interaction has any number of Components, as importers. `0..N`
-
-**Component.importedTransformations ⟷ Transformation.importers**
-
-- Each Component has any number of Transformations, as importedTransformations. `0..N`
-- Each Transformation has any number of Components, as importers. `0..N`
-
 **Component.name ⟷ Name.(unnamed)**
 
 - Each Component has exactly one Name, as name. `1..1`
@@ -192,9 +181,54 @@ No Component uses it yet.
 - Each Component has any number of Components, as implements. `0..N`
 - Each Component has any number of Components, as implementations. `0..N`
 
+**Component.exports ⟷ Export.exporter**
+
+- Each Component has any number of Exports, as exports. `0..N`
+- Each Export has exactly one Component, as exporter. `1..1`
+
+**Export.component ⟷ Component.(unnamed)**
+
+- Each Export has at most one Component, as component. `0..1`
+- Each Component has any number of Exports, but cannot navigate to them. `0..N`
+
+**Export.interaction ⟷ Interaction.(unnamed)**
+
+- Each Export has at most one Interaction, as interaction. `0..1`
+- Each Interaction has any number of Exports, but cannot navigate to them. `0..N`
+
+**Export.transformation ⟷ Transformation.(unnamed)**
+
+- Each Export has at most one Transformation, as transformation. `0..1`
+- Each Transformation has any number of Exports, but cannot navigate to them. `0..N`
+
+**Export.language ⟷ Language.(unnamed)**
+
+- Each Export has at most one Language, as language. `0..1`
+- Each Language has any number of Exports, but cannot navigate to them. `0..N`
+
+**Export.reexports ⟷ Export.export**
+
+- Each Export has any number of Exports, as reexports. `0..N`
+- Each Export has at most one Export, as export. `0..1`
+
+**Component.imports ⟷ Import.importer**
+
+- Each Component has any number of Imports, as imports. `0..N`
+- Each Import has exactly one Component, as importer. `1..1`
+
+**Import.from ⟷ Component.(unnamed)**
+
+- Each Import has exactly one Component, as from. `1..1`
+- Each Component has any number of Imports, but cannot navigate to them. `0..N`
+
+**Import.exports ⟷ Export.imports**
+
+- Each Import has any number of Exports, as exports. `0..N`
+- Each Export has any number of Imports, as imports. `0..N`
+
 - Axiom `all t in Transformation, p in t.parameters, q in t.parameters. p.type.language == q.type.language and p.type.language != t.output.language`
 - Axiom `all c in Component. not c in c.^implements`
-- Axiom `all c in Component, x in c.implements. x in c.importedComponents`
+- Axiom `all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.*export.component`
 - Axiom `all c in Component, x in c.implements, i in x.interactions. i.language in c.uses`
 - Axiom `all t in Transformation. some t.output`
 
@@ -278,11 +312,6 @@ No Component uses it yet.
 - Each Component has any number of Mediums, as mediums. `0..N`
 - Each Medium has exactly one Component, as component. `1..1`
 
-**Component.importedMediums ⟷ Medium.importers**
-
-- Each Component has any number of Mediums, as importedMediums. `0..N`
-- Each Medium has any number of Components, as importers. `0..N`
-
 **Medium.language ⟷ Language.(unnamed)**
 
 - Each Medium has exactly one Language, as language. `1..1`
@@ -323,6 +352,11 @@ No Component uses it yet.
 - Each Medium has exactly one Name, as name. `1..1`
 - Each Name has any number of Mediums, but cannot navigate to them. `0..N`
 
+**Export.medium ⟷ Medium.(unnamed)**
+
+- Each Export has at most one Medium, as medium. `0..1`
+- Each Medium has any number of Exports, but cannot navigate to them. `0..N`
+
 #### Systems — extends Mediation
 
 Used by Metadata Provider, Documentation Store, By Value Store, Workspace, Configuration Store.
@@ -349,7 +383,8 @@ Used by Metadata Provider, Documentation Store, By Value Store, Workspace, Confi
 The vocabulary of verifying a design, inside the tool: Assertions, their results, and a Verification Result for a System. "Validation" is kept for checking an implementation against an exported specification.
 
 - Uses: none
-- Imports: Systemathic (Component)
+- Exports: Verification (Language)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 #### Verification — extends Systems
 
@@ -379,7 +414,8 @@ No Component uses it yet.
 Specific Assertions: formula-based assertions, and assertions for standard terms (to be defined).
 
 - Uses: none
-- Imports: Systemathic Verification (Component)
+- Exports: Standard Assertions (Language)
+- Imports: Systemathic Verification: Verification (Language)
 
 #### Standard Assertions — extends Verification
 
@@ -397,7 +433,8 @@ No Component uses it yet.
 Offers verify: a System and the Rules to check it against give a Verification Result. It accepts only what it needs and says nothing about how verification is carried out. Rules are defined here, not in Verification (the name Rule is still provisional).
 
 - Uses: Rules
-- Imports: Systemathic Verification (Component)
+- Exports: Rules (Language), verify (Interaction)
+- Imports: Systemathic Verification: Verification (Language)
 
 #### Rules — extends Verification
 
@@ -419,7 +456,8 @@ Used by Systemathic Verifier, Python Verifier.
 The Systemathic tool. It imports the language package, the Verifier, the StdLib and the metadata providers (Documentation, By Value). Each part is a subcomponent with a core Language and many implementations: Repository (storage of Systems only), Host, Editing and the concept editors, clients (UI, MCP, CLI, API), Perspectives, Diagnostics, Exporter, Catalog and import/export, and Configurations (Deployment choices plus Rules).
 
 - Uses: none
-- Imports: Systemathic (Component), Systemathic Verifier (Component), Systemathic StdLib (Component), Documentation (Component), By Value (Component), Systemathic Metadata (Component), Systemathic Subjects (Component), HTTP (Component), Configurations (Component)
+- Exports: none
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Systemathic Verifier: Rules (Language), Systemathic StdLib: Standard Assertions (Language), Documentation: Documentation (Language), By Value: By Value (Language), Systemathic Metadata: Metadata (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language), HTTP: HTTP (Language), HTTP (Medium), Configurations: Configurations (Language)
 
 #### Deployment Local
 
@@ -493,7 +531,8 @@ The Host in a browser tab, for solo use, with the UI; Python rules run by Pyodid
 Interface: where Systems are stored. It stores the design only and knows nothing of metadata. `open` reads the System at a Location; `save` writes one there and gives back where it was saved. Implemented by JSON File Repository; others (browser storage, a database) are alternatives chosen by Configuration.
 
 - Uses: Repository
-- Imports: Systemathic (Component)
+- Exports: Repository (Language), open (Interaction), save (Interaction)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Repository — extends Systems
 
@@ -511,7 +550,8 @@ Used by Repository, JSON File Repository, Workspace.
 Implements Repository: a System as a JSON file, and a Location as its path. Writing a System as JSON takes a serializer — Systems / JSON — which is not designed yet.
 
 - Uses: Repository
-- Imports: Repository (Component)
+- Exports: none
+- Imports: Repository: Repository (Language)
 - Implements: Repository
 
 #### Metadata Provider
@@ -519,7 +559,8 @@ Implements Repository: a System as a JSON file, and a Location as its path. Writ
 Interface: a provider of one kind of metadata. It loads its metadata for a System when asked, and saves it when asked, its own way and wherever it likes. The Workspace asks every provider connected to it when a System is opened or saved: that fan-out is the event, and neither side knows the other. `save` gives nothing back.
 
 - Uses: Systems
-- Imports: Systemathic Metadata (Component), Systemathic (Component)
+- Exports: load (Interaction), save (Interaction)
+- Imports: Systemathic Metadata: Metadata (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Interactions
 
@@ -531,7 +572,8 @@ Interface: a provider of one kind of metadata. It loads its metadata for a Syste
 Implements Metadata Provider for Documentation (loads and saves Descriptions, its own way) and Edit Kind for it: Describe and Undescribe, each carrying a Description by value — its subject and text.
 
 - Uses: Documentation, Documentation Editing, Editing, Systems
-- Imports: Metadata Provider (Component), Systemathic Metadata (Component), Documentation (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Exports: Documentation Editing (Language)
+- Imports: Metadata Provider, Systemathic Metadata: Metadata (Language), Documentation: Documentation (Language), Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Metadata Provider, Edit Kind
 
 ##### Documentation Editing — extends Editing, Documentation
@@ -556,7 +598,8 @@ Used by Documentation Store, UI, MCP Server, API.
 Implements Metadata Provider for By Value (loads and saves which Entities are by value) and Edit Kind for it: Mark and Unmark an Entity.
 
 - Uses: By Value, By Value Editing, Editing, Systems
-- Imports: Metadata Provider (Component), Systemathic Metadata (Component), By Value (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Exports: By Value Editing (Language)
+- Imports: Metadata Provider, Systemathic Metadata: Metadata (Language), By Value: By Value (Language), Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Metadata Provider, Edit Kind
 
 ##### By Value Editing — extends Editing, By Value
@@ -581,7 +624,8 @@ Used by By Value Store, UI, MCP Server, API.
 The Systems open in the tool. `new` starts an empty one; `open` reads one through the Repository and asks every Metadata Provider to load; `save` writes the design through the Repository and asks every provider to save (order left open for now); `close` lets one go. Each Open System is a Target: clients start Sessions on it through the Editor. It is the only part that knows both the Repository and the providers.
 
 - Uses: Workspace, Repository, Editing, Systems
-- Imports: Repository (Component), Metadata Provider (Component), Systemathic Metadata (Component), Editing (Component), Editor (Component), Systemathic (Component)
+- Exports: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction)
+- Imports: Repository: Repository (Language), open (Interaction), save (Interaction), Metadata Provider: load (Interaction), save (Interaction), Systemathic Metadata: Metadata (Language), Editing: Editing (Language), Editor: startSession (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Workspace — extends Repository, Editing
 
@@ -606,6 +650,7 @@ Used by Workspace, UI, MCP Server, CLI, API.
 The vocabulary of editing, on its own so that the Editor and every Edit Kind share it without depending on each other. A **Target** is what is edited (an Open System, seen from editing); each has one **History**, a single chain of applied Edits shared by all its **Sessions**. An **Edit** is a change, described as data; once applied it is in a History, records its author Session, and has a **reverse**: another Edit that undoes it, computed when it was applied. Undo is applying an Edit's reverse; redo, applying that one's. *Reversible* is a derived term (`some e.reverse`), and every applied Edit is reversible. Editing knows no concept of the core: the kinds of Edit are Entities extending Edit in the editors' Languages.
 
 - Uses: Editing
+- Exports: Editing (Language)
 - Imports: none
 
 ##### Editing — a core Language
@@ -656,7 +701,8 @@ Used by Documentation Store, By Value Store, Workspace, Editing, Edit Kind, Kern
 Interface: the kinds of Edit of one Language. `apply` carries out an Edit of its kinds on a Target and gives back the applied Edit with its reverse. Implemented by each concept editor (one per Systemathic Language) and by each metadata provider that can be edited (Documentation, By Value). Which implementation handles a given Edit is code.
 
 - Uses: Editing
-- Imports: Editing (Component)
+- Exports: apply (Interaction)
+- Imports: Editing: Editing (Language)
 
 ##### Interactions
 
@@ -667,7 +713,8 @@ Interface: the kinds of Edit of one Language. `apply` carries out an Edit of its
 Interface: somewhere to import from. `contents` lists the Packages it offers; `fetch` gives a Package's content, as a System (library content is stored exactly like any other System). Implemented by Catalog Source (the standard catalog), File Source, and later another open System.
 
 - Uses: Sources
-- Imports: Systemathic (Component)
+- Exports: Sources (Language), contents (Interaction)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Sources — extends Systems
 
@@ -696,7 +743,8 @@ Used by Source, Catalog Source, File Source, Systems Editor, UI, MCP Server, API
 Implements Source: the standard catalog (JSON, HTTP, TCP, SQL, …).
 
 - Uses: Sources
-- Imports: Source (Component)
+- Exports: none
+- Imports: Source: Sources (Language)
 - Implements: Source
 
 #### File Source
@@ -704,7 +752,8 @@ Implements Source: the standard catalog (JSON, HTTP, TCP, SQL, …).
 Implements Source: a System file, whose Components are its Packages.
 
 - Uses: Sources
-- Imports: Source (Component)
+- Exports: none
+- Imports: Source: Sources (Language)
 - Implements: Source
 
 #### Kernel Editor
@@ -712,7 +761,8 @@ Implements Source: a System file, whose Components are its Packages.
 Implements Edit Kind for Kernel. Every editor's kinds follow one pattern, per thing its Language owns: **Add**T (`into` its owner, the T by value), **Change**T (`subject`, and `to`: the T as it should become, by value), **Remove**T (`subject`; the cascade comes with it). Kernel: Entities, Relationships (their Ends inside), Formulas; Languages are changed and removed here, added by Contexts. Each editor's Language extends the one below it and its own Systemathic Language, so an editor covers a whole Language with its extensions.
 
 - Uses: Kernel Editing, Editing
-- Imports: Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Exports: Kernel Editing (Language)
+- Imports: Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Edit Kind
 
 ##### Kernel Editing — extends Editing, Kernel
@@ -826,7 +876,8 @@ Used by Kernel Editor.
 Implements Edit Kind for Functions: Parameters (added into a Function, changed — type, name, place — and removed), and any Function — Interaction or Transformation — changed or removed. Functions are added by Contexts, where their owner is.
 
 - Uses: Functions Editing, Editing
-- Imports: Kernel Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Exports: Functions Editing (Language)
+- Imports: Kernel Editor: Kernel Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 - Implements: Edit Kind
 
 ##### Functions Editing — extends Kernel Editing, Functions
@@ -881,10 +932,11 @@ Used by Functions Editor.
 
 #### Contexts Editor
 
-Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, imports, implements — and removed), and the Languages, Interactions and Transformations added into a Component.
+Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, implements — and removed), the Languages, Interactions and Transformations added into a Component, and its Exports and Imports, each added and removed.
 
 - Uses: Contexts Editing, Editing
-- Imports: Functions Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Exports: Contexts Editing (Language)
+- Imports: Functions Editor: Functions Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 - Implements: Edit Kind
 
 ##### Contexts Editing — extends Functions Editing, Contexts
@@ -897,6 +949,11 @@ Used by Contexts Editor.
 - **AddLanguage** : Edit
 - **AddInteraction** : Edit
 - **AddTransformation** : Edit
+- **AddExport** : Edit
+- **RemoveExport** : Edit
+- **AddImport** : Edit
+- **ChangeImport** : Edit
+- **RemoveImport** : Edit
 
 **AddComponent.into ⟷ Component.(unnamed)**
 
@@ -953,12 +1010,53 @@ Used by Contexts Editor.
 - Each AddTransformation has exactly one Transformation, as transformation. `1..1`
 - Each Transformation has any number of AddTransformations, but cannot navigate to them. `0..N`
 
+**AddExport.into ⟷ Component.(unnamed)**
+
+- Each AddExport has exactly one Component, as into. `1..1`
+- Each Component has any number of AddExports, but cannot navigate to them. `0..N`
+
+**AddExport.export ⟷ Export.(unnamed)**
+
+- Each AddExport has exactly one Export, as export. `1..1`
+- Each Export has any number of AddExports, but cannot navigate to them. `0..N`
+
+**RemoveExport.subject ⟷ Export.(unnamed)**
+
+- Each RemoveExport has exactly one Export, as subject. `1..1`
+- Each Export has any number of RemoveExports, but cannot navigate to them. `0..N`
+
+**AddImport.into ⟷ Component.(unnamed)**
+
+- Each AddImport has exactly one Component, as into. `1..1`
+- Each Component has any number of AddImports, but cannot navigate to them. `0..N`
+
+**AddImport.import ⟷ Import.(unnamed)**
+
+- Each AddImport has exactly one Import, as import. `1..1`
+- Each Import has any number of AddImports, but cannot navigate to them. `0..N`
+
+**ChangeImport.subject ⟷ Import.(unnamed)**
+
+- Each ChangeImport has exactly one Import, as subject. `1..1`
+- Each Import has any number of ChangeImports, but cannot navigate to them. `0..N`
+
+**ChangeImport.to ⟷ Import.(unnamed)**
+
+- Each ChangeImport has exactly one Import, as to. `1..1`
+- Each Import has any number of ChangeImports, but cannot navigate to them. `0..N`
+
+**RemoveImport.subject ⟷ Import.(unnamed)**
+
+- Each RemoveImport has exactly one Import, as subject. `1..1`
+- Each Import has any number of RemoveImports, but cannot navigate to them. `0..N`
+
 #### Deployment Editor
 
 Implements Edit Kind for Deployment: Deployments (into a Component), Instances and Connections (into a Deployment) — each added, changed and removed. Changing an Instance covers its name, what it places and its range; changing a Connection, its ends and its What.
 
 - Uses: Deployment Editing, Editing
-- Imports: Contexts Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Exports: Deployment Editing (Language)
+- Imports: Contexts Editor: Contexts Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 - Implements: Edit Kind
 
 ##### Deployment Editing — extends Contexts Editing, Deployment
@@ -1055,7 +1153,8 @@ Used by Deployment Editor.
 Implements Edit Kind for Mediation: Mediums (into a Component) and Mediations (into a Connection) — each added, changed (a Medium's Language and call; a Mediation's how, down, up and place in the stack) and removed.
 
 - Uses: Mediation Editing, Editing
-- Imports: Deployment Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Exports: Mediation Editing (Language)
+- Imports: Deployment Editor: Deployment Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 - Implements: Edit Kind
 
 ##### Mediation Editing — extends Deployment Editing, Mediation
@@ -1124,7 +1223,8 @@ Used by Mediation Editor.
 Implements Edit Kind for Systems: ChangeSystem (its name), ImportPackage (fetched through a Source and copied in beside the root) and RemovePackage.
 
 - Uses: Systems Editing, Sources, Editing
-- Imports: Source (Component), Mediation Editor (Component), Edit Kind (Component), Systemathic (Component), Editing (Component)
+- Exports: Systems Editing (Language)
+- Imports: Source: Sources (Language), Mediation Editor: Mediation Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 - Implements: Edit Kind
 
 ##### Systems Editing — extends Mediation Editing, Sources
@@ -1160,7 +1260,8 @@ Used by Systems Editor, UI, MCP Server, API.
 The one seam every client edits through, and the one authority per Target. `startSession` opens a Session on a Target for one client; `apply` applies an Edit of any kind in a Session — through the Edit Kinds connected to it — and appends the applied Edit, with its reverse, to the History. Edits from all Sessions are applied in one order; history only grows; editing never refuses an ill-formed result.
 
 - Uses: Editing
-- Imports: Editing (Component), Edit Kind (Component), Edit Listener (Component)
+- Exports: startSession (Interaction), apply (Interaction)
+- Imports: Editing: Editing (Language), Edit Kind: apply (Interaction), Edit Listener: applied (Interaction)
 
 ##### Interactions
 
@@ -1172,7 +1273,8 @@ The one seam every client edits through, and the one authority per Target. `star
 Interface: told of every Edit applied to a Target, by any Session, in the order of the History — so every client sees every other's work. Implemented by the clients (UI, MCP, …). `applied` gives nothing back.
 
 - Uses: Editing
-- Imports: Editing (Component)
+- Exports: applied (Interaction)
+- Imports: Editing: Editing (Language)
 
 ##### Interactions
 
@@ -1183,7 +1285,8 @@ Interface: told of every Edit applied to a Target, by any Session, in the order 
 The vocabulary of points of view on a System, on its own so that Perspectives and every Perspective Kind share it without depending on each other. A **View** is one point of view (its **Perspective**: which, and optionally of which Subject) as **Items**, in an outline of parents and children, and **Links** between them; each Item is about a Subject, and carries **Marks** (diagnostics shown where they are). A View has no positions, sizes or colours: how it is drawn is the client's business, and an LLM reads the same View as data. Text is by value.
 
 - Uses: Views
-- Imports: Systemathic (Component), Systemathic Subjects (Component)
+- Exports: Views (Language)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language)
 
 ##### Views — extends Systems, Systems Subjects
 
@@ -1270,7 +1373,8 @@ Used by Views, Perspective Kind, Perspectives, Outline View, Language View, Comp
 What is wrong with a System. `diagnose` verifies it, through the Systemathic Verifier, against its **structural** Rule — every formula of the Systemathic Languages, as StdLib Formula Assertions, always checked — and against the Rules it is given (the Configuration's profile), and reports each failed Assertion as a **Diagnostic**: its Severity, the Subjects it is about, a message, and Suggestions to fix it, each of which may carry the Edit that fixes it, ready to `apply`. A structural error is a Diagnostic of severity error from the structural Rule; it blocks exporting a Specification, never editing.
 
 - Uses: Diagnostics
-- Imports: Views (Component), Systemathic Verifier (Component), Systemathic StdLib (Component), Systemathic (Component), Editing (Component)
+- Exports: Diagnostics (Language), diagnose (Interaction)
+- Imports: Views: Views (Language), Systemathic Verifier: Rules (Language), verify (Interaction), Systemathic StdLib: Standard Assertions (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 
 ##### Diagnostics — extends Views, Rules, Standard Assertions, Editing
 
@@ -1335,7 +1439,8 @@ Used by Diagnoser, Perspectives, Exporter, UI, MCP Server, CLI, API.
 Interface: one point of view on a System. `view` gives the View a Perspective asks for. Implemented by Outline View, Language View, Component View, Deployment View, Mediation Stack View and Statistics View; a new point of view is a new implementation, and nothing else changes.
 
 - Uses: Views
-- Imports: Views (Component)
+- Exports: view (Interaction)
+- Imports: Views: Views (Language)
 
 ##### Interactions
 
@@ -1346,7 +1451,8 @@ Interface: one point of view on a System. `view` gives the View a Perspective as
 The one seam clients read a System through. `view` asks the Perspective Kind for the Perspective given, and puts the Diagnoser's Diagnostics on its Items as Marks — so every point of view shows what is wrong where it is.
 
 - Uses: Views, Diagnostics
-- Imports: Views (Component), Perspective Kind (Component), Diagnoser (Component)
+- Exports: view (Interaction)
+- Imports: Views: Views (Language), Perspective Kind: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction)
 
 ##### Interactions
 
@@ -1354,10 +1460,11 @@ The one seam clients read a System through. `view` asks the Perspective Kind for
 
 #### Outline View
 
-Implements Perspective Kind: Everything in the System as a tree: its Components, nested, each with its Languages, Interactions, Mediums, imports and Deployments.
+Implements Perspective Kind: Everything in the System as a tree: its Components, nested, each with its Languages, Interactions, Mediums, Exports, Imports and Deployments.
 
 - Uses: Views
-- Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Exports: none
+- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
 
 #### Language View
@@ -1365,15 +1472,17 @@ Implements Perspective Kind: Everything in the System as a tree: its Components,
 Implements Perspective Kind: One Language: its Entities and what they extend, the Relationships between them, its Formulas, and the Interactions over it.
 
 - Uses: Views
-- Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Exports: none
+- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
 
 #### Component View
 
-Implements Perspective Kind: One Component: its Languages and what they extend, its children, the Languages each uses, what each imports and implements.
+Implements Perspective Kind: One Component: its Languages and what they extend, its children, the Languages each uses, what each imports from whom, and what it implements.
 
 - Uses: Views
-- Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Exports: none
+- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
 
 #### Deployment View
@@ -1381,7 +1490,8 @@ Implements Perspective Kind: One Component: its Languages and what they extend, 
 Implements Perspective Kind: One Deployment: its Instances, with their ranges, and its Connections — each with its What and the Mediations it runs over.
 
 - Uses: Views
-- Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Exports: none
+- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
 
 #### Mediation Stack View
@@ -1389,7 +1499,8 @@ Implements Perspective Kind: One Deployment: its Instances, with their ranges, a
 Implements Perspective Kind: Which Language is mediated over which, through which Medium, by level from the top.
 
 - Uses: Views
-- Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Exports: none
+- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
 
 #### Statistics View
@@ -1397,7 +1508,8 @@ Implements Perspective Kind: Which Language is mediated over which, through whic
 Implements Perspective Kind: Counts, depths, fan-in and fan-out.
 
 - Uses: Views
-- Imports: Perspective Kind (Component), Views (Component), Systemathic (Component)
+- Exports: none
+- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
 
 #### Exporter
@@ -1405,7 +1517,8 @@ Implements Perspective Kind: Counts, depths, fan-in and fan-out.
 A verified design, as a contract for implementers — people or LLMs. `specify` gives the Specification of a System: **Statements** of design facts (each Language's vocabulary, what each Component may use and import, which crossings exist), the **Requirements** — the Rules it was verified against — and the **Obligations** no design check can discharge (round trips, preservation). It asks the Diagnoser first, and gives none while a structural error remains. How it is written down is a Specification Format's business.
 
 - Uses: Specification, Diagnostics
-- Imports: Views (Component), Diagnoser (Component), Systemathic Verifier (Component), Systemathic (Component)
+- Exports: Specification (Language), specify (Interaction)
+- Imports: Views: Views (Language), Diagnoser: Diagnostics (Language), diagnose (Interaction), Systemathic Verifier: Rules (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Specification — extends Views, Rules
 
@@ -1489,7 +1602,8 @@ Used by Exporter, Specification Format, Markdown Format, JSON Format, UI, MCP Se
 Interface: one representation of a Specification. `render` writes it as a Document. Implemented by Markdown Format (for a person or an LLM, with stable identifiers) and JSON Format (for a machine). The Specification does not depend on its representation.
 
 - Uses: Specification
-- Imports: Exporter (Component)
+- Exports: render (Interaction)
+- Imports: Exporter: Specification (Language)
 
 ##### Interactions
 
@@ -1500,7 +1614,8 @@ Interface: one representation of a Specification. `render` writes it as a Docume
 Implements Specification Format: Markdown, for a person or an LLM: Sections as headings, Statements and Obligations as items with stable identifiers; it reads back into the Specification it came from.
 
 - Uses: Specification
-- Imports: Specification Format (Component), Exporter (Component)
+- Exports: none
+- Imports: Specification Format, Exporter: Specification (Language)
 - Implements: Specification Format
 
 #### JSON Format
@@ -1508,7 +1623,8 @@ Implements Specification Format: Markdown, for a person or an LLM: Sections as h
 Implements Specification Format: JSON, for a machine.
 
 - Uses: Specification
-- Imports: Specification Format (Component), Exporter (Component)
+- Exports: none
+- Imports: Specification Format, Exporter: Specification (Language)
 - Implements: Specification Format
 
 #### Python Verifier
@@ -1516,7 +1632,8 @@ Implements Specification Format: JSON, for a machine.
 Implements Systemathic Verifier: Rules and Assertions as Python, over the generated `systemathic.core` and `systemathic.std` bindings; a Violation is a yielded object. Run in a local process or, in the browser, by Pyodide — a choice of Configuration.
 
 - Uses: Rules
-- Imports: Systemathic Verifier (Component)
+- Exports: none
+- Imports: Systemathic Verifier: Rules (Language)
 - Implements: Systemathic Verifier
 
 #### Documentation Writer
@@ -1524,7 +1641,8 @@ Implements Systemathic Verifier: Rules and Assertions as Python, over the genera
 What a System and the things in it are for, written up for people: every Component, Language, Interaction, Medium and Deployment with its Description, each Relationship read both ways ("each Player has any number of Monsters, as prey"), and the Requirements with their Rules' documentation. Not a contract, and it does not read back: that is the Specification.
 
 - Uses: Written Documentation
-- Imports: Documentation (Component), Exporter (Component), Systemathic Subjects (Component), Systemathic (Component)
+- Exports: Written Documentation (Language), write (Interaction)
+- Imports: Documentation: Documentation (Language), Exporter: Specification (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Written Documentation — extends Specification, Documentation
 
@@ -1539,7 +1657,8 @@ Used by Documentation Writer, UI, MCP Server, CLI, API.
 The visual editor, for people: Explorer, Graph, the editors' panels, the Script and Documentation tabs. It draws Views (layout is its own business, kept as its own metadata), applies Edits built from gestures, shows Diagnostics with their fixes, and is told of every Edit by any client. Implements Edit Listener.
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
-- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component), Configuration Store (Component)
+- Exports: none
+- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Editor: startSession (Interaction), apply (Interaction), Perspectives: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Source: Sources (Language), contents (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Edit Listener, Systems Editor: Systems Editing (Language), Documentation Store: Documentation Editing (Language), By Value Store: By Value Editing (Language), Editing: Editing (Language), Views: Views (Language), Configuration Store: Configuration Editing (Language)
 - Implements: Edit Listener
 
 #### MCP Server
@@ -1547,7 +1666,8 @@ The visual editor, for people: Explorer, Graph, the editors' panels, the Script 
 The tool for LLMs: every seam as an MCP tool — Views as structured data, every kind of Edit through `apply`, `diagnose`, `specify`. It edits the same Systems as the UI, in a Session of its own, and is told of every Edit. Implements Edit Listener.
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
-- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Systemathic (Component), Edit Listener (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Editing (Component), Views (Component), Configuration Store (Component)
+- Exports: none
+- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Editor: startSession (Interaction), apply (Interaction), Perspectives: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Source: Sources (Language), contents (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Edit Listener, Systems Editor: Systems Editing (Language), Documentation Store: Documentation Editing (Language), By Value Store: By Value Editing (Language), Editing: Editing (Language), Views: Views (Language), Configuration Store: Configuration Editing (Language)
 - Implements: Edit Listener
 
 #### CLI
@@ -1555,14 +1675,16 @@ The tool for LLMs: every seam as an MCP tool — Views as structured data, every
 The command line, for automation: `new`, `check` (diagnose, with an exit code), `verify`, `export` (a Specification in a Format, or the documentation), and `serve` — starting the Host.
 
 - Uses: Workspace, Diagnostics, Specification, Written Documentation
-- Imports: Workspace (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Systemathic (Component)
+- Exports: none
+- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 #### API
 
 The tool for programs: every seam — Workspace, Editor, Perspectives, Diagnoser, Exporter, Formats, Documentation Writer, Sources — offered to code, so a script or another tool drives the same Systems as the UI and the MCP server, in a Session of its own. Implements Edit Listener.
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
-- Imports: Workspace (Component), Editor (Component), Perspectives (Component), Diagnoser (Component), Exporter (Component), Specification Format (Component), Documentation Writer (Component), Source (Component), Edit Listener (Component), Editing (Component), Views (Component), Systems Editor (Component), Documentation Store (Component), By Value Store (Component), Configuration Store (Component)
+- Exports: none
+- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Editor: startSession (Interaction), apply (Interaction), Perspectives: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Source: Sources (Language), contents (Interaction), Edit Listener, Editing: Editing (Language), Views: Views (Language), Systems Editor: Systems Editing (Language), Documentation Store: Documentation Editing (Language), By Value Store: By Value Editing (Language), Configuration Store: Configuration Editing (Language)
 - Implements: Edit Listener
 
 #### Configuration Store
@@ -1570,7 +1692,8 @@ The tool for programs: every seam — Workspace, Editor, Perspectives, Diagnoser
 Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.
 
 - Uses: Configurations, Configuration Editing, Editing, Systems
-- Imports: Metadata Provider (Component), Systemathic Metadata (Component), Configurations (Component), Editing (Component), Edit Kind (Component), Systemathic (Component)
+- Exports: Configuration Editing (Language)
+- Imports: Metadata Provider, Systemathic Metadata: Metadata (Language), Configurations: Configurations (Language), Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Metadata Provider, Edit Kind
 
 ##### Configuration Editing — extends Editing, Configurations
@@ -1636,7 +1759,8 @@ Used by UI, MCP Server, API, Configuration Store.
 Custom metadata on the things of a System: a **Custom Metadata** is about one Subject. Specific kinds are provided by other Components extending it (By Value, Documentation, UI layouts, …), each extending only the Subject layers it needs. Each provider stores and loads its own metadata, its own way; the Repository knows nothing of metadata.
 
 - Uses: none
-- Imports: Systemathic (Component), Systemathic Subjects (Component)
+- Exports: Metadata (Language)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language)
 
 #### Metadata — extends Subjects
 
@@ -1654,7 +1778,8 @@ No Component uses it yet.
 A metadata type provider: marks an Entity as having no identity of its own. A Relationship to a by-value Entity has only one side: the end at it is navigated by its owner (0..1 optional, 1..1 required, 0..N list), and the end at the owner is unnamed. A presentation convenience: the core does not know it.
 
 - Uses: none
-- Imports: Systemathic Metadata (Component), Systemathic Subjects (Component)
+- Exports: By Value (Language)
+- Imports: Systemathic Metadata: Metadata (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language)
 
 #### By Value — extends Metadata, Kernel Subjects
 
@@ -1670,7 +1795,8 @@ Used by By Value Store.
 A metadata type provider: a Description, in prose, of anything in a System — the System itself, a Component, Language, Entity, Relationship, Formula, Function, Medium, Deployment, Instance, Connection, Mediation. Text is by value. Like every provider, it stores and loads its own metadata; the Repository knows nothing of it.
 
 - Uses: none
-- Imports: Systemathic Metadata (Component), Systemathic Subjects (Component)
+- Exports: Documentation (Language)
+- Imports: Systemathic Metadata: Metadata (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language)
 
 #### Documentation — extends Metadata, Systems Subjects
 
@@ -1689,7 +1815,8 @@ Used by Documentation Store.
 What can be talked about: a **Subject** is one thing of a System — exactly one Language, Entity, Relationship, End, Formula, Function, Parameter, Component, Deployment, Instance, Connection, Medium, Mediation or System. It is a closed sum, as the foundation composes one: **Subjects** is the core Language; each extension, one per layer of Systemathic, adds that layer's variants, so a consumer extends only the layers it talks about; Systems Subjects, which sees them all, states that exactly one is set. A Subject is by value: the things of a System never see the Subjects that name them. Metadata, Views, Diagnostics and Specifications are all about Subjects.
 
 - Uses: none
-- Imports: Systemathic (Component)
+- Exports: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 #### Subjects — a core Language
 
@@ -1798,7 +1925,8 @@ No Component uses it yet.
 A metadata type provider: how a System is put together to run, and checked. A **Configuration** is about the System: from its root, it chooses for each Instance occupant the Component that fills it — the placed Component or one implementing it — and, for that Component, the Deployment it runs as; and it names its profile, the Rules it is verified against. Like every provider, it stores and loads its own metadata; the core knows nothing of it.
 
 - Uses: none
-- Imports: Systemathic Metadata (Component), Systemathic Subjects (Component), Systemathic Verifier (Component)
+- Exports: Configurations (Language)
+- Imports: Systemathic Metadata: Metadata (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language), Systemathic Verifier: Rules (Language)
 
 #### Configurations — extends Metadata, Systems Subjects, Rules
 
@@ -1856,6 +1984,7 @@ Used by Configuration Store.
 ### HTTP
 
 - Uses: HTTP
+- Exports: HTTP (Language), HTTP (Medium)
 - Imports: none
 
 #### HTTP — a core Language
@@ -1990,6 +2119,17 @@ An Interaction over a Language some Mediation is over — a how — ties whoever
 to one way of carrying things out.
 
 To fix it, offer the Interaction over the abstract Language, and mediate it over the how.
+
+### `exports_interfaces` — warning, standard
+
+Only interfaces are exported: no Export makes reachable a Component that has children.
+
+A Component's children are its implementation. Exporting one with children of its own
+hands that implementation out as API: whoever imports it can place it, and depends on
+how it is built.
+
+To fix it, export an interface — a Component without children, offering what the API
+needs — and keep the Component with children as its implementation, unexported.
 
 ### `core_is_pure` — error
 

@@ -12,7 +12,13 @@ What changes:
   migration;
 - an Instance gains a range, `1..1`; a Connection's `toInstance` becomes `to`;
 - the System's `configurations` become the `configurations` attachment, each Choice naming
-  the Component that fills it.
+  the Component that fills it;
+- a Component's `imports` become Imports, one per Component it imports from, each taking
+  some of that Component's Exports; whatever another Component imported from a Component,
+  it now exports (see `exports`).
+
+A file in the draft of `systemathic/3` that still lists `imports` by kind is brought forward
+the same way.
 """
 
 from __future__ import annotations
@@ -99,7 +105,84 @@ def all_ids(value) -> set[str]:
     return found
 
 
+EXPORTED = {"interactions": "interaction", "transformations": "transformation", "mediums": "medium", "languages": "language"}
+
+
+def exports(design: dict) -> dict:
+    """Replaces every Component's `imports` by kind with Exports and Imports, in place.
+
+    An import of a Component becomes an Import from it, taking the Languages, Transformations
+    and Mediums it owns (all of which an import of the Component gave access to), and those of
+    its Interactions that the importer's Connections use. An import of an Interaction,
+    Transformation or Medium becomes an Import from its owner, taking it. Whatever is taken,
+    its owner exports.
+    """
+    components: dict[str, dict] = {}
+    owner: dict[str, tuple[str, str]] = {}  # id → (owning Component, export key)
+    instance_of: dict[str, str] = {}
+
+    def index(c: dict) -> None:
+        components[c["id"]] = c
+        for key, kind in EXPORTED.items():
+            for item in c.get(key, []):
+                owner[item["id"]] = (c["id"], kind)
+        for d in c.get("deployments", []):
+            for i in d["instances"]:
+                instance_of[i["id"]] = i["of"]
+        for child in c["components"]:
+            index(child)
+
+    for c in [design["root"], *design["packages"]]:
+        index(c)
+    used: dict[str, set[str]] = {cid: set() for cid in components}  # Component → Interactions its Connections use
+    for c in components.values():
+        for d in c.get("deployments", []):
+            for x in d["connections"]:
+                for end in (instance_of.get(x["from"]), x["toComponent"]):
+                    if end is not None:
+                        used[end] |= set(x["what"])
+    made: dict[str, list[dict]] = {cid: [] for cid in components}
+
+    def export(target: str) -> str:
+        exporter, kind = owner[target]
+        id = f"{exporter}:{target}"
+        if not any(e["id"] == id for e in made[exporter]):
+            made[exporter].append({"id": id, kind: target})
+        return id
+
+    taken: dict[str, dict[str, list[str]]] = {cid: {} for cid in components}
+    for cid, c in components.items():
+        old = c["imports"]
+        if isinstance(old, list):
+            continue
+        for k in old.get("components", []):
+            whole = components[k]
+            targets = [item["id"] for key in ("languages", "transformations", "mediums") for item in whole.get(key, [])]
+            targets += [i["id"] for i in whole.get("interactions", []) if i["id"] in used[cid]]
+            taken[cid].setdefault(k, []).extend(export(t) for t in targets)
+        for key in ("interactions", "transformations", "mediums"):
+            for target in old.get(key, []):
+                taken[cid].setdefault(owner[target][0], []).append(export(target))
+    for cid, c in components.items():
+        if isinstance(c["imports"], list):
+            continue
+        imports = [{"id": f"{cid}<{k}", "from": k, "exports": list(dict.fromkeys(ids))} for k, ids in taken[cid].items()]
+        rebuilt = {}
+        for key, value in c.items():
+            if key == "imports":
+                rebuilt["exports"] = made[cid]
+                rebuilt["imports"] = imports
+            else:
+                rebuilt[key] = value
+        c.clear()
+        c.update(rebuilt)
+    return design
+
+
 def migrate(file: dict) -> dict:
+    if file.get("format") == "systemathic/3":
+        exports(file["design"])
+        return file
     if file.get("format") != "systemathic/2":
         raise SystemExit(f"not a systemathic/2 file: {file.get('format')!r}")
     design = file["design"]
@@ -124,7 +207,7 @@ def migrate(file: dict) -> dict:
         ]}})
     return {
         "format": "systemathic/3",
-        "design": {"id": design["id"], "name": design["name"], "root": root, "packages": [c for c in components if c is not root]},
+        "design": exports({"id": design["id"], "name": design["name"], "root": root, "packages": [c for c in components if c is not root]}),
         "attachments": attachments,
     }
 

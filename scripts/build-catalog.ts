@@ -4,7 +4,8 @@
  * Each Package is an ordinary System file: library content is stored exactly like any other
  * System. Its content is Components, brought in beside the root of the System that imports
  * it. Each vocabulary is a Component that owns its Language, offers its Interactions, and
- * defines a Medium over it, whose call is one of them. What the catalog says about a Package —
+ * defines a Medium over it, whose call is one of them — and exports all three: it is an
+ * interface, whose whole API is its Exports. What the catalog says about a Package —
  * its name, what it is, its tags — is a `catalog` attachment. Ids are stable across Packages
  * (the HTTP Component is `pkg.http`, its Language `lib.http`, wherever they appear), which is
  * what lets "HTTP over TCP" stack on an HTTP that was imported before.
@@ -28,7 +29,8 @@ interface VocabularySpec {
 }
 
 const slug = (text: string) => text.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase();
-const noImports = { components: [] as string[], interactions: [] as string[], transformations: [] as string[], mediums: [] as string[] };
+/** `exporter` exports each of `items`. */
+const exportsOf = (exporter: string, kinds: [kind: string, id: string][]) => kinds.map(([kind, id]) => ({ id: `${exporter}:${id}`, [kind]: id }));
 
 /** A vocabulary, as the Component that owns its Language, offers its Interactions and defines its Medium. */
 function vocabulary(spec: VocabularySpec) {
@@ -46,7 +48,12 @@ function vocabulary(spec: VocabularySpec) {
     id: component,
     name: spec.name,
     uses: [language],
-    imports: noImports,
+    exports: exportsOf(component, [
+      ["language", language],
+      ...spec.interactions.map(([name]): [string, string] => ["interaction", interaction(name)]),
+      ["medium", `${component}.medium`],
+    ]),
+    imports: [] as unknown[],
     implements: [] as string[],
     languages: [
       {
@@ -238,7 +245,14 @@ const httpOverTcp = {
   id: "pkg.http-over-tcp",
   name: "HttpOverTcp",
   uses: ["lib.http", "lib.tcp"],
-  imports: { ...noImports, components: ["pkg.http", "pkg.tcp"] },
+  exports: exportsOf("pkg.http-over-tcp", [
+    ["transformation", "pkg.http-over-tcp.down"],
+    ["transformation", "pkg.http-over-tcp.up"],
+  ]),
+  imports: [
+    { id: "pkg.http-over-tcp<pkg.http", from: "pkg.http", exports: ["pkg.http:lib.http"] },
+    { id: "pkg.http-over-tcp<pkg.tcp", from: "pkg.tcp", exports: ["pkg.tcp:lib.tcp"] },
+  ],
   implements: [],
   languages: [],
   interactions: [],

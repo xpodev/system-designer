@@ -52,15 +52,6 @@ export function createCall(session: EditSession, medium: string, name: string, o
   });
 }
 
-/** Makes a Component import a Medium, so its Deployments can mediate Connections over it. */
-export function importMedium(session: EditSession, component: string, medium: string): Edit {
-  return session.edit("change", "importMedium", [component, medium], (graph) => graph.connect(component, "importedMediums", medium));
-}
-
-export function unimportMedium(session: EditSession, component: string, medium: string): Edit {
-  return session.edit("change", "unimportMedium", [component, medium], (graph) => graph.disconnect(component, "importedMediums", medium));
-}
-
 export function rename(session: EditSession, medium: string, name: string): Edit {
   return session.edit("change", `rename Medium ${name}`, [medium], (graph) => setName(graph, medium, name));
 }
@@ -97,12 +88,6 @@ export const mediumEditor: readonly Operation[] = [
     "Creates a Medium's call: a new Interaction of its Component, over its Language.",
     [MEDIUM, text("name", "the call's name"), element("output", "Entity", "the call's output Entity")],
     (s, a) => createCall(s, str(a, "medium"), str(a, "name"), str(a, "output")),
-  ),
-  operation(EDITOR, "importMedium", "change", "Makes a Component import a Medium.", [element("component", "Component", "the importing Component"), MEDIUM], (s, a) =>
-    importMedium(s, str(a, "component"), str(a, "medium")),
-  ),
-  operation(EDITOR, "unimportMedium", "change", "Stops a Component importing a Medium.", [element("component", "Component", "the importing Component"), MEDIUM], (s, a) =>
-    unimportMedium(s, str(a, "component"), str(a, "medium")),
   ),
   operation(EDITOR, "rename", "change", "Renames a Medium.", [MEDIUM, text("name", "the new name")], (s, a) => rename(s, str(a, "medium"), str(a, "name"))),
   operation(EDITOR, "remove", "removal", "Removes a Medium; Mediations over it stay, broken.", [MEDIUM], (s, a) => remove(s, str(a, "medium"))),

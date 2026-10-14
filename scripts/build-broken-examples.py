@@ -83,7 +83,7 @@ def w8(f):
 
 
 def w9(f):
-    find(f, "game.physics")["imports"]["components"].append("game.client.input")
+    find(f, "game.physics")["imports"].append({"id": "game.physics<game.client.input", "from": "game.client.input", "exports": []})
 
 
 def w10(f):
@@ -100,7 +100,11 @@ def w12(f):
 
 
 def w14(f):
-    find(f, "game.client")["implements"].append("game.server")
+    find(f, "game.physics")["implements"].append("game.server")
+
+
+def w15(f):
+    find(f, "game.server")["exports"].append({"id": "game.server:game.network-over-wire.down", "transformation": "game.network-over-wire.down"})
 
 
 for name, note, change in [
@@ -112,13 +116,14 @@ for name, note, change in [
     ("w2", "W2: a range whose min is above its max.", w2),
     ("w3", "W3: Monster reaches two ends named 'hunters'.", w3),
     ("w4", "W4: Core and Combat extend each other.", w4),
-    ("w5", "W5: Server uses Network without importing the Component that defines it.", w5),
+    ("w5", "W5: Server uses Network without importing it.", w5),
     ("w6", "W6: a Transformation into a Language its Component does not use.", w6),
     ("w8", "W8: an Interaction with a Parameter outside its Language.", w8),
     ("w9", "W9: Physics imports a Component from inside its sibling Client.", w9),
     ("w10", "W10: a Connection to an Instance that does not offer its What.", w10),
     ("w11", "W11: a Medium whose call is another Component's Interaction.", w11),
     ("w12", "W12: a Mediation realized upside down.", w12),
-    ("w14", "W14: Client implements Server without importing it.", w14),
+    ("w14", "W14: Physics implements Server without importing it.", w14),
+    ("w15", "W15: Server exports a Transformation of NetworkOverWire.", w15),
 ]:
     mutate(name, note, change)

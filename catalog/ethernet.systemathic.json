@@ -9,12 +9,21 @@
       "uses": [
         "lib.ethernet"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.ethernet:lib.ethernet",
+          "language": "lib.ethernet"
+        },
+        {
+          "id": "pkg.ethernet:pkg.ethernet.transmit",
+          "interaction": "pkg.ethernet.transmit"
+        },
+        {
+          "id": "pkg.ethernet:pkg.ethernet.medium",
+          "medium": "pkg.ethernet.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

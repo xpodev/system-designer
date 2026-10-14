@@ -7,9 +7,9 @@ the kernel. See [foundation.md](../docs/foundation.md), *The Systemathic Languag
 |---|---|---|---|
 | [`kernel.json`](kernel.json) | Kernel | Language, Entity, Relationship, End, Name, Bound, Formula; what a Language or an Entity extends | — |
 | [`functions.json`](functions.json) | Functions | Function, Parameter; a Function's ordered Parameters and its output | Kernel |
-| [`contexts.json`](contexts.json) | Contexts | Component, Interaction : Function, Transformation : Function; uses, imports, implements | Functions |
+| [`contexts.json`](contexts.json) | Contexts | Component, Interaction : Function, Transformation : Function, Export, Import; uses, implements | Functions |
 | [`deployment.json`](deployment.json) | Deployment | Deployment, Instance (with a range), Connection | Contexts |
-| [`mediation.json`](mediation.json) | Mediation | Medium, Mediation; Medium imports | Deployment |
+| [`mediation.json`](mediation.json) | Mediation | Medium, Mediation; an Export of a Medium | Deployment |
 | [`systems.json`](systems.json) | Systems | System: a root Component and the packages beside it | Mediation |
 
 Each layer extends the one below it without changing it: `"extends": ["Kernel"]` makes

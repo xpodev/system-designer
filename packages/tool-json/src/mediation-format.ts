@@ -1,5 +1,5 @@
 /**
- * MediationFormat: the Mediums a Component defines and imports, and a Connection's stack of
+ * MediationFormat: the Mediums a Component defines, an Export's `medium`, and a Connection's stack of
  * Mediations, as JSON. Mediations are in stack order, the top one over the Connection's What;
  * each has its id, names its Medium and, if realized, its `down` and `up`, or `null`.
  */
@@ -11,12 +11,10 @@ import { array, object, string, type Reader } from "./reader.js";
 export interface MediumJson { id: string; name: string; language: string; call: string }
 export interface MediationJson { id: string; how: string; down: string | null; up: string | null }
 
-/** The Mediation layer of a Component: `imports.mediums`, and `mediums`. */
+/** The Mediation layer of a Component and an Export: `mediums`, and an Export's `medium`. */
 export const mediums: Extension = {
   readComponent(reader, component, json, at) {
     const graph = reader.graph;
-    const imports = object(json.imports, `${at}.imports`);
-    array(imports.mediums, `${at}.imports.mediums`).forEach((ref, i) => reader.refer(component, "importedMediums", ref, `${at}.imports.mediums[${i}]`));
     array(json.mediums, `${at}.mediums`).forEach((value, index) => {
       const where = `${at}.mediums[${index}]`;
       const medium = object(value, where);
@@ -29,7 +27,6 @@ export const mediums: Extension = {
     });
   },
   writeComponent: (graph, component) => ({
-    imports: { mediums: graph.navigate(component, "importedMediums") },
     mediums: graph.navigate(component, "mediums").map((id) => ({
       id,
       name: nameOf(graph, id) ?? "",
@@ -37,6 +34,13 @@ export const mediums: Extension = {
       call: graph.navigate(id, "call")[0] ?? "",
     })),
   }),
+  readExport(reader, exported, json, at) {
+    if (json.medium !== undefined) reader.refer(exported, "medium", json.medium, `${at}.medium`);
+  },
+  writeExport(graph, exported): Record<string, string> {
+    const [medium] = graph.navigate(exported, "medium");
+    return medium === undefined ? {} : { medium };
+  },
 };
 
 /** The Mediation layer of a Connection: `mediations`. */

@@ -9,12 +9,25 @@
       "uses": [
         "lib.bytes"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.bytes:lib.bytes",
+          "language": "lib.bytes"
+        },
+        {
+          "id": "pkg.bytes:pkg.bytes.concat",
+          "interaction": "pkg.bytes.concat"
+        },
+        {
+          "id": "pkg.bytes:pkg.bytes.transfer",
+          "interaction": "pkg.bytes.transfer"
+        },
+        {
+          "id": "pkg.bytes:pkg.bytes.medium",
+          "medium": "pkg.bytes.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

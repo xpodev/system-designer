@@ -156,7 +156,7 @@ def workspace_joins_storage(system: System):
     """
     repository, provider = system.component("Repository"), system.component("Metadata Provider")
     for component in system.all("Component"):
-        if component.name != "Workspace" and {repository, provider} <= set(component.importedComponents):
+        if component.name != "Workspace" and {repository, provider} <= set(imported_components(component)):
             yield Violation(component, f"{component.name} imports both the Repository and the Metadata Provider")
 
 
@@ -169,7 +169,7 @@ def clients_are_hows(system: System):
     """
     clients = [system.component(name) for name in CLIENTS]
     for component in system.all("Component"):
-        for client in set(component.importedComponents) & set(clients):
+        for client in set(imported_components(component)) & set(clients):
             yield Violation([component, client], f"{component.name} imports the client {client.name}")
     for client in clients:
         if client.interactions:

@@ -3,7 +3,7 @@
  * The core's Entities are Subjects here, and Diagnostics are Marks; nothing else of the tool
  * is known. A UI draws a View; an LLM reads the same View as structured data.
  */
-import { coreEntities, coreSpec, describe as describeElement, mediationStack, nameOf, parameters, scope, type Graph } from "@systemathic/core";
+import { coreEntities, coreSpec, describe as describeElement, mediationStack, nameOf, parameters, resolve, scope, type Graph } from "@systemathic/core";
 import { diagnose, metrics, type Diagnostic } from "@systemathic/diagnoser";
 import type { SystemContext } from "@systemathic/tool";
 import { ViewBuilder, type LinkEnd, type Perspective, type View } from "./view.js";
@@ -59,6 +59,15 @@ const name = (graph: Graph, id: string) =>
 const UNNAMED = "(unnamed)";
 const first = (graph: Graph, id: string, end: string) => graph.navigate(id, end)[0];
 const named = (graph: Graph, id: string | undefined) => (id === undefined || !graph.has(id) ? "?" : name(graph, id));
+/** What an Export exports, by name. */
+const exportedName = (graph: Graph, exported: string) => named(graph, resolve(graph, exported));
+/** What kind of thing an Export exports, and, for a re-export, whose Export it re-exports. */
+function exportedDetail(graph: Graph, exported: string): string {
+  const target = resolve(graph, exported);
+  const again = first(graph, exported, "export");
+  const kind = target === undefined ? "nothing" : graph.get(target).entity;
+  return again === undefined ? kind : `${kind}, re-exported from ${named(graph, first(graph, again, "exporter"))}`;
+}
 
 /** An end's or an Instance's range, as `min..max`. */
 function rangeText(graph: Graph, end: string): string {
@@ -154,9 +163,14 @@ function outlineComponent(graph: Graph, view: ViewBuilder, component: string, pa
   for (const medium of graph.navigate(component, "mediums")) {
     view.item({ subject: medium, kind: "Medium", label: name(graph, medium), detail: `over ${named(graph, first(graph, medium, "language"))}, call ${named(graph, first(graph, medium, "call"))}` }, item);
   }
-  for (const end of ["importedComponents", "importedInteractions", "importedTransformations", "importedMediums"]) {
-    for (const imported of graph.navigate(component, end)) {
-      view.item({ id: `${item}/import/${imported}`, subject: imported, kind: "import", label: `imports ${name(graph, imported)}`, detail: graph.get(imported).entity }, item);
+  for (const exported of graph.navigate(component, "exports")) {
+    view.item({ subject: exported, kind: "Export", label: `exports ${exportedName(graph, exported)}`, detail: exportedDetail(graph, exported) }, item);
+  }
+  for (const imported of graph.navigate(component, "imports")) {
+    const from = first(graph, imported, "from");
+    const m = view.item({ subject: imported, kind: "Import", label: `imports from ${named(graph, from)}`, detail: "Component" }, item);
+    for (const exported of graph.navigate(imported, "exports")) {
+      view.item({ id: `${m}/${exported}`, subject: exported, kind: "Export", label: exportedName(graph, exported), detail: exportedDetail(graph, exported) }, m);
     }
   }
   for (const implemented of graph.navigate(component, "implements")) {
@@ -251,16 +265,11 @@ const builders: Readonly<Record<Perspective, Builder>> = {
     for (const language of own) for (const extended of graph.navigate(language, "extends")) view.link(language, extended, "extends");
     for (const child of children) {
       for (const language of graph.navigate(child, "uses")) view.link(child, language, "uses");
-      const offers = new Map<string, string[]>();
-      const record = (owner: string | undefined, what: string) => {
-        if (owner === undefined || owner === child) return;
-        offers.set(owner, [...(offers.get(owner) ?? []), what]);
-      };
-      for (const imported of graph.navigate(child, "importedComponents")) record(imported, name(graph, imported));
-      for (const end of ["importedInteractions", "importedTransformations", "importedMediums"] as const) {
-        for (const imported of graph.navigate(child, end)) record(first(graph, imported, "component"), name(graph, imported));
+      for (const imported of graph.navigate(child, "imports")) {
+        const from = first(graph, imported, "from");
+        const taken = graph.navigate(imported, "exports").map((e) => exportedName(graph, e));
+        if (from !== undefined && from !== child) view.link(child, from, "imports", taken.join(", ") || named(graph, from));
       }
-      for (const [owner, what] of offers) view.link(child, owner, "imports", what.join(", "));
       for (const implemented of graph.navigate(child, "implements")) view.link(child, implemented, "implements");
     }
     return view;

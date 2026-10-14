@@ -7,6 +7,7 @@
 import { accessibleInteractions, extendedLanguages, nameOf, remove as removeFromModel, setName, type Graph } from "@systemathic/core";
 import type { Edit, EditSession } from "@systemathic/editing";
 import { addNamed, element, elements, flag, freshId, ids, operation, range, setBounds, str, text, type Operation } from "../operation.js";
+import { reach } from "../contexts/exports.js";
 
 const EDITOR = "DeploymentEditor";
 
@@ -42,7 +43,7 @@ export function needs(graph: Graph, instance: string, what: readonly string[]): 
 }
 
 export interface ConnectOptions {
-  /** Also import, into the Component the Connection goes from, each Interaction of its What it cannot reach. */
+  /** Also make the Component the Connection goes from reach each Interaction of its What it cannot reach yet (see `reach`). */
   readonly addImports?: boolean;
   /** Also make that Component use each Language of its What it does not speak. */
   readonly addUses?: boolean;
@@ -61,7 +62,7 @@ export function connect(session: EditSession, deployment: string, from: string, 
     graph.connect(id, graph.get(to).entity === "Instance" ? "to" : "toComponent", to);
     for (const interaction of what) graph.connect(id, "what", interaction);
     if (component === undefined) return;
-    if (options.addImports) for (const interaction of missing.imports) graph.connect(component, "importedInteractions", interaction);
+    if (options.addImports) for (const interaction of missing.imports) reach(graph, component, interaction);
     if (options.addUses) for (const language of missing.uses) graph.connect(component, "uses", language);
   });
 }

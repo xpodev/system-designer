@@ -9,12 +9,21 @@
       "uses": [
         "lib.json"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.json:lib.json",
+          "language": "lib.json"
+        },
+        {
+          "id": "pkg.json:pkg.json.transfer",
+          "interaction": "pkg.json.transfer"
+        },
+        {
+          "id": "pkg.json:pkg.json.medium",
+          "medium": "pkg.json.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

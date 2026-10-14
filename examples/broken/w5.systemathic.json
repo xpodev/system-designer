@@ -7,16 +7,33 @@
       "id": "game",
       "name": "Game",
       "uses": [],
-      "imports": {
-        "components": [
-          "pkg.netstack",
-          "pkg.link",
-          "pkg.in-process"
-        ],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [],
+      "imports": [
+        {
+          "id": "game<pkg.netstack",
+          "from": "pkg.netstack",
+          "exports": [
+            "pkg.netstack:lib.network",
+            "pkg.netstack:pkg.netstack.medium"
+          ]
+        },
+        {
+          "id": "game<pkg.link",
+          "from": "pkg.link",
+          "exports": [
+            "pkg.link:lib.transport",
+            "pkg.link:pkg.link.medium"
+          ]
+        },
+        {
+          "id": "game<pkg.in-process",
+          "from": "pkg.in-process",
+          "exports": [
+            "pkg.in-process:lib.in-process",
+            "pkg.in-process:pkg.in-process.medium"
+          ]
+        }
+      ],
       "implements": [],
       "languages": [
         {
@@ -302,12 +319,8 @@
           "uses": [
             "core"
           ],
-          "imports": {
-            "components": [],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [],
+          "imports": [],
           "implements": [],
           "languages": [],
           "interactions": [
@@ -337,14 +350,26 @@
             "combat",
             "lib.network"
           ],
-          "imports": {
-            "components": [
-              "pkg.netstack"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "game.combat-over-network:game.combat-over-network.down",
+              "transformation": "game.combat-over-network.down"
+            },
+            {
+              "id": "game.combat-over-network:game.combat-over-network.up",
+              "transformation": "game.combat-over-network.up"
+            }
+          ],
+          "imports": [
+            {
+              "id": "game.combat-over-network<pkg.netstack",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:lib.network",
+                "pkg.netstack:pkg.netstack.medium"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [],
           "interactions": [],
@@ -385,15 +410,34 @@
             "lib.network",
             "lib.transport"
           ],
-          "imports": {
-            "components": [
-              "pkg.netstack",
-              "pkg.link"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "game.network-over-wire:game.network-over-wire.down",
+              "transformation": "game.network-over-wire.down"
+            },
+            {
+              "id": "game.network-over-wire:game.network-over-wire.up",
+              "transformation": "game.network-over-wire.up"
+            }
+          ],
+          "imports": [
+            {
+              "id": "game.network-over-wire<pkg.netstack",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:lib.network",
+                "pkg.netstack:pkg.netstack.medium"
+              ]
+            },
+            {
+              "id": "game.network-over-wire<pkg.link",
+              "from": "pkg.link",
+              "exports": [
+                "pkg.link:lib.transport",
+                "pkg.link:pkg.link.medium"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [],
           "interactions": [],
@@ -434,16 +478,35 @@
             "combat",
             "lib.network"
           ],
-          "imports": {
-            "components": [
-              "game.physics",
-              "game.combat-over-network",
-              "game.network-over-wire"
-            ],
-            "interactions": [],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [
+            {
+              "id": "game.server:game.server.attack",
+              "interaction": "game.server.attack"
+            }
+          ],
+          "imports": [
+            {
+              "id": "game.server<game.physics",
+              "from": "game.physics",
+              "exports": []
+            },
+            {
+              "id": "game.server<game.combat-over-network",
+              "from": "game.combat-over-network",
+              "exports": [
+                "game.combat-over-network:game.combat-over-network.down",
+                "game.combat-over-network:game.combat-over-network.up"
+              ]
+            },
+            {
+              "id": "game.server<game.network-over-wire",
+              "from": "game.network-over-wire",
+              "exports": [
+                "game.network-over-wire:game.network-over-wire.down",
+                "game.network-over-wire:game.network-over-wire.up"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [],
           "interactions": [
@@ -492,19 +555,45 @@
           "uses": [
             "combat"
           ],
-          "imports": {
-            "components": [
-              "game.physics",
-              "game.combat-over-network",
-              "game.network-over-wire",
-              "pkg.in-process"
-            ],
-            "interactions": [
-              "game.server.attack"
-            ],
-            "transformations": [],
-            "mediums": []
-          },
+          "exports": [],
+          "imports": [
+            {
+              "id": "game.client<game.physics",
+              "from": "game.physics",
+              "exports": []
+            },
+            {
+              "id": "game.client<game.combat-over-network",
+              "from": "game.combat-over-network",
+              "exports": [
+                "game.combat-over-network:game.combat-over-network.down",
+                "game.combat-over-network:game.combat-over-network.up"
+              ]
+            },
+            {
+              "id": "game.client<game.network-over-wire",
+              "from": "game.network-over-wire",
+              "exports": [
+                "game.network-over-wire:game.network-over-wire.down",
+                "game.network-over-wire:game.network-over-wire.up"
+              ]
+            },
+            {
+              "id": "game.client<pkg.in-process",
+              "from": "pkg.in-process",
+              "exports": [
+                "pkg.in-process:lib.in-process",
+                "pkg.in-process:pkg.in-process.medium"
+              ]
+            },
+            {
+              "id": "game.client<game.server",
+              "from": "game.server",
+              "exports": [
+                "game.server:game.server.attack"
+              ]
+            }
+          ],
           "implements": [],
           "languages": [],
           "interactions": [],
@@ -558,14 +647,16 @@
               "uses": [
                 "combat"
               ],
-              "imports": {
-                "components": [],
-                "interactions": [
-                  "game.server.attack"
-                ],
-                "transformations": [],
-                "mediums": []
-              },
+              "exports": [],
+              "imports": [
+                {
+                  "id": "game.client.input<game.server",
+                  "from": "game.server",
+                  "exports": [
+                    "game.server:game.server.attack"
+                  ]
+                }
+              ],
               "implements": [],
               "languages": [],
               "interactions": [],
@@ -585,12 +676,17 @@
         "uses": [
           "lib.network"
         ],
-        "imports": {
-          "components": [],
-          "interactions": [],
-          "transformations": [],
-          "mediums": []
-        },
+        "exports": [
+          {
+            "id": "pkg.netstack:lib.network",
+            "language": "lib.network"
+          },
+          {
+            "id": "pkg.netstack:pkg.netstack.medium",
+            "medium": "pkg.netstack.medium"
+          }
+        ],
+        "imports": [],
         "implements": [],
         "languages": [
           {
@@ -666,12 +762,17 @@
         "uses": [
           "lib.transport"
         ],
-        "imports": {
-          "components": [],
-          "interactions": [],
-          "transformations": [],
-          "mediums": []
-        },
+        "exports": [
+          {
+            "id": "pkg.link:lib.transport",
+            "language": "lib.transport"
+          },
+          {
+            "id": "pkg.link:pkg.link.medium",
+            "medium": "pkg.link.medium"
+          }
+        ],
+        "imports": [],
         "implements": [],
         "languages": [
           {
@@ -747,12 +848,17 @@
         "uses": [
           "lib.in-process"
         ],
-        "imports": {
-          "components": [],
-          "interactions": [],
-          "transformations": [],
-          "mediums": []
-        },
+        "exports": [
+          {
+            "id": "pkg.in-process:lib.in-process",
+            "language": "lib.in-process"
+          },
+          {
+            "id": "pkg.in-process:pkg.in-process.medium",
+            "medium": "pkg.in-process.medium"
+          }
+        ],
+        "imports": [],
         "implements": [],
         "languages": [
           {
@@ -803,7 +909,7 @@
     {
       "owner": "example",
       "data": {
-        "note": "W5: Server uses Network without importing the Component that defines it."
+        "note": "W5: Server uses Network without importing it."
       }
     }
   ]

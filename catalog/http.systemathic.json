@@ -9,12 +9,21 @@
       "uses": [
         "lib.http"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.http:lib.http",
+          "language": "lib.http"
+        },
+        {
+          "id": "pkg.http:pkg.http.exchange",
+          "interaction": "pkg.http.exchange"
+        },
+        {
+          "id": "pkg.http:pkg.http.medium",
+          "medium": "pkg.http.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

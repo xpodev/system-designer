@@ -293,7 +293,7 @@ def load(path: str | Path) -> System:
     return read(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-_IMPORTS = {"components": "importedComponents", "interactions": "importedInteractions", "transformations": "importedTransformations", "mediums": "importedMediums"}
+_EXPORTED = ("component", "interaction", "transformation", "language", "medium", "export")
 
 
 def _read_component(reader: _Reader, json: dict, parent: Element | None) -> Element | None:
@@ -302,9 +302,20 @@ def _read_component(reader: _Reader, json: dict, parent: Element | None) -> Elem
         return None
     for id in json["uses"]:
         reader.refer(component, "uses", id)
-    for key, imported in _IMPORTS.items():
-        for id in json["imports"].get(key, []):
-            reader.refer(component, imported, id)
+    for export in json["exports"]:
+        element = reader.create("Export", export["id"])
+        if element is not None:
+            reader.model.connect(component, "exports", element)
+            for end in _EXPORTED:
+                if end in export:
+                    reader.refer(element, end, export[end])
+    for import_ in json["imports"]:
+        element = reader.create("Import", import_["id"])
+        if element is not None:
+            reader.model.connect(component, "imports", element)
+            reader.refer(element, "from", import_["from"])
+            for id in import_["exports"]:
+                reader.refer(element, "exports", id)
     for id in json["implements"]:
         reader.refer(component, "implements", id)
     for language in json["languages"]:

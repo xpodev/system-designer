@@ -30,10 +30,11 @@ __all__ = [
     "ERROR", "WARNING", "Rule", "Profile", "Violation", "rule",
     "vocab", "ancestry", "siblings", "scope", "is_core", "is_extension",
     "leaf", "self_contained", "pure", "standalone", "shared", "dependencies",
+    "resolve", "imported", "imported_components", "offered",
     "what_language", "ends", "source", "target", "round_trip", "is_projection", "hows", "abstract_language", "abstract",
     "items", "interface", "implementations",
     "opacity", "mediation_acyclic", "projection_acyclic", "generic_level", "imports_acyclic",
-    "deployments_complete", "interactions_abstract",
+    "deployments_complete", "interactions_abstract", "exports_interfaces",
     "mediation_primitives", "mediation_depth", "mediations_realized",
     "standard_rules", "standard",
 ]
@@ -156,11 +157,51 @@ def siblings(component: Element) -> list[Element]:
     return [other for other in top if other is not component]
 
 
-def scope(component: Element) -> list[Element]:
-    """The Languages a Component may use: its own and its parents', and those of the Components it imports."""
+def resolve(export: Element) -> Element | None:
+    """What an Export makes reachable: its target, or, for a re-export, what the Export it re-exports resolves to."""
+    seen: list[Element] = []
+    while export is not None and export not in seen:
+        seen.append(export)
+        if export.export is None:
+            return next((target for end in _EXPORTED if (target := getattr(export, end)) is not None), None)
+        export = export.export
+    return None
+
+
+_EXPORTED = ("component", "interaction", "transformation", "language", "medium")
+
+
+def offered(component: Element, kind: str) -> list[Element]:
+    """What a Component exports of one kind ("Interaction", "Component", ...): its API, resolved."""
+    return _of_kind((resolve(export) for export in component.exports), kind)
+
+
+def imported(component: Element, kind: str) -> list[Element]:
+    """What a Component's Imports resolve to, of one kind ("Interaction", "Language", ...)."""
+    return _of_kind((resolve(export) for each in component.imports for export in each.exports), kind)
+
+
+def _of_kind(elements: Iterable[Element | None], kind: str) -> list[Element]:
     found: list[Element] = []
-    for owner in [*ancestry(component), *component.importedComponents]:
+    for element in elements:
+        if element is not None and element.kind == kind and element not in found:
+            found.append(element)
+    return found
+
+
+def imported_components(component: Element) -> list[Element]:
+    """The Components a Component imports: those its Imports are from, and those they resolve to."""
+    found = [getattr(each, "from") for each in component.imports if getattr(each, "from") is not None]  # `from` is a Python keyword
+    found += imported(component, "Component")
+    return list(dict.fromkeys(found))
+
+
+def scope(component: Element) -> list[Element]:
+    """The Languages a Component may use: its own and its parents', and those it imports."""
+    found: list[Element] = []
+    for owner in ancestry(component):
         found += [language for language in owner.languages if language not in found]
+    found += [language for language in imported(component, "Language") if language not in found]
     return found
 
 
@@ -175,15 +216,12 @@ def self_contained(component: Element) -> bool:
 
 def pure(component: Element) -> bool:
     """It imports nothing: it depends only on Languages."""
-    return not (component.importedComponents or component.importedInteractions or component.importedTransformations or component.importedMediums)
+    return not component.imports
 
 
 def dependencies(component: Element) -> list[Element]:
-    """The Components it imports from: those it imports, and those offering what it imports."""
-    found: list[Element] = list(component.importedComponents)
-    owners = [i.component for i in component.importedInteractions] + [t.component for t in component.importedTransformations] + [m.component for m in component.importedMediums]
-    found += [owner for owner in owners if owner is not None and owner not in found]
-    return found
+    """The Components it depends on: those it imports from, and those its Imports resolve to."""
+    return imported_components(component)
 
 
 def standalone(component: Element) -> bool:
@@ -210,7 +248,7 @@ def implementations(component: Element) -> list[Element]:
 
 def shared(component: Element) -> bool:
     """Its siblings import it, to run Instances of their own."""
-    return any(component in sibling.importedComponents for sibling in siblings(component))
+    return any(component in imported_components(sibling) for sibling in siblings(component))
 
 
 # -- Connections and Mediations -----------------------------------------------------------
@@ -430,7 +468,7 @@ def deployments_complete(system: System) -> Iterator[Violation]:
             if instance.of is None:
                 continue
             reached = {interaction for connection in instance.outgoing for interaction in connection.what}
-            for interaction in instance.of.importedInteractions:
+            for interaction in imported(instance.of, "Interaction"):
                 if interaction not in reached:
                     yield Violation([deployment, instance, interaction], f"in {deployment.name}, nothing serves {instance.name}'s {interaction.name}")
 
@@ -446,9 +484,26 @@ def interactions_abstract(system: System) -> Iterator[Violation]:
     """
     implementation = hows(system)
     for component in system.all("Component"):
-        for interaction in component.importedInteractions:
+        for interaction in imported(component, "Interaction"):
             if interaction.language in implementation:
                 yield Violation([component, interaction], f"{component.name} imports {interaction.name}, over {interaction.language.name}, which Mediations are over")
+
+
+@rule(severity=WARNING)
+def exports_interfaces(system: System) -> Iterator[Violation]:
+    """Only interfaces are exported: no Export makes reachable a Component that has children.
+
+    A Component's children are its implementation. Exporting one with children of its own
+    hands that implementation out as API: whoever imports it can place it, and depends on
+    how it is built.
+
+    To fix it, export an interface — a Component without children, offering what the API
+    needs — and keep the Component with children as its implementation, unexported.
+    """
+    for export in system.all("Export"):
+        target = resolve(export)
+        if target is not None and target.kind == "Component" and target.components:
+            yield Violation([export.exporter, target], f"{export.exporter.name} exports {target.name}, which has children: an implementation")
 
 
 def _mediums(system: System, names: Sequence[str]) -> set[Element]:
@@ -511,7 +566,7 @@ def mediations_realized(*mediums: str, severity: str = ERROR) -> Rule:
 
 standard_rules: tuple[Rule, ...] = (
     opacity, mediation_acyclic, projection_acyclic, generic_level,
-    imports_acyclic, deployments_complete, interactions_abstract,
+    imports_acyclic, deployments_complete, interactions_abstract, exports_interfaces,
 )
 
 #: Every standard rule that needs no arguments, at its default severity.

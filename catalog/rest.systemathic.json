@@ -9,12 +9,37 @@
       "uses": [
         "lib.rest"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.rest:lib.rest",
+          "language": "lib.rest"
+        },
+        {
+          "id": "pkg.rest:pkg.rest.get",
+          "interaction": "pkg.rest.get"
+        },
+        {
+          "id": "pkg.rest:pkg.rest.put",
+          "interaction": "pkg.rest.put"
+        },
+        {
+          "id": "pkg.rest:pkg.rest.create",
+          "interaction": "pkg.rest.create"
+        },
+        {
+          "id": "pkg.rest:pkg.rest.delete",
+          "interaction": "pkg.rest.delete"
+        },
+        {
+          "id": "pkg.rest:pkg.rest.transfer",
+          "interaction": "pkg.rest.transfer"
+        },
+        {
+          "id": "pkg.rest:pkg.rest.medium",
+          "medium": "pkg.rest.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

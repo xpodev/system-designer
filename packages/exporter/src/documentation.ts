@@ -6,7 +6,7 @@
  * Unlike a Specification it is not a contract: it has no ids to cite and does not read back.
  * It says the same facts in prose — a Relationship as what each side has of the other.
  */
-import { boundOf, describe as describeElement, mediationStack, nameOf, parameters, type Graph } from "@systemathic/core";
+import { boundOf, describe as describeElement, mediationStack, nameOf, parameters, resolve, type Graph } from "@systemathic/core";
 import { descriptions } from "@systemathic/documentation";
 import type { SystemContext } from "@systemathic/tool";
 import type { Profile } from "@systemathic/verifier";
@@ -88,7 +88,9 @@ export interface DeploymentDoc extends Documented {
 
 export interface ComponentDoc extends Documented {
   readonly uses: readonly string[];
-  /** Everything it imports, by name, with what kind of thing it is: `attack (Interaction)`. */
+  /** Everything it exports, by name, with what kind of thing it is: `attack (Interaction)`, and where a re-export comes from. */
+  readonly exports: readonly string[];
+  /** Each Component it imports from, and the Exports it takes: `Server: attack (Interaction)`. */
   readonly imports: readonly string[];
   /** The Components it implements. */
   readonly implements: readonly string[];
@@ -241,14 +243,24 @@ function deployment(described: Described, id: string): DeploymentDoc {
   };
 }
 
-const IMPORTS = ["importedComponents", "importedInteractions", "importedTransformations", "importedMediums"] as const;
+/** An Export, by what it resolves to: `attack (Interaction)`, and `, from Inner` for a re-export. */
+function exported(graph: Graph, id: string): string {
+  const target = resolve(graph, id);
+  const [again] = graph.navigate(id, "export");
+  const from = again === undefined ? "" : `, from ${name(graph, graph.navigate(again, "exporter")[0])}`;
+  return target === undefined ? "nothing" : `${name(graph, target)} (${graph.get(target).entity}${from})`;
+}
 
 function component(described: Described, id: string): ComponentDoc {
   const { graph } = described;
   return {
     ...documented(described, id),
     uses: graph.navigate(id, "uses").map((l) => name(graph, l)),
-    imports: IMPORTS.flatMap((end) => graph.navigate(id, end).map((item) => `${name(graph, item)} (${graph.get(item).entity})`)),
+    exports: graph.navigate(id, "exports").map((e) => exported(graph, e)),
+    imports: graph.navigate(id, "imports").map((m) => {
+      const taken = graph.navigate(m, "exports").map((e) => exported(graph, e));
+      return `${name(graph, graph.navigate(m, "from")[0])}${taken.length > 0 ? `: ${taken.join(", ")}` : ""}`;
+    }),
     implements: graph.navigate(id, "implements").map((c) => name(graph, c)),
     languages: graph.navigate(id, "languages").map((l) => language(described, l)),
     interactions: graph.navigate(id, "interactions").map((i) => interaction(described, i)),
@@ -314,6 +326,7 @@ export function documentationMarkdown(doc: Documentation): string {
     heading(depth, component.name);
     prose(component.description);
     list("Uses", component.uses);
+    list("Exports", component.exports);
     list("Imports", component.imports);
     if (component.implements.length) list("Implements", component.implements);
     line("");

@@ -9,12 +9,21 @@
       "uses": [
         "lib.sql"
       ],
-      "imports": {
-        "components": [],
-        "interactions": [],
-        "transformations": [],
-        "mediums": []
-      },
+      "exports": [
+        {
+          "id": "pkg.sql:lib.sql",
+          "language": "lib.sql"
+        },
+        {
+          "id": "pkg.sql:pkg.sql.execute",
+          "interaction": "pkg.sql.execute"
+        },
+        {
+          "id": "pkg.sql:pkg.sql.medium",
+          "medium": "pkg.sql.medium"
+        }
+      ],
+      "imports": [],
       "implements": [],
       "languages": [
         {

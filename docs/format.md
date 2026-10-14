@@ -15,7 +15,8 @@ not read; a `systemathic/2` file is brought forward by a migration script (to be
     "root": {
       "id": "game", "name": "Game",
       "uses": [],
-      "imports": { "components": ["pkg.netstack"], "interactions": [], "transformations": [], "mediums": [] },
+      "exports": [],
+      "imports": [{ "id": "game<pkg.netstack", "from": "pkg.netstack", "exports": ["pkg.netstack:lib.network", "pkg.netstack:pkg.netstack.medium"] }],
       "implements": [],
       "languages": [
         { "id": "combat", "name": "Combat", "extends": ["core", "fighting"],
@@ -43,7 +44,8 @@ not read; a `systemathic/2` file is brought forward by a migration script (to be
       ],
       "components": [
         { "id": "game.server", "name": "Server", "uses": ["combat"],
-          "imports": { "components": [], "interactions": [], "transformations": [], "mediums": [] },
+          "exports": [{ "id": "game.server:game.server.attack", "interaction": "game.server.attack" }],
+          "imports": [{ "id": "game.server<game.physics", "from": "game.physics", "exports": [] }],
           "implements": [],
           "languages": [],
           "interactions": [
@@ -71,9 +73,12 @@ not read; a `systemathic/2` file is brought forward by a migration script (to be
   an Entity inside its Language, a Language, a Function or a child inside its Component,
   an Instance inside its Deployment — and everything else refers to it by `id`.
 - **The System** has its `root` Component, and the `packages` it brought in beside it.
-- **A Component's `imports`** list the Components, Interactions, Transformations and Mediums
-  it imports; `uses` lists the Languages it works in; `implements` the Components it
-  implements.
+- **A Component's `exports`** are its Exports, each with its `id` and what it exports under
+  one key: `component`, `interaction`, `transformation`, `language`, `medium`, or `export`
+  for a re-export of a child's Export. **Its `imports`** are its Imports, each with its `id`,
+  the Component it is `from`, and the `exports` it takes, by id — none for an Import of the
+  Component as a whole. `uses` lists the Languages it works in; `implements` the Components
+  it implements.
 - **Ids** are strings, unique in the file.
 - **Names** are strings. Two things with the same name share one Name, as the Kernel says.
   An end's `name` may be `null`: an unnamed end, which cannot be navigated to.
