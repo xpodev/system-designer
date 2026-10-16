@@ -11,7 +11,7 @@
  */
 import type { Effect, Edit, EditSession } from "@systemathic/editing";
 import { ArgumentError, type Operation } from "@systemathic/editors";
-import type { SystemContext } from "@systemathic/tool";
+import type { SystemContext, ToolSystem } from "@systemathic/tool";
 
 /** Who the attachment the Descriptions are kept in belongs to. */
 export const ATTACHMENT_OWNER = "documentation";
@@ -46,7 +46,11 @@ function stored(context: SystemContext): Readonly<Record<string, string>> {
 
 /** Whether `id` is something that can be described, in this context. */
 export function describable(context: SystemContext, id: string): boolean {
-  return context.design.has(id) && SUBJECTS.has(context.design.get(id).entity);
+  return isSubject(context.design, id);
+}
+
+function isSubject(design: ToolSystem["design"], id: string): boolean {
+  return design.has(id) && SUBJECTS.has(design.get(id).entity);
 }
 
 /** The Descriptions of the things in the System, by id. */
@@ -57,6 +61,21 @@ export function descriptions(context: SystemContext): ReadonlyMap<string, string
 /** The Description of `id`, if it has one. */
 export function descriptionOf(context: SystemContext, id: string): string | undefined {
   return describable(context, id) ? stored(context)[id] : undefined;
+}
+
+/**
+ * `system` as it is saved: the Descriptions of Subjects no longer there, kept only so undo can
+ * bring them back, are left behind with the History.
+ */
+export function saved(system: ToolSystem): ToolSystem {
+  const attachments = system.attachments.flatMap((attachment) => {
+    if (attachment.owner !== ATTACHMENT_OWNER) return [attachment];
+    const all = (attachment.data as Partial<Stored> | undefined)?.descriptions;
+    if (typeof all !== "object" || all === null) return [attachment];
+    const kept = Object.fromEntries(Object.entries(all).filter(([id]) => isSubject(system.design, id)));
+    return Object.keys(kept).length > 0 ? [{ owner: ATTACHMENT_OWNER, data: { ...attachment.data as object, descriptions: kept } }] : [];
+  });
+  return { design: system.design, attachments };
 }
 
 /** Sets the Description of `subject`, or removes it; the Effect says how to put back what was there. */

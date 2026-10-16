@@ -14,7 +14,7 @@ import { exportSelection, importPackage, parsePackage, type Catalog } from "@sys
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
 import { configurationEditor } from "@systemathic/configurations";
-import { documentationEditor } from "@systemathic/documentation";
+import { documentationEditor, saved } from "@systemathic/documentation";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
 import { perspectives, view, type Perspective, type View } from "@systemathic/perspectives";
@@ -123,7 +123,7 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const file = path === undefined ? hosted.path : this.store.resolve(path);
     if (file === undefined) throw new HostError(400, "this System has no file yet: save it to a path");
-    await this.store.write(file, JSON.stringify(writeSystem(save(hosted.target.context)), null, 2) + "\n");
+    await this.store.write(file, JSON.stringify(writeSystem(saved(save(hosted.target.context))), null, 2) + "\n");
     hosted.path = file;
     hosted.saved = hosted.target.history.edits.length;
     this.emit({ type: "contexts" });
@@ -195,7 +195,7 @@ export class Host implements HostApi {
   }
 
   async system(context: string): Promise<SystemFile> {
-    return writeSystem(save(this.get(context).target.context));
+    return writeSystem(saved(save(this.get(context).target.context)));
   }
 
   async history(context: string): Promise<EditInfo[]> {
