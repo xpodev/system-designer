@@ -1,10 +1,11 @@
-# Bootstrap: what the design says that the tool cannot yet
+# Roadmap: what the design says that the tool does not yet
 
 The tool's design is [system-designer.systemathic.json](system-designer.systemathic.json),
-verified against [system-designer.rules.py](system-designer.rules.py). It is written with
-the current tool, so wherever the design says more than the tool can express, the System holds
-a stand-in. This is the list of those stand-ins, and of what is still open in the design. The
-new tool is done when it opens its own design with none of them, and the profile passes.
+verified against [system-designer.rules.py](system-designer.rules.py). The tool was rebuilt
+from it on the six-layer core and `systemathic/3`, and opens and verifies it. Wherever the
+design still says more than the tool can express, the System holds a stand-in. This is the list
+of those stand-ins, of how the tool's own architecture still differs from the design, and of
+what is still open in the design.
 
 ## Foundation changes
 
@@ -64,14 +65,14 @@ Beyond the foundation changes, the tool itself:
 - ~~Edit `implements`, ranges, no-output Interactions and Configurations choosing
   implementations~~: done, through ComponentEditor, DeploymentEditor, FunctionEditor and the
   configurations package's ConfigurationEditor.
-- The UI, on the new core and format: the packages beneath it are rebuilt; the UI is not yet.
+- ~~The UI, on the new core and format~~: done, with Exports and Imports.
 - The tool's own architecture as the design draws it: Edits as data with a single
   `Editor.apply`, Readers that take a System, structural errors as StdLib Formula Assertions,
   and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
   the current shape (Effects on a History; the Host holding open Systems).
 - Removing a thing removes what depends on it, metadata included. Today removing an Entity leaves
-  its Relationships dangling, and removing a Component leaves its Description behind, where the
-  Documentation editor cannot reach it.
+  its Relationships dangling. (A removed thing's Description is no longer saved; it is kept only
+  for undo.)
 - Readers take a System, not a Target; structural errors are the Systemathic formulas verified as
   StdLib Formula Assertions.
 - Each metadata provider stores and loads its own metadata; the Repository knows none.

@@ -9,7 +9,7 @@ for implementers. See [docs/motivation.md](docs/motivation.md), the formal model
 verifies against its own profile, [docs/system-designer.rules.py](docs/system-designer.rules.py)
 (`pnpm check-self`). Its Specification is
 [docs/system-designer.specification.md](docs/system-designer.specification.md), and what it says
-that the tool cannot yet is in [docs/bootstrap.md](docs/bootstrap.md).
+that the tool does not yet is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Build and test
 
