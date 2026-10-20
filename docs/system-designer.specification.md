@@ -991,7 +991,9 @@ This is a specification: what an implementation of this design may contain, and 
 ## Requirements {#requirements}
 
 - [R:opacity] **error** `opacity`: Every mediated Connection is opaque: what uses and what offers do not know how they are connected. <!-- std -->
-- [R:mediation_acyclic] **error** `mediation_acyclic`: No Language is mediated, eventually, over itself. <!-- std -->
+- [R:mediation_separate] **error** `mediation_separate`: Every Mediation joins two levels: its What's Language and its Medium's are not one, nor does either extend the other. <!-- std -->
+- [R:medium_blind] **error** `medium_blind`: No Medium knows what it carries: the Component defining a Medium uses no Language mediated over it. <!-- std -->
+- [R:mediators_minimal] **error** `mediators_minimal`: A mediator knows its two Languages, and only them: a Component realizing a Mediation uses nothing else. <!-- std -->
 - [R:projection_acyclic] **error** `projection_acyclic`: No Language is projected, eventually, into itself. <!-- std -->
 - [R:generic_level] **error** `generic_level`: All arguments of a generic instantiation belong to one Language. <!-- std -->
 - [R:imports_acyclic] **warning** `imports_acyclic`: No Component depends, eventually, on itself through its siblings: no two import from each other. <!-- std -->

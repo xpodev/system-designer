@@ -2058,15 +2058,46 @@ without touching either end. An end that speaks the Medium's Language is coupled
 To fix it, stop the end using the Medium's Language, and move whatever needed it into the
 realization.
 
-### `mediation_acyclic` — error, standard
+### `mediation_separate` — error, standard
 
-No Language is mediated, eventually, over itself.
+Every Mediation joins two levels: its What's Language and its Medium's are not one, nor does either extend the other.
 
-Mediations go downward, from a What to the Medium carrying it: Combat over Network over
-Wire. Following them from a What's Language to its Medium's must never come back to where
-it started. A cycle means some Language is, eventually, its own implementation.
+A Mediation is a step down in abstraction: what is carried, over what carries it. JSON
+over Text: the Text holds the JSON. A Language over itself, or over one it extends or that
+extends it, carries nothing across: the two are one level.
 
-To fix it, find the Mediation in the cycle that points upward, and remove it.
+A level is a position in a stack, not a property of a Language. The same Language may be
+mediated more than once in one stack, as Text is in `Name / Text / JSON / Text / HTTP`,
+and above another in one stack and below it in the next; so each Mediation is checked
+with its own two Languages only.
+
+To fix it, mediate over a Medium of another Language, or remove the Mediation.
+
+### `medium_blind` — error, standard
+
+No Medium knows what it carries: the Component defining a Medium uses no Language mediated over it.
+
+The other half of opacity. The ends of a Connection do not know how they are connected,
+and what connects them does not know what it carries: a Text does not know it holds
+JSON, nor TCP that it carries HTTP. Only the realization knows both.
+
+A Medium that knows its What reaches up a level, and serves only that What.
+
+To fix it, stop the Medium's Component using the What's Language, and move whatever
+needed it into the realization.
+
+### `mediators_minimal` — error, standard
+
+A mediator knows its two Languages, and only them: a Component realizing a Mediation uses nothing else.
+
+Only the realization of a Mediation knows both of its levels, and it needs nothing
+more: CombatOverNetwork knows Combat and Network. A mediator that knows a third Language
+mixes in another level or another concern; one realizing Mediations between different
+pairs of Languages is several mediators in one. Between one pair, both ways are one
+mediator: Text over JSON, and JSON over Text.
+
+To fix it, give each pair of Languages a mediator of its own, and move whatever else the
+Component does elsewhere.
 
 ### `projection_acyclic` — error, standard
 

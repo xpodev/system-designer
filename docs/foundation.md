@@ -816,13 +816,17 @@ in a System, not of the Language itself: `Network` is not abstract in the game, 
   the model constrains the real system. Realizations compose down a stack, and each
   `up`'s failures stay with the Mediation where they arise. The seven layers of a network
   stack are one such stack, written out.
-- **The mediation graph:** Languages and Mediations form a directed graph from what to
-  how. It is a DAG, not a tree: a Language may be mediated over several Languages, and
-  several over a shared one.
+- **Levels:** a Mediation is a step down in abstraction, from what is carried to what carries
+  it. A level is a position in a stack, not a property of a Language: JSON is above Text where
+  Text carries it, and below Text where it holds the Text, as in `Name / Text / JSON / Text /
+  HTTP / TCP`. The same Language may be at several levels, in one stack or in many, so
+  Languages and Mediations form no order of their own; the model requires none, and keeping
+  two levels apart is for rules (see *Standard rules*).
 - **Opacity:** for a mediated Connection, ideally neither end's Component uses any
   Language below its What's: what uses and what offers do not know how they are
   connected. They import the realization; only the Deployment, and the realization,
-  know the how.
+  know the how. And the other way: a Medium does not know what it carries. Only a
+  realization knows both of its levels, and nothing else.
 - **Two swaps**, both leaving the ends untouched: change the how (`Network` → a
   `WebSocket` Medium, with a realization of its own), or change the realization (by-ID →
   by-value over `Network`, different Transformations between the same Languages).
@@ -909,7 +913,7 @@ def core_is_abstract(system: System):
     if not abstract(core):
         yield Violation(core, "Core must never be an implementation detail")
 
-profile = Profile(core_is_core, core_is_abstract, opacity, mediation_acyclic)
+profile = Profile(core_is_core, core_is_abstract, opacity, medium_blind)
 ```
 
 - A **rule** yields violations, each naming the offending element, rather than failing
@@ -936,7 +940,9 @@ System's design rules reach an implementer as precisely as the System itself.
 | Rule | Checks | Default severity |
 |------|--------|------------------|
 | `opacity` | Every mediated Connection is opaque (see *Stacks*). | Error |
-| `mediation_acyclic` | No Language is mediated, eventually, over itself. | Error |
+| `mediation_separate` | Every Mediation joins two levels: its What's Language and its Medium's are not one, nor does either extend the other. | Error |
+| `medium_blind` | No Medium knows what it carries: the Component defining a Medium uses no Language mediated over it. | Error |
+| `mediators_minimal` | A mediator knows its two Languages, and only them: a Component realizing a Mediation uses nothing else. | Error |
 | `projection_acyclic` | No Language is projected, eventually, into itself. | Error |
 | `generic_level` | All arguments of a generic instantiation belong to one Language. | Error |
 | `imports_acyclic` | No Component depends, eventually, on itself through its siblings' imports — no two Components import from each other. | Warning |

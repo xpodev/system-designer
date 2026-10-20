@@ -56,6 +56,29 @@ def find(node, id: str) -> dict:
     return None  # type: ignore[return-value]
 
 
+def medium_package(key: str, name: str) -> dict:
+    """A package defining one Language and a Medium over it, exporting both."""
+    language, call, medium = f"lib.{key}", f"pkg.{key}.carry", f"pkg.{key}.medium"
+    return {
+        "id": f"pkg.{key}", "name": name, "uses": [language], "imports": [], "implements": [],
+        "exports": [{"id": f"pkg.{key}:{language}", "language": language}, {"id": f"pkg.{key}:{medium}", "medium": medium}],
+        "languages": [{"id": language, "name": name, "extends": [], "entities": [{"id": f"{language}.value", "name": "Value", "extends": []}], "relationships": [], "formulas": []}],
+        "interactions": [{"id": call, "name": "carry", "language": language, "parameters": [{"id": f"{call}.value", "name": "value", "type": f"{language}.value"}], "output": f"{language}.value"}],
+        "transformations": [], "mediums": [{"id": medium, "name": name, "language": language, "call": call}],
+        "deployments": [], "components": [],
+    }
+
+
+def with_stack(game: dict, *mediums: str) -> dict:
+    """The game, with client 1's attacks mediated over the given Mediums, top down: Text and JSON, or the game's own."""
+    file = copy.deepcopy(game)
+    file["design"]["packages"] += [medium_package("text", "Text"), medium_package("json", "JSON")]
+    find(file, "game")["imports"] += [{"id": f"game<{k}", "from": f"pkg.{k}", "exports": [f"pkg.{k}:lib.{k}", f"pkg.{k}:pkg.{k}.medium"]} for k in ("text", "json")]
+    stack = [{"id": f"m{i}", "how": f"pkg.{how}.medium", "down": None, "up": None} for i, how in enumerate(mediums)]
+    find(file, "game.online.client-1-attacks")["mediations"] = stack
+    return file
+
+
 def found(file: dict, *rules) -> dict[str, list[str]]:
     system = read(file)
     return {r.name: [v.message for v in r(system)] for r in (rules or standard.rules) if r(system)}
@@ -156,6 +179,31 @@ class Standard(unittest.TestCase):
         find(file, "game")["transformations"] += [back, forward, onward]
         find(file, "game")["uses"] += ["core", "fighting", "combat"]
         self.assertEqual(found(file)["projection_acyclic"], ["projected into themselves: Combat, Core, Fighting"])
+
+    def test_a_language_may_recur_in_a_stack(self):
+        file = with_stack(GAME, "text", "json", "text", "netstack")
+        self.assertEqual(found(file), {})
+
+    def test_mediation_separate(self):
+        file = with_stack(GAME, "text", "text", "netstack")
+        self.assertEqual(found(file)["mediation_separate"], ["Text is mediated over itself"])
+        file = with_stack(GAME, "text", "json", "netstack")
+        find(file, "lib.json")["extends"].append("lib.text")
+        self.assertEqual(found(file)["mediation_separate"], ["Text is mediated over JSON, and one extends the other"])
+
+    def test_medium_blind(self):
+        file = copy.deepcopy(GAME)
+        find(file, "pkg.netstack")["uses"].append("combat")
+        self.assertEqual(found(file)["medium_blind"], ["NetStack knows Combat, which its Medium Network carries"])
+
+    def test_mediators_minimal(self):
+        file = copy.deepcopy(GAME)
+        find(file, "game.combat-over-network")["uses"].append("lib.transport")
+        self.assertEqual(found(file)["mediators_minimal"], ["CombatOverNetwork mediates between Combat and Network, and knows Transport too"])
+        file = copy.deepcopy(GAME)
+        for mediation in find(file, "game.online.client-1-attacks")["mediations"]:
+            mediation["down"] = "game.combat-over-network.down"
+        self.assertEqual(found(file)["mediators_minimal"], ["CombatOverNetwork mediates between Combat and Network, Network and Transport"])
 
     def test_deployments_complete(self):
         file = copy.deepcopy(GAME)
@@ -268,7 +316,7 @@ class RuleHost(unittest.TestCase):
     def test_runs_the_tool_designs_own_profile(self):
         result = self.run_host("run", str(DOCS / "system-designer.rules.py"), str(DOCS / "system-designer.systemathic.json"))
         self.assertEqual(result["profile"], "profile")
-        self.assertEqual(len(result["rules"]), 17)
+        self.assertEqual(len(result["rules"]), 19)
         self.assertEqual(result["violations"], [])
         self.assertEqual(result["failures"], [])
 
@@ -282,7 +330,7 @@ class RuleHost(unittest.TestCase):
     def test_describes_a_script(self):
         result = host.describe("std")
         self.assertEqual([p["name"] for p in result["profiles"]], ["standard"])
-        self.assertEqual(len(result["rules"]), 8)
+        self.assertEqual(len(result["rules"]), 10)
         opacity = result["rules"][0]
         self.assertEqual(opacity["about"], "Every mediated Connection is opaque: what uses and what offers do not know how they are connected.")
         self.assertIn("This is what makes a how swappable", opacity["doc"])

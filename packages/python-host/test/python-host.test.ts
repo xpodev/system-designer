@@ -16,7 +16,7 @@ describe("RuleHost", () => {
   it("verifies the tool's design against its own profile", async () => {
     const profile = await verifier.profile({ path: "docs/system-designer.rules.py" });
     expect(profile.rules.map((rule) => rule.name)).toContain("readers_dont_edit");
-    expect(profile.rules).toHaveLength(17);
+    expect(profile.rules).toHaveLength(19);
     const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
     expect(run.violations).toEqual([]);

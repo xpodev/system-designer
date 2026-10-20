@@ -33,7 +33,7 @@ __all__ = [
     "resolve", "imported", "imported_components", "offered",
     "what_language", "ends", "source", "target", "round_trip", "is_projection", "hows", "abstract_language", "abstract",
     "items", "interface", "implementations",
-    "opacity", "mediation_acyclic", "projection_acyclic", "generic_level", "imports_acyclic",
+    "opacity", "mediation_separate", "medium_blind", "mediators_minimal", "projection_acyclic", "generic_level", "imports_acyclic",
     "deployments_complete", "interactions_abstract", "exports_interfaces",
     "mediation_primitives", "mediation_depth", "mediations_realized",
     "standard_rules", "standard",
@@ -385,23 +385,89 @@ def opacity(system: System) -> Iterator[Violation]:
 
 
 @rule(severity=ERROR)
-def mediation_acyclic(system: System) -> Iterator[Violation]:
-    """No Language is mediated, eventually, over itself.
+def mediation_separate(system: System) -> Iterator[Violation]:
+    """Every Mediation joins two levels: its What's Language and its Medium's are not one, nor does either extend the other.
 
-    Mediations go downward, from a What to the Medium carrying it: Combat over Network over
-    Wire. Following them from a What's Language to its Medium's must never come back to where
-    it started. A cycle means some Language is, eventually, its own implementation.
+    A Mediation is a step down in abstraction: what is carried, over what carries it. JSON
+    over Text: the Text holds the JSON. A Language over itself, or over one it extends or that
+    extends it, carries nothing across: the two are one level.
 
-    To fix it, find the Mediation in the cycle that points upward, and remove it.
+    A level is a position in a stack, not a property of a Language. The same Language may be
+    mediated more than once in one stack, as Text is in `Name / Text / JSON / Text / HTTP`,
+    and above another in one stack and below it in the next; so each Mediation is checked
+    with its own two Languages only.
+
+    To fix it, mediate over a Medium of another Language, or remove the Mediation.
     """
-    edges: dict[Element, list[Element]] = {}
+    seen: set[tuple[Element, Element]] = set()
     for mediation in system.all("Mediation"):
         what = what_language(mediation)
         how = mediation.how.language if mediation.how is not None else None
-        if what is not None and how is not None:
-            edges.setdefault(what, []).append(how)
-    for cycle in _cycles(system.all("Language"), lambda l: edges.get(l, [])):
-        yield Violation(cycle, f"mediated over themselves: {_names(cycle)}")
+        if what is None or how is None or (what, how) in seen:
+            continue
+        seen.add((what, how))
+        if what is how:
+            yield Violation([mediation.connection, mediation], f"{what.name} is mediated over itself")
+        elif how in vocab(what) or what in vocab(how):
+            yield Violation([mediation.connection, mediation], f"{what.name} is mediated over {how.name}, and one extends the other")
+
+
+@rule(severity=ERROR)
+def medium_blind(system: System) -> Iterator[Violation]:
+    """No Medium knows what it carries: the Component defining a Medium uses no Language mediated over it.
+
+    The other half of opacity. The ends of a Connection do not know how they are connected,
+    and what connects them does not know what it carries: a Text does not know it holds
+    JSON, nor TCP that it carries HTTP. Only the realization knows both.
+
+    A Medium that knows its What reaches up a level, and serves only that What.
+
+    To fix it, stop the Medium's Component using the What's Language, and move whatever
+    needed it into the realization.
+    """
+    seen: set[tuple[Element, Element]] = set()
+    for mediation in system.all("Mediation"):
+        what, medium = what_language(mediation), mediation.how
+        if what is None or medium is None or medium.component is None or (medium, what) in seen:
+            continue
+        seen.add((medium, what))
+        spoken = {language for used in medium.component.uses for language in vocab(used)}
+        if what in spoken:
+            yield Violation([medium.component, mediation], f"{medium.component.name} knows {what.name}, which its Medium {medium.name} carries")
+
+
+@rule(severity=ERROR)
+def mediators_minimal(system: System) -> Iterator[Violation]:
+    """A mediator knows its two Languages, and only them: a Component realizing a Mediation uses nothing else.
+
+    Only the realization of a Mediation knows both of its levels, and it needs nothing
+    more: CombatOverNetwork knows Combat and Network. A mediator that knows a third Language
+    mixes in another level or another concern; one realizing Mediations between different
+    pairs of Languages is several mediators in one. Between one pair, both ways are one
+    mediator: Text over JSON, and JSON over Text.
+
+    To fix it, give each pair of Languages a mediator of its own, and move whatever else the
+    Component does elsewhere.
+    """
+    pairs: dict[Element, list[frozenset[Element]]] = {}
+    for mediation in system.all("Mediation"):
+        what = what_language(mediation)
+        how = mediation.how.language if mediation.how is not None else None
+        if what is None or how is None:
+            continue
+        for realization in (mediation.down, mediation.up):
+            if realization is not None and realization.component is not None:
+                found = pairs.setdefault(realization.component, [])
+                if frozenset((what, how)) not in found:
+                    found.append(frozenset((what, how)))
+    for mediator, found in pairs.items():
+        if len(found) > 1:
+            yield Violation(mediator, f"{mediator.name} mediates between {', '.join(_names(pair).replace(', ', ' and ') for pair in found)}")
+            continue
+        known = {language for each in found[0] for language in vocab(each)}
+        extra = [language for language in mediator.uses if language not in known]
+        if extra:
+            yield Violation(mediator, f"{mediator.name} mediates between {_names(found[0]).replace(', ', ' and ')}, and knows {_names(extra)} too")
 
 
 @rule(severity=ERROR)
@@ -565,7 +631,7 @@ def mediations_realized(*mediums: str, severity: str = ERROR) -> Rule:
 
 
 standard_rules: tuple[Rule, ...] = (
-    opacity, mediation_acyclic, projection_acyclic, generic_level,
+    opacity, mediation_separate, medium_blind, mediators_minimal, projection_acyclic, generic_level,
     imports_acyclic, deployments_complete, interactions_abstract, exports_interfaces,
 )
 
