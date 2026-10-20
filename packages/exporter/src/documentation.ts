@@ -88,7 +88,7 @@ export interface DeploymentDoc extends Documented {
 
 export interface ComponentDoc extends Documented {
   readonly uses: readonly string[];
-  /** Everything it exports, by name, with what kind of thing it is: `attack (Interaction)`, and where a re-export comes from. */
+  /** Everything it exports, by name, with what kind of thing it is: `attack (Interaction)`. */
   readonly exports: readonly string[];
   /** Each Component it imports from, and the Exports it takes: `Server: attack (Interaction)`. */
   readonly imports: readonly string[];
@@ -243,12 +243,10 @@ function deployment(described: Described, id: string): DeploymentDoc {
   };
 }
 
-/** An Export, by what it resolves to: `attack (Interaction)`, and `, from Inner` for a re-export. */
+/** An Export, by what it resolves to: `attack (Interaction)`. */
 function exported(graph: Graph, id: string): string {
   const target = resolve(graph, id);
-  const [again] = graph.navigate(id, "export");
-  const from = again === undefined ? "" : `, from ${name(graph, graph.navigate(again, "exporter")[0])}`;
-  return target === undefined ? "nothing" : `${name(graph, target)} (${graph.get(target).entity}${from})`;
+  return target === undefined ? "nothing" : `${name(graph, target)} (${graph.get(target).entity})`;
 }
 
 function component(described: Described, id: string): ComponentDoc {

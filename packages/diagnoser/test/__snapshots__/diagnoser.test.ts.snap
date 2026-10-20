@@ -223,11 +223,18 @@ exports[`diagnoser > diagnoses broken/w9.systemathic.json 1`] = `
   "found": [
     {
       "check": "W9",
-      "message": "A nested Component imports only from its siblings, from what a Component it is nested in imports from, or from a Component that it, or one it is nested in, imports",
+      "message": "An Import takes only Exports of the Component it is from",
+      "subjects": [
+        "game.physics<game.client",
+        "game.server:game.server.attack",
+      ],
+    },
+    {
+      "check": "W9",
+      "message": "An imported Interaction is over a Language the importer uses",
       "subjects": [
         "game.physics",
-        "game",
-        "game.physics<game.client.input",
+        "game.server.attack",
       ],
     },
   ],
@@ -240,7 +247,7 @@ exports[`diagnoser > diagnoses broken/w10.systemathic.json 1`] = `
   "found": [
     {
       "check": "W10",
-      "message": "The Instance a Connection goes to offers its What: its own, or one it exports",
+      "message": "The Instance a Connection goes to offers its What: its own, or one of an API it exports",
       "subjects": [
         "game.online.client-2-attacks",
         "game.server.attack",

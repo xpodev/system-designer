@@ -159,14 +159,8 @@ def siblings(component: Element) -> list[Element]:
 
 
 def resolve(export: Element) -> Element | None:
-    """What an Export makes reachable: its target, or, for a re-export, what the Export it re-exports resolves to."""
-    seen: list[Element] = []
-    while export is not None and export not in seen:
-        seen.append(export)
-        if export.export is None:
-            return next((target for end in _EXPORTED if (target := getattr(export, end)) is not None), None)
-        export = export.export
-    return None
+    """What an Export makes reachable: its target."""
+    return next((target for end in _EXPORTED if (target := getattr(export, end)) is not None), None)
 
 
 _EXPORTED = ("component", "interaction", "transformation", "language", "medium")
@@ -503,19 +497,17 @@ def generic_level(system: System) -> Iterator[Violation]:
 
 @rule(severity=WARNING)
 def imports_acyclic(system: System) -> Iterator[Violation]:
-    """No Component depends, eventually, on itself through its siblings: no two import from each other.
+    """No Component depends, eventually, on itself: no two import from each other, wherever they are.
 
     A Component's dependencies are its imports. Two Components importing from each other are
     two dependencies, not one two-way link, and neither can be understood, replaced or
-    deployed without the other.
+    deployed without the other. That they may talk both ways is another matter: a reply is
+    the callee's, and a notification goes through an interface the caller owns.
 
-    To fix it, move what both need into a Component of its own, which both import.
+    To fix it, move what both need into a Component of its own, which both import, or turn
+    one direction around, through an interface.
     """
-    def edges(component: Element) -> list[Element]:
-        beside = set(siblings(component))
-        return [other for other in dependencies(component) if other in beside]
-
-    for cycle in _cycles(system.all("Component"), edges):
+    for cycle in _cycles(system.all("Component"), dependencies):
         yield Violation(cycle, f"depend on each other: {_names(cycle)}")
 
 

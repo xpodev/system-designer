@@ -274,7 +274,7 @@ describe("the UI", () => {
     expect(editor.querySelectorAll(".parameter")).toHaveLength(1);
   });
 
-  it("exports a Component's API, and reaches inside another through what it exports", async () => {
+  it("exports a Component's API, and reaches inside another, wherever it is, through what that one exports", async () => {
     const id = await openGame("exports.systemathic.json");
     const session = (await host.startSession(id, "test")).session;
     await act(async () => {
@@ -287,10 +287,10 @@ describe("the UI", () => {
     const reach = [...editor.querySelectorAll<HTMLSelectElement>(".picker")].find((p) => p.textContent?.includes("Reach…"))!;
     fireEvent.change(reach, { target: { value: "game.server.inner.parry" } });
     await waitFor(async () => {
-      const server = (await host.system(id)).design.root.components.find((c: { id: string }) => c.id === "game.server") as { exports: { export?: string }[] };
-      expect(server.exports.some((e) => e.export === "game.server.inner:game.server.inner.parry")).toBe(true);
+      const client = (await host.system(id)).design.root.components.find((c: { id: string }) => c.id === "game.client") as { imports: { from: string; exports: string[] }[] };
+      expect(client.imports.find((i) => i.from === "game.server.inner")?.exports).toEqual(["game.server.inner:game.server.inner.parry"]);
     });
-    await waitFor(() => expect(within(editor).getAllByText(/parry \(from Inner\)/).length).toBeGreaterThan(0));
+    await waitFor(() => expect(within(editor).getAllByText("parry").length).toBeGreaterThan(0));
   });
 
   it("connects in a Deployment, and asks before adding the import the Connection needs", async () => {

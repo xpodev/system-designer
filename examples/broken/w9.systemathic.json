@@ -322,9 +322,11 @@
           "exports": [],
           "imports": [
             {
-              "id": "game.physics<game.client.input",
-              "from": "game.client.input",
-              "exports": []
+              "id": "game.physics<game.client",
+              "from": "game.client",
+              "exports": [
+                "game.server:game.server.attack"
+              ]
             }
           ],
           "implements": [],
@@ -914,7 +916,7 @@
     {
       "owner": "example",
       "data": {
-        "note": "W9: Physics imports a Component from inside its sibling Client."
+        "note": "W9: Physics takes, in its Import from Client, an Export of Server."
       }
     }
   ]

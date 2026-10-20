@@ -138,8 +138,8 @@ No Component uses it yet.
 - **Component** — A unit of the design. From outside, a Component is only what it **exports**: an interface. Its children, Transformations and Deployments are its own implementation of that interface, the default one. Other Components may **implement** it: each is an alternative implementation, with children of its own, that may stand wherever the Component is placed. An implementer imports what it implements and uses the Languages of the Interactions it exports. Which implementation fills an Instance is chosen by the tool's Configuration.
 - **Interaction** : Function
 - **Transformation** : Function — A Function whose inputs are all of one Language and whose output is of a different Language. Nothing is required of how the two Languages relate: neither need extend the other.
-- **Export** — Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, one of its children, or an Export of a child, which it re-exports. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.
-- **Import** — A Component's dependency on another — a sibling, one a Component it is nested in imports from, or one it reaches through an Export — taking some of its Exports. An Import of nothing still lets the importer place Instances of the Component, and import from what it exports.
+- **Export** — Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, or one of its children, which others may then place. What is exported, any Component may import, wherever the two are: nesting does not scope it. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.
+- **Import** — A Component's dependency on another, anywhere, taking some of its Exports. An Import of nothing lets the importer implement the Component, or place Instances of it: of one its parent exports, or one its own ancestors hold. Importing an interface is to implement it or to consume it; importing an implementation is to take part in it.
 
 **Component.components ⟷ Component.parent**
 
@@ -206,11 +206,6 @@ No Component uses it yet.
 - Each Export has at most one Language, as language. `0..1`
 - Each Language has any number of Exports, but cannot navigate to them. `0..N`
 
-**Export.reexports ⟷ Export.export**
-
-- Each Export has any number of Exports, as reexports. `0..N`
-- Each Export has at most one Export, as export. `0..1`
-
 **Component.imports ⟷ Import.importer**
 
 - Each Component has any number of Imports, as imports. `0..N`
@@ -228,7 +223,7 @@ No Component uses it yet.
 
 - Axiom `all t in Transformation, p in t.parameters, q in t.parameters. p.type.language == q.type.language and p.type.language != t.output.language`
 - Axiom `all c in Component. not c in c.^implements`
-- Axiom `all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.*export.component`
+- Axiom `all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.component`
 - Axiom `all c in Component, x in c.implements, i in x.interactions. i.language in c.uses`
 - Axiom `all t in Transformation. some t.output`
 
@@ -2123,13 +2118,15 @@ offered so that it applies as soon as they are recorded.
 
 ### `imports_acyclic` — warning, standard
 
-No Component depends, eventually, on itself through its siblings: no two import from each other.
+No Component depends, eventually, on itself: no two import from each other, wherever they are.
 
 A Component's dependencies are its imports. Two Components importing from each other are
 two dependencies, not one two-way link, and neither can be understood, replaced or
-deployed without the other.
+deployed without the other. That they may talk both ways is another matter: a reply is
+the callee's, and a notification goes through an interface the caller owns.
 
-To fix it, move what both need into a Component of its own, which both import.
+To fix it, move what both need into a Component of its own, which both import, or turn
+one direction around, through an interface.
 
 ### `deployments_complete` — error, standard
 

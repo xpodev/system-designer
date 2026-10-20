@@ -21,6 +21,16 @@ What changes:
 
 A file in the draft of `systemathic/3` that still lists `imports` by kind is brought forward
 the same way.
+
+Exports are global, so a `systemathic/3` file with re-exports is brought forward too:
+- an Import that takes a re-export takes the Export it re-exports, from the Component that
+  exports it, instead; an Import left with nothing to take is kept only where the importer
+  places or implements what it is from;
+- re-exports, and their descriptions, go;
+- a Component that is placed beyond where its parent's parts reach is exported by its
+  parent, so that it may be placed;
+- a Component that re-exported an Interaction of its child exports the child instead, as
+  an API: a Component offers the Interactions of the APIs it exports.
 """
 
 from __future__ import annotations
@@ -181,10 +191,90 @@ def exports(design: dict) -> dict:
     return design
 
 
+def global_exports(file: dict) -> dict:
+    """Takes re-exports out: each Import takes the Export at the end of the chain instead."""
+    design = file["design"]
+    components: dict[str, dict] = {}
+    parents: dict[str, str | None] = {}
+
+    def index(c: dict, parent: str | None) -> None:
+        components[c["id"]] = c
+        parents[c["id"]] = parent
+        for child in c["components"]:
+            index(child, c["id"])
+
+    for top in [design["root"], *design["packages"]]:
+        index(top, None)
+    exporter = {e["id"]: c["id"] for c in components.values() for e in c.get("exports", [])}
+    by_id = {e["id"]: e for c in components.values() for e in c.get("exports", [])}
+
+    def base(export: str) -> str:
+        seen: set[str] = set()
+        while by_id[export].get("export") and export not in seen:
+            seen.add(export)
+            export = by_id[export]["export"]
+        return export
+
+    removed = {id for id, e in by_id.items() if e.get("export")}
+    # A Component that re-exported an Interaction of a child offered it: it now exports the child, as an API.
+    for id in removed:
+        target = base(id)
+        owner, outer = exporter[target], exporter[id]
+        if by_id[target].get("interaction") and parents.get(owner) == outer:
+            exports = components[outer]["exports"]
+            if not any(e.get("component") == owner for e in exports):
+                exports.append({"id": f"{outer}:{owner}", "component": owner})
+    for c in components.values():
+        placed = {i["of"] for d in c.get("deployments", []) for i in d["instances"]} | set(c.get("implements", []))
+        imports: list[dict] = []
+        for each in c.get("imports", []):
+            moved: dict[str, list[str]] = {}
+            kept = []
+            for export in each["exports"]:
+                target = base(export)
+                if exporter[target] == each["from"]:
+                    kept.append(target)
+                else:
+                    moved.setdefault(exporter[target], []).append(target)
+            if kept or not moved or each["from"] in placed:
+                imports.append({**each, "exports": list(dict.fromkeys(kept))})
+            for source, taken in moved.items():
+                same = next((m for m in imports if m["from"] == source), None)
+                if same is not None:
+                    same["exports"] = list(dict.fromkeys([*same["exports"], *taken]))
+                    continue
+                id, n = f"{c['id']}<{source}", 1
+                while id in exporter or any(m["id"] == id for m in imports):
+                    n += 1
+                    id = f"{c['id']}<{source}#{n}"
+                imports.append({"id": id, "from": source, "exports": list(dict.fromkeys(taken))})
+        c["imports"] = imports
+        c["exports"] = [e for e in c.get("exports", []) if e["id"] not in removed]
+
+    def lineage(id: str | None) -> list[str]:
+        found = []
+        while id is not None:
+            found.append(id)
+            id = parents[id]
+        return found
+
+    for c in list(components.values()):
+        for d in c.get("deployments", []):
+            for instance in d["instances"]:
+                placed, parent = instance["of"], parents.get(instance["of"])
+                if parent is None or parent in lineage(c["id"]):
+                    continue
+                owner = components[parent]
+                if not any(e.get("component") == placed for e in owner["exports"]):
+                    owner["exports"].append({"id": f"{parent}:{placed}", "component": placed})
+    file["attachments"] = [a for a in file.get("attachments", []) if a.get("owner") not in removed]
+    return file
+
+
 def migrate(file: dict) -> dict:
     if file.get("format") == "systemathic/3":
         exports(file["design"])
-        return file
+        return global_exports(file)
     if file.get("format") != "systemathic/2":
         raise SystemExit(f"not a systemathic/2 file: {file.get('format')!r}")
     design = file["design"]
@@ -207,11 +297,11 @@ def migrate(file: dict) -> dict:
         attachments.append({"owner": "configurations", "data": {"configurations": [
             {"id": c["id"], "name": c["name"], "rules": [], "root": choice(c["root"], components_of)} for c in configurations
         ]}})
-    return {
+    return global_exports({
         "format": "systemathic/3",
         "design": exports({"id": design["id"], "name": design["name"], "root": root, "packages": [c for c in components if c is not root]}),
         "attachments": attachments,
-    }
+    })
 
 
 def main(paths: list[str]) -> int:

@@ -99,16 +99,21 @@ function DeploymentCanvas({ deployment, onConnect }: { deployment: DeploymentJso
   );
 }
 
-/** What a Connection to `to` can carry: the Interactions offered there — an Instance's Component's own and those it exports, or the deployed Component's own and those it imports. */
+/**
+ * What a Connection to `to` can carry: the Interactions offered there — an Instance's Component's own
+ * and those of the APIs it exports, or the deployed Component's, and those it imports.
+ */
 function offeredAt(model: ReturnType<typeof useModel>, deployed: ComponentJson, to: string): string[] {
+  const own = (c: ComponentJson) => [
+    ...c.interactions.map((i) => i.id),
+    ...c.exports.flatMap((e) => (e.component === undefined ? [] : (model.component(e.component)?.interactions ?? []).map((i) => i.id))),
+  ];
   const at = model.get(to);
   if (at?.kind === "Instance") {
     const of = model.component(at.instance.of);
-    if (!of) return [];
-    const exported = of.exports.map((e) => model.resolve(e.id)).filter((x): x is string => x !== undefined && model.kind(x) === "Interaction");
-    return [...new Set([...of.interactions.map((i) => i.id), ...exported])];
+    return of ? [...new Set(own(of))] : [];
   }
-  if (to === deployed.id) return [...new Set([...deployed.interactions.map((i) => i.id), ...model.imported(deployed.id, "Interaction")])];
+  if (to === deployed.id) return [...new Set([...own(deployed), ...model.imported(deployed.id, "Interaction")])];
   return [];
 }
 

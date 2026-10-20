@@ -13,7 +13,7 @@ import { exportIn, follow, importIn, route, take } from "./exports.js";
 const EDITOR = "ComponentEditor";
 
 /** What a Component may export: something of its own, a child, or a child's Export. */
-const EXPORTABLE = ["Component", "Language", "Interaction", "Transformation", "Medium", "Export"];
+const EXPORTABLE = ["Component", "Language", "Interaction", "Transformation", "Medium"];
 
 export function addComponent(session: EditSession, parent: string, name: string): Edit {
   const id = freshId(session.target.graph, parent, name);
@@ -67,7 +67,7 @@ export function unuse(session: EditSession, component: string, language: string)
   return session.edit("change", "unuse", [component, language], (graph) => graph.disconnect(component, "uses", language));
 }
 
-/** Makes a Component export something: one of its own, a child, or a child's Export, to re-export it. */
+/** Makes a Component export something: one of its own, or a child, which others may then place. */
 export function exportItem(session: EditSession, component: string, item: string): Edit {
   const graph = session.target.graph;
   const existing = graph.navigate(component, "exports").find((id) => graph.navigate(id, graph.get(item).entity.replace(/^./, (c) => c.toLowerCase())).includes(item));
@@ -75,7 +75,7 @@ export function exportItem(session: EditSession, component: string, item: string
   return session.edit("addition", "export", [id], (graph) => void exportIn(graph, component, item));
 }
 
-/** Removes an Export, with its re-exports. Imports that took it keep the rest. */
+/** Removes an Export. Imports that took it keep the rest. */
 export function unexport(session: EditSession, exported: string): Edit {
   return session.edit("removal", "unexport", [exported], (graph) => void removeFromModel(graph, exported));
 }
@@ -98,9 +98,8 @@ export function unimportItem(session: EditSession, component: string, item: stri
 }
 
 /**
- * Makes a Component reach something inside another: its owner exports it, each Component
- * the owner is nested in re-exports it, up to one the Component may import from, and the
- * Component imports it from there.
+ * Makes a Component reach something inside another: its owner exports it, and the Component
+ * imports it; a Component it imports as a whole, exported by its parent if it must be to be placed.
  */
 export function reachItem(session: EditSession, component: string, item: string): Edit {
   const way = route(session.target.graph, component, item);
@@ -164,18 +163,18 @@ export const componentEditor: readonly Operation[] = [
     EDITOR,
     "export",
     "addition",
-    "Makes a Component export one of its own Languages, Interactions, Transformations or Mediums, one of its children, or a child's Export (a re-export). What a Component does not export, nothing outside it can reach.",
+    "Makes a Component export one of its own Languages, Interactions, Transformations or Mediums, or one of its children, which others may then place. What is exported, any Component may import; what is not, nothing outside it can reach.",
     [COMPONENT, element("item", EXPORTABLE, "what it exports")],
     (s, a) => exportItem(s, str(a, "component"), str(a, "item")),
   ),
-  operation(EDITOR, "unexport", "removal", "Removes an Export, with its re-exports; Imports that took it keep the rest.", [element("export", "Export", "the Export")], (s, a) =>
+  operation(EDITOR, "unexport", "removal", "Removes an Export; Imports that took it keep the rest.", [element("export", "Export", "the Export")], (s, a) =>
     unexport(s, str(a, "export")),
   ),
   operation(
     EDITOR,
     "import",
     "change",
-    "Makes a Component import from another — a sibling, one a Component it is nested in imports from, or one it reaches through an Export — or take an Export, in its Import from the Export's Component.",
+    "Makes a Component import from another, anywhere — to place or implement it — or take an Export, in its Import from the Export's Component.",
     [COMPONENT, IMPORTED],
     (s, a) => importItem(s, str(a, "component"), str(a, "item")),
   ),
@@ -186,7 +185,7 @@ export const componentEditor: readonly Operation[] = [
     EDITOR,
     "reach",
     "change",
-    "Makes a Component reach a Component, Language, Interaction, Transformation or Medium: exported by its owner, re-exported up to a Component it may import from, and imported from there.",
+    "Makes a Component reach a Component, Language, Interaction, Transformation or Medium: exported by its owner, and imported from it.",
     [COMPONENT, element("item", ["Component", "Language", "Interaction", "Transformation", "Medium"], "what it reaches")],
     (s, a) => reachItem(s, str(a, "component"), str(a, "item")),
   ),

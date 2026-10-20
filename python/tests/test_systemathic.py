@@ -258,6 +258,26 @@ class Standard(unittest.TestCase):
         find(file, "line")["connections"].append({"id": "line.extra", "from": "line.source", "to": "line.middle", "toComponent": None, "what": ["middle.take"], "mediations": []})
         self.assertEqual(found(file, pipeline("Pipe"))["pipeline"], ["Line of Pipe is not a straight chain: middle, source branch"])
 
+    def test_imports_acyclic_beyond_siblings(self):
+        file = copy.deepcopy(GAME)
+        find(file, "game.physics")["imports"].append({"id": "physics<input", "from": "game.client.input", "exports": []})
+        find(file, "game.client.input")["imports"].append({"id": "input<physics", "from": "game.physics", "exports": []})
+        self.assertEqual(found(file)["imports_acyclic"], ["depend on each other: Input, Physics, Server"])
+
+    def test_migration_takes_re_exports_out(self):
+        sys.path.insert(0, str(PYTHON.parent / "scripts"))
+        from migrate import migrate
+
+        file = copy.deepcopy(GAME)
+        find(file, "game")["exports"].append({"id": "game:attack", "export": "game.server:game.server.attack"})
+        find(file, "game.client.input")["imports"] = [{"id": "input<game", "from": "game", "exports": ["game:attack"]}]
+        file["attachments"].append({"owner": "game:attack", "data": "a re-export"})
+        migrated = migrate(file)
+        self.assertEqual(find(migrated, "game")["exports"], [{"id": "game:game.server", "component": "game.server"}])
+        self.assertEqual(find(migrated, "game.client.input")["imports"], [{"id": "game.client.input<game.server", "from": "game.server", "exports": ["game.server:game.server.attack"]}])
+        self.assertNotIn("game:attack", [a["owner"] for a in migrated["attachments"]])
+        self.assertEqual(found(migrated), {})
+
     def test_deployments_complete(self):
         file = copy.deepcopy(GAME)
         connections = find(file, "game.local")["connections"]

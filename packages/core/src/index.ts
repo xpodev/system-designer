@@ -17,6 +17,7 @@ export {
   ancestry,
   exportable,
   importable,
+  placeable,
   imported,
   importedComponents,
   offered,

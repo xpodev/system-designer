@@ -233,9 +233,8 @@ Component ─┬─ languages ─────▶ Language ─┬─ extends ─�
            ├─ implements ────▶ Component
            ├─ interactions ──▶ Interaction : Function ── language ──▶ Language
            ├─ transformations ▶ Transformation : Function
-           ├─ exports ───────▶ Export ─┬─ component, interaction, transformation,
-           │                           │  language, medium ─▶ what it exports
-           │                           └─ export ─▶ Export          (a re-export)
+           ├─ exports ───────▶ Export ─── component, interaction, transformation,
+           │                              language, medium ─▶ what it exports
            ├─ imports ───────▶ Import ─┬─ from ────▶ Component
            │                           └─ exports ─▶ Export
            ├─ mediums ───────▶ Medium ─┬─ language ─▶ Language
@@ -332,10 +331,11 @@ a whole. Everything the design says is inside the root: the System's own core La
 extensions and Components are the root's.
 
 Beside the root are the **packages** the System brings in from outside, such as the
-library's: Components defined elsewhere and copied in, so the System stays closed. They
-are the root's siblings, so the root imports from them as from any sibling, and its
-children through the root's imports. Packages import only from each other, the root, and
-what those export.
+library's, or the plug-ins that extend it: Components defined elsewhere and copied in, so
+the System stays closed. Being beside the root says where they are kept, not who may
+import what: a package imports from the root, or from another package, as any Component
+imports from any other (see *Import*). A package the root depends on is a dependency; one
+that depends on the root is a plug-in. Which is which is read off their Imports.
 
 ### Component *(Contexts)*
 
@@ -358,14 +358,14 @@ vocabulary, extensions and all.
 in, and those it imports (see *Import*), and nothing else:
 
 ```
-scope(C) = (C.*parent).languages ∪ C.imports.exports.*export.language
+scope(C) = (C.*parent).languages ∪ C.imports.exports.language
 ```
 
 Interactions, Transformations and Mediums follow the same rule (see *Import*).
 
-A Component never sees inside another — neither its children's insides nor its siblings' —
-beyond what the other exports. Two siblings have something in common only if their parent
-gives it to both, or both import it from a Component that exports it.
+A Component never sees inside another — neither its children's insides nor anyone
+else's — beyond what the other exports. What it exports, though, any Component may import,
+wherever the two are.
 
 Nesting is a tree of Languages. Inside a Component, the Languages in its scope are what
 its own extensions build on, exactly as a System's extensions build on its core
@@ -401,30 +401,31 @@ A Component **exports** what others may reach: an **Export** refers to exactly o
 
 - one of the Component's own Languages, Interactions, Transformations or Mediums (see
   *Mediation*);
-- one of its children, so that others may import from it and place it;
-- an Export of one of its children: a **re-export**, which passes what the child exports
-  on, one level up.
+- one of its children, so that others may place it — and, when the child is an interface,
+  as an **API** of the Component's.
 
 Its Exports are a Component's **API**. What a Component does not export, nothing outside
-it reaches — not a sibling, nor anything further away. Its own children reach it anyway:
-being nested in a Component is not being outside it (see *Import*).
+it reaches. Its own children reach it anyway: being nested in a Component is not being
+outside it (see *Import*).
 
-Exporting is per level. What a child exports, its siblings may import; beyond its parent,
-it is reachable only if the parent exports the child, or re-exports the child's Export. A
-re-export is an Export of an Export, so the route through the levels is part of the
-design, and what an Export finally makes reachable is found by following it:
+Exports are **not scoped** by nesting. What a Component exports, any Component may import,
+wherever the two are: a sibling, a Component in another branch, a package. Each API is
+exported by the Component it belongs to, independently of the Components around it, so a
+plug-in depends on exactly the part it extends — the Simulator's API, or the Component
+that defines Force and Momentum — and on nothing around it.
 
 ```
-resolve(e) = the target of e.*export     — a Component, Language, Interaction, Transformation or Medium
+resolve(e) = the target of e     — a Component, Language, Interaction, Transformation or Medium
 ```
 
 Every reference elsewhere — a Connection's What, a Medium's call, an `implements` — is to
 the thing itself, never to an Export: an Export only decides who may reach it.
 
-This is how one Component extends parts of another from outside. A plug-in for one part
-of `A` imports from `A` what `A` exports of that part — the part itself, or what the part
-exports, re-exported — and nothing else of `A`. If `A` exports none of its parts, the plug-in
-can only extend `A` as a whole.
+**APIs.** A Component offers its own Interactions, and those of each child it exports: an
+exported interface is an API of the Component's. `Editor` exports its child `Editing API`,
+whose Interactions are `open` and `close`; a Connection to an `editor` Instance may carry
+`open`, and whoever calls it imports `open` from `Editing API`, depending on the interface
+and not on the `Editor` that implements it.
 
 A Component with children of its own is an implementation; exporting one hands that
 implementation out as API. That is allowed — whether it is is a rule (`exports_interfaces`):
@@ -445,40 +446,37 @@ design's dependencies: not who calls what, which is code, but which Component ne
 another exports. Each Import is one dependency, and gives it its direction, from what
 imports to what it imports from.
 
-A Component may import from its **importable** Components: its siblings, those each
-Component it is nested in imports from, and those that it, or a Component it is nested in,
-reaches through an Export of a Component:
+A Component may import from **any other Component**; what it takes is limited to that
+Component's Exports:
 
 ```
-importable(C) = siblings(C) ∪ (C.^parent).imports.from ∪ (C.*parent).imports.exports.*export.component
-imported(C)   = C.imports.exports.*export                — what its Imports resolve to
+importable(C) = Component − C
+imported(C)   = C.imports.exports                — what its Imports take
 access(C)     = (C.*parent).interactions ∪ imported(C).interactions
 ```
 
-and the same for Languages, Transformations and Mediums. The siblings of the root are the
-System's packages.
+and the same for Languages, Transformations and Mediums.
 
 An imported Interaction must be over a Language the importer uses; an imported
 Transformation need not be, so a Component can use a realization (see *Mediation*)
 without speaking the Language it reaches.
 
-What a Component imports from, its children may import from in turn, and so on down:
-`Client` imports `attack` from `Server`, so `Client`'s own `Input` may import it too.
-Without that import, `Server.attack` is inaccessible to `Input`. This is how a design names
-the actual users of an Interaction, not only a link between two top-level Components.
-
 **Importing a Component** — an Import from it, or one taking an Export of it — lets the
-importer place Instances of it in its own Deployments (see *Deployment*), and import from
-it in turn. An Import may take no Exports at all: it is then of the Component as a whole.
-This is how one Component is shared without being one shared thing: `Server` and `Client`
-both import `Physics`, and each runs a `physics` of its own. A library Component, brought
-into a System from outside, is imported the same way, and its Mediums with it.
+importer implement it, or place Instances of it in its own Deployments (see
+*Deployment*). An Import may take no Exports at all: it is then of the Component as a
+whole. This is how one Component is shared without being one shared thing: `Server` and
+`Client` both import `Physics`, and each runs a `physics` of its own. A library Component,
+brought into a System from outside, is imported the same way, and its Mediums with it.
 
-**Reaching inside.** If `A` exports its child `A₁`, a Component that imports from `A`
-taking that Export reaches `A₁`: it, and every Component nested in it, may then import from
-`A₁` what `A₁` exports. Or `A` re-exports what `A₁` exports, and it is imported from `A`
-directly. Either way, `A` decides: of `A₁`, nothing outside `A` reaches what `A` does not
-export.
+**Placing.** A Component may be placed where its parent's parts are reachable anyway —
+by the parent, or by anything nested in it — and beyond that, only if its parent exports
+it. Exporting a Component is saying that others may place it, as exporting an Interaction
+is saying that others may call it.
+
+**Interfaces and implementations, imported.** Importing an interface is to implement it,
+or to consume it — call its Interactions, or place it and let a Configuration fill it — or
+both, as a wrapper does. Importing an implementation is to take part in that particular
+implementation: what does so makes sense only where that implementation is chosen.
 
 ### Axioms *(Kernel)*
 
@@ -565,7 +563,7 @@ an implementation detail of one of them; and it never refers to another Deployme
 each is a choice local to its Component.
 
 - An **Instance** is a place for a child Component, or for a Component the deployed
-  Component imports — one an Import of it is from, or reaches through an Export. It is **named**, uniquely within its Deployment, since a Deployment
+  Component imports and may place (see *Import*). It is **named**, uniquely within its Deployment, since a Deployment
   may hold several Instances of the same Component: `server` and `backup` may both be of
   `Server`. It has a **range**, as an end has: how many occupy it — `1..1` one, `0..1`
   optional, `1..N` one or more, `0..N` any number. An imported Component's Instance
@@ -664,12 +662,12 @@ belongs to the layer whose vocabulary it is about.
 | W5 | **Scope.** Every Language a Component uses, and every Language a Language defined in it extends, is in its scope. | Contexts |
 | W6 | **Transformations.** A Transformation has an output; its inputs are all of one Language and its output of another, each in the vocabulary of a Language its Component uses. | Contexts |
 | W8 | **Purity.** Every Interaction is over a Language its Component uses, and its Parameters and output belong to that Language's vocabulary. | Contexts |
-| W9 | **Imports.** Every Import is from a Component in the importer's `importable`, and takes only Exports of that Component; every imported Interaction is over a Language the importer uses. | Contexts; Systems for the root and packages |
-| W10 | **Placement.** Every Instance of a Deployment is of a child of the deployed Component, or of a Component it imports, and no two Instances of a Deployment share a name; every Connection goes from an Instance of the same Deployment, for Interactions over one Language that its Component has access to, to an Instance of the same Deployment whose Component offers or exports them, or to the deployed Component, which offers or imports them. | Deployment |
+| W9 | **Imports.** Every Import takes only Exports of the Component it is from, which may be any other Component; every imported Interaction is over a Language the importer uses. | Contexts |
+| W10 | **Placement.** Every Instance of a Deployment is of a child of the deployed Component, or of a Component it imports — one whose parent is the deployed Component or one it is nested in, or whose parent exports it — and no two Instances of a Deployment share a name; every Connection goes from an Instance of the same Deployment, for Interactions over one Language that its Component has access to, to an Instance of the same Deployment whose Component offers them, its own or an exported API's, or to the deployed Component, which offers or imports them. | Deployment |
 | W11 | **Mediums.** Every Medium's call is an Interaction of the Component that defines the Medium, over the Medium's Language. | Mediation |
 | W12 | **Mediations.** Every Mediation has a Medium the deployed Component has access to. A realization, if given, is `down: L → H` and `up: H → L`, where `L` is the What's Language and `H` the Medium's — read as their vocabularies — both accessible to the Components at both ends. A Connection's top Mediation mediates its What; each one below, the call of the Medium above it. | Mediation |
 | W14 | **Implementations.** No Component implements itself, eventually; a Component imports what it implements, and uses the Language of each Interaction it exports. | Contexts |
-| W15 | **Exports.** Every Export has exactly one target: one of its Component's own Languages, Interactions, Transformations or Mediums, one of its children, or an Export of one of its children. | Contexts; Mediation for Mediums, and so for having a target at all |
+| W15 | **Exports.** Every Export has exactly one target: one of its Component's own Languages, Interactions, Transformations or Mediums, or one of its children. | Contexts; Mediation for Mediums, and so for having a target at all |
 
 W7 (mappings) and W13 (Configurations) belonged to earlier versions of the core, and their
 numbers are not reused.
@@ -709,7 +707,7 @@ referencing what was deleted.
   every Medium of it; its Exports and Imports; every Export of it, and every Import from it;
   every `implements` of it; every Instance of it, and every Connection from or to those
   Instances.
-- **Deleting an Export** removes its re-exports, and takes it out of every Import that
+- **Deleting an Export** takes it out of every Import that
   took it; an Import left taking nothing stays, of the Component as a whole.
 - **Deleting a Deployment** removes its Instances and Connections.
 - **Deleting an Instance** removes every Connection from or to it.
@@ -945,7 +943,7 @@ System's design rules reach an implementer as precisely as the System itself.
 | `mediators_minimal` | A mediator knows its two Languages, and only them: a Component realizing a Mediation uses nothing else. | Error |
 | `projection_acyclic` | No Language is projected, eventually, into itself. | Error |
 | `generic_level` | All arguments of a generic instantiation belong to one Language. | Error |
-| `imports_acyclic` | No Component depends, eventually, on itself through its siblings' imports — no two Components import from each other. | Warning |
+| `imports_acyclic` | No Component depends, eventually, on itself — no two Components import from each other, wherever they are. | Warning |
 | `deployments_complete` | In every Deployment, every Interaction an Instance's Component imports is reached by a Connection. | Error |
 | `interactions_abstract` | Every imported Interaction is abstract: no Component is reached through an implementation vocabulary. | Warning |
 | `exports_interfaces` | Only interfaces are exported: no Export makes reachable a Component that has children. | Warning |

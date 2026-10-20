@@ -768,25 +768,6 @@
                   ]
                 },
                 {
-                  "id": "system.root.systemathic.contexts.export-reexports",
-                  "ends": [
-                    {
-                      "id": "system.root.systemathic.contexts.export-reexports.export",
-                      "name": "export",
-                      "entity": "system.root.systemathic.contexts.export",
-                      "min": 0,
-                      "max": 1
-                    },
-                    {
-                      "id": "system.root.systemathic.contexts.export-reexports.reexports",
-                      "name": "reexports",
-                      "entity": "system.root.systemathic.contexts.export",
-                      "min": 0,
-                      "max": "N"
-                    }
-                  ]
-                },
-                {
                   "id": "system.root.systemathic.contexts.importer-imports",
                   "ends": [
                     {
@@ -855,7 +836,7 @@
                 },
                 {
                   "id": "system.root.systemathic.contexts.formula-3",
-                  "text": "all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.*export.component"
+                  "text": "all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.component"
                 },
                 {
                   "id": "system.root.systemathic.contexts.formula-4",
@@ -9858,8 +9839,8 @@
           "system.root.configurations.configurations.choice": "Which Component fills one occupant of an Instance (the Instance's own Component, or one implementing it), and which of that Component's Deployments it runs as; the Choices below it are for the Instances of that Deployment. A Component without Deployments is chosen with none.",
           "system.root.tool.configuration-store": "Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.",
           "system.root.tool.configuration-store.configuration-editing": "The kinds of Edit of Configurations, in the pattern every editor follows: AddConfiguration (the Configuration, by value), ChangeConfiguration and RemoveConfiguration; AddChoice (into the Choice above it), ChangeChoice and RemoveChoice.",
-          "system.root.systemathic.contexts.export": "Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, one of its children, or an Export of a child, which it re-exports. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.",
-          "system.root.systemathic.contexts.import": "A Component's dependency on another — a sibling, one a Component it is nested in imports from, or one it reaches through an Export — taking some of its Exports. An Import of nothing still lets the importer place Instances of the Component, and import from what it exports."
+          "system.root.systemathic.contexts.export": "Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, or one of its children, which others may then place. What is exported, any Component may import, wherever the two are: nesting does not scope it. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.",
+          "system.root.systemathic.contexts.import": "A Component's dependency on another, anywhere, taking some of its Exports. An Import of nothing lets the importer implement the Component, or place Instances of it: of one its parent exports, or one its own ancestors hold. Importing an interface is to implement it or to consume it; importing an implementation is to take part in it."
         }
       }
     },

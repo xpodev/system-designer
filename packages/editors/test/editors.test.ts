@@ -102,24 +102,24 @@ describe("concept editors", () => {
     for (const end of [client, server]) expect(imported(target.graph, end, "Transformation")).toEqual(target.graph.navigate(mediation, "down").concat(target.graph.navigate(mediation, "up")));
   });
 
-  it("export, re-export and reach: a Component reaches inside another only through what it exports", () => {
+  it("export and reach: a Component reaches inside another, wherever it is, through what that one exports", () => {
     const { target, s, server, client, combat, damage } = game();
     const inner = created(ComponentEditor.addComponent(s, server, "Inner"));
     ComponentEditor.use(s, inner, combat);
     const parry = created(InteractionEditor.addInteraction(s, inner, combat, "parry", damage));
     ComponentEditor.reachItem(s, client, parry);
     expect(imported(target.graph, client, "Interaction")).toContain(parry);
+    // Inner exports it, and the Client imports it from Inner: the Server exports nothing for it.
     const [own] = target.graph.navigate(inner, "exports");
-    const reexport = target.graph.navigate(server, "exports").find((e) => target.graph.navigate(e, "export").includes(own!));
-    expect(reexport).toBeDefined();
+    expect(target.graph.navigate(server, "exports").flatMap((e) => target.graph.navigate(e, "component"))).not.toContain(inner);
+    expect(target.graph.navigate(client, "imports").flatMap((m) => target.graph.navigate(m, "from"))).toContain(inner);
     expect(wrong(target)).toEqual([]);
-    // Taking inner's own Export, from a Component the Client cannot import from, is ill-formed.
-    ComponentEditor.importItem(s, client, own!);
-    expect(wrong(target)).toContain("W9");
-    undo(s);
-    // Removing inner's Export takes the re-export with it; the Client's Import keeps the rest.
+    // Reaching Inner as a whole, to place it beyond the Server, makes the Server export it.
+    ComponentEditor.reachItem(s, client, inner);
+    expect(target.graph.navigate(server, "exports").flatMap((e) => target.graph.navigate(e, "component"))).toContain(inner);
+    expect(wrong(target)).toEqual([]);
+    // Removing Inner's Export of parry: the Client's Import keeps the rest.
     ComponentEditor.unexport(s, own!);
-    expect(target.graph.has(reexport!)).toBe(false);
     expect(imported(target.graph, client, "Interaction")).not.toContain(parry);
     expect(imported(target.graph, client, "Interaction")).not.toEqual([]);
   });

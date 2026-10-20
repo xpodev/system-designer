@@ -1,12 +1,12 @@
 /**
  * Exports and Imports on a graph, for the editors that add them: an Export of a thing by its
  * Component, an Import of one Component by another, and the route by which one Component
- * reaches something inside another — exported by its owner, re-exported by each Component it
- * is nested in up to one the importer may import from, and imported from there.
+ * reaches something inside another — exported by its owner, and imported from it. Exports are
+ * not scoped: what is exported, any Component may import.
  */
-import { ancestry, importable, importedComponents, imported, type Graph } from "@systemathic/core";
+import { ancestry, importedComponents, imported, placeable, type Graph } from "@systemathic/core";
 
-/** The end through which an Export refers to a thing: its Entity's name, lower-cased (`interaction`, `export`, `medium`). */
+/** The end through which an Export refers to a thing: its Entity's name, lower-cased (`interaction`, `medium`). */
 export function exportEnd(graph: Graph, item: string): string {
   return graph.get(item).entity.replace(/^./, (c) => c.toLowerCase());
 }
@@ -50,47 +50,41 @@ export function take(graph: Graph, importer: string, exported: string): void {
   if (!graph.navigate(id, "exports").includes(exported)) graph.connect(id, "exports", exported);
 }
 
-/** A route by which a Component reaches a thing: the Exports to make, outermost last, and the Component to import from. */
+/** A route by which a Component reaches a thing: the Export to make, if any, and the Component to import from. */
 interface Route {
-  /** `[exporter, item]` pairs, innermost first; each item after the first is the previous pair's Export. */
-  readonly exports: readonly (readonly [string, string])[];
+  /** `[exporter, item]`: the Export that makes `item` reachable, made if there is none. */
+  readonly export?: readonly [string, string];
   readonly from: string;
+  /** Whether the importer takes the Export, or imports `from` as a whole, to place or implement it. */
+  readonly take: boolean;
 }
 
 /**
  * How `importer` reaches `item` — a Component, Language, Interaction, Transformation or Medium:
- * nothing to do if it already has access; otherwise the Exports to make and where to import
- * from. Throws if `item` is inside no Component `importer` may import from.
+ * nothing to do if it already has access. A Component is imported as a whole, and exported by
+ * its parent if the importer could not otherwise place it; anything else is exported by its
+ * owner, and taken. Throws for something no Component owns.
  */
 export function route(graph: Graph, importer: string, item: string): Route | null {
   const lineage = new Set(ancestry(graph, importer));
-  const isComponent = graph.get(item).entity === "Component";
-  if (isComponent ? lineage.has(item) || importedComponents(graph, importer).includes(item) : imported(graph, importer).includes(item)) return null;
   const owner = ownerOf(graph, item);
-  if (!isComponent && owner !== undefined && lineage.has(owner)) return null;
-  const reachable = new Set(importable(graph, importer));
-  if (isComponent && reachable.has(item)) return { exports: [], from: item };
-  const exports: [string, string][] = [];
-  let exporter = owner;
-  while (exporter !== undefined && !reachable.has(exporter)) {
-    exports.push([exporter, item]);
-    exporter = graph.navigate(exporter, "parent")[0];
+  if (graph.get(item).entity === "Component") {
+    if (lineage.has(item)) return null;
+    const unplaceable = owner !== undefined && !placeable(graph, importer, item);
+    if (!unplaceable && importedComponents(graph, importer).includes(item)) return null;
+    return unplaceable ? { export: [owner, item], from: item, take: false } : { from: item, take: false };
   }
-  if (exporter === undefined) throw new Error(`${importer} can import from no Component that ${item} is inside`);
-  exports.push([exporter, item]);
-  return { exports, from: exporter };
+  if (imported(graph, importer).includes(item) || (owner !== undefined && lineage.has(owner))) return null;
+  if (owner === undefined) throw new Error(`no Component owns ${item}, so ${importer} cannot import it`);
+  return { export: [owner, item], from: owner, take: true };
 }
 
-/** Follows a route: makes its Exports, each re-exporting the one before, and imports the last. */
+/** Follows a route: makes its Export, and imports. */
 export function follow(graph: Graph, importer: string, route: Route | null): void {
   if (route === null) return;
-  if (route.exports.length === 0) {
-    importIn(graph, importer, route.from);
-    return;
-  }
-  let exported: string | undefined;
-  for (const [exporter, item] of route.exports) exported = exportIn(graph, exporter, exported ?? item);
-  take(graph, importer, exported!);
+  const exported = route.export === undefined ? undefined : exportIn(graph, route.export[0], route.export[1]);
+  if (route.take && exported !== undefined) take(graph, importer, exported);
+  else importIn(graph, importer, route.from);
 }
 
 /** Makes `importer` reach `item`, exporting and importing as needed (see `route`). */

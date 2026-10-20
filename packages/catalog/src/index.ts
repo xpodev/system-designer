@@ -177,8 +177,7 @@ function owner(graph: Graph, id: string): string | undefined {
 
 /**
  * The smallest set of Components containing the selection's that is closed under what each
- * depends on: the Components it imports from, those owning what it imports (and so the
- * Components that re-export it), those owning the Languages it uses or its Languages extend, and those whose
+ * depends on: the Components it imports from, those owning what it imports, those owning the Languages it uses or its Languages extend, and those whose
  * Instances its Deployments place. Anything inside a Component selects it; a Component nested
  * in a chosen one comes with it.
  */

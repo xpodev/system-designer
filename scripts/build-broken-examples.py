@@ -83,7 +83,7 @@ def w8(f):
 
 
 def w9(f):
-    find(f, "game.physics")["imports"].append({"id": "game.physics<game.client.input", "from": "game.client.input", "exports": []})
+    find(f, "game.physics")["imports"].append({"id": "game.physics<game.client", "from": "game.client", "exports": ["game.server:game.server.attack"]})
 
 
 def w10(f):
@@ -119,7 +119,7 @@ for name, note, change in [
     ("w5", "W5: Server uses Network without importing it.", w5),
     ("w6", "W6: a Transformation into a Language its Component does not use.", w6),
     ("w8", "W8: an Interaction with a Parameter outside its Language.", w8),
-    ("w9", "W9: Physics imports a Component from inside its sibling Client.", w9),
+    ("w9", "W9: Physics takes, in its Import from Client, an Export of Server.", w9),
     ("w10", "W10: a Connection to an Instance that does not offer its What.", w10),
     ("w11", "W11: a Medium whose call is another Component's Interaction.", w11),
     ("w12", "W12: a Mediation realized upside down.", w12),

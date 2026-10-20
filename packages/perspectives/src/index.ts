@@ -61,12 +61,10 @@ const first = (graph: Graph, id: string, end: string) => graph.navigate(id, end)
 const named = (graph: Graph, id: string | undefined) => (id === undefined || !graph.has(id) ? "?" : name(graph, id));
 /** What an Export exports, by name. */
 const exportedName = (graph: Graph, exported: string) => named(graph, resolve(graph, exported));
-/** What kind of thing an Export exports, and, for a re-export, whose Export it re-exports. */
+/** What kind of thing an Export exports. */
 function exportedDetail(graph: Graph, exported: string): string {
   const target = resolve(graph, exported);
-  const again = first(graph, exported, "export");
-  const kind = target === undefined ? "nothing" : graph.get(target).entity;
-  return again === undefined ? kind : `${kind}, re-exported from ${named(graph, first(graph, again, "exporter"))}`;
+  return target === undefined ? "nothing" : graph.get(target).entity;
 }
 
 /** An end's or an Instance's range, as `min..max`. */

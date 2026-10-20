@@ -2,8 +2,7 @@
  * ContextsFormat: a Component as JSON. A Component nests what it owns — its Exports, Imports,
  * Languages (read and written by KernelFormat), Interactions, Transformations and children —
  * and refers to the Languages it uses and what it implements. An Export names what it exports
- * under one key, `component`, `interaction`, `transformation`, `language` or `export` (a
- * re-export); an Import names the Component it is `from` and the `exports` it takes. Layers
+ * under one key, `component`, `interaction`, `transformation` or `language`; an Import names the Component it is `from` and the `exports` it takes. Layers
  * above Contexts add their parts of a Component, and their keys of an Export, through the
  * extension hooks, so this module knows nothing of them.
  */
@@ -34,7 +33,7 @@ export interface Extension {
 }
 
 /** The keys under which an Export names what it exports, here: each is the Export's end. */
-const EXPORTED = ["component", "interaction", "transformation", "language", "export"] as const;
+const EXPORTED = ["component", "interaction", "transformation", "language"] as const;
 
 export function readComponent(reader: Reader, value: unknown, at: string, extensions: readonly Extension[]): string | undefined {
   const graph = reader.graph;
@@ -50,6 +49,7 @@ export function readComponent(reader: Reader, value: unknown, at: string, extens
     if (exportId === undefined) return;
     graph.connect(id, "exports", exportId);
     for (const key of EXPORTED) if (exported[key] !== undefined) reader.refer(exportId, key, exported[key], `${where}.${key}`);
+    if (exported.export !== undefined) reader.problems.push({ at: `${where}.export`, message: "a re-export: Exports are global now, so run scripts/migrate.py on this file" });
     for (const extension of extensions) extension.readExport?.(reader, exportId, exported, where);
   });
   array(json.imports, `${at}.imports`).forEach((value, index) => {

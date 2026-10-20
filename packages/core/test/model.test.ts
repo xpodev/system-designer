@@ -8,6 +8,7 @@ import {
   analyzeFormula,
   boundInstance,
   importable,
+  placeable,
   imported,
   mediationStack,
   parse,
@@ -109,7 +110,7 @@ function system(): Graph {
   return graph;
 }
 
-/** `exporter` exports `target` through `end` (an own thing, a child, or a child's Export). */
+/** `exporter` exports `target` through `end` (an own thing, or a child). */
 function exportOf(graph: Graph, id: string, exporter: string, end: string, target: string): void {
   graph.add("Export", id);
   graph.connect(exporter, "exports", id);
@@ -133,10 +134,10 @@ group("components", () => {
     expect(violated(system())).toEqual([]);
   });
 
-  it("see their own and their parents' Languages, import from their siblings, and reach what they import", () => {
+  it("see their own and their parents' Languages, may import from any other Component, and reach what they import", () => {
     const graph = system();
     expect(scope(graph, "server")).toEqual(["combat"]);
-    expect(importable(graph, "client")).toEqual(["server"]);
+    expect(importable(graph, "client")).toEqual(["root", "server"]);
     expect(imported(graph, "client")).toEqual(["attack"]);
   });
 
@@ -154,7 +155,7 @@ group("components", () => {
     expect(violated(graph)).toEqual(["A Component exports only its own Languages"]);
   });
 
-  it("reach inside a sibling only through what it exports and re-exports (W9, W15)", () => {
+  it("import what is exported from anywhere, and place a Component its parent exports (W9, W10, W15)", () => {
     const graph = system();
     graph.add("Component", "inner");
     setName(graph, "inner", "inner");
@@ -164,33 +165,36 @@ group("components", () => {
     graph.connect("attack", "component", "inner");
     expect(violated(graph)).toEqual(["A Component exports only its own Interactions"]);
 
-    // The Export is now inner's, and the Server re-exports it.
+    // The Export is inner's, and the Client imports it from inner, inside the Server: nesting does not scope it.
     graph.disconnect("server", "exports", "server:attack");
     graph.connect("inner", "exports", "server:attack");
-    exportOf(graph, "server:inner.attack", "server", "export", "server:attack");
     expect(violated(graph)).toContain("An Import takes only Exports of the Component it is from");
     graph.disconnect("client<server", "exports", "server:attack");
-    graph.connect("client<server", "exports", "server:inner.attack");
+    importFrom(graph, "client<inner", "client", "inner", ["server:attack"]);
     expect(violated(graph)).toEqual([]);
     expect(imported(graph, "client")).toEqual(["attack"]);
 
-    // Importing from inner directly needs the Server to export inner itself.
-    importFrom(graph, "client<inner", "client", "inner", ["server:attack"]);
-    expect(violated(graph)).toContain(
-      "A nested Component imports only from its siblings, from what a Component it is nested in imports from, or from a Component that it, or one it is nested in, imports",
-    );
+    // Placing inner beyond the Server needs the Server to export it.
+    graph.add("Deployment", "solo");
+    setName(graph, "solo", "Solo");
+    graph.connect("solo", "component", "client");
+    graph.add("Instance", "one");
+    setName(graph, "one", "one");
+    graph.connect("one", "deployment", "solo");
+    graph.connect("one", "of", "inner");
+    expect(violated(graph)).toEqual(["An Instance of a Component from beyond what the deployed Component's ancestors hold is of one its parent exports"]);
+    expect(placeable(graph, "client", "inner")).toBe(false);
     exportOf(graph, "server:inner", "server", "component", "inner");
-    graph.connect("client<server", "exports", "server:inner");
     expect(violated(graph)).toEqual([]);
-    expect(importable(graph, "client")).toEqual(["server", "inner"]);
+    expect(placeable(graph, "client", "inner")).toBe(true);
+    expect(placeable(graph, "client", "server")).toBe(true);
   });
 });
 
 group("deletion", () => {
-  it("removes an Export with what it exports, and its re-exports; an Import keeps the rest, and goes with what it is from", () => {
+  it("removes an Export with what it exports; an Import keeps the rest, and goes with what it is from", () => {
     const graph = system();
-    exportOf(graph, "root:attack", "root", "export", "server:attack");
-    expect(remove(graph, "attack")).toEqual(expect.arrayContaining(["attack", "server:attack", "root:attack"]));
+    expect(remove(graph, "attack")).toEqual(expect.arrayContaining(["attack", "server:attack"]));
     expect(graph.has("client<server")).toBe(true);
     expect(graph.navigate("client<server", "exports")).toEqual([]);
     expect(remove(graph, "server")).toContain("client<server");

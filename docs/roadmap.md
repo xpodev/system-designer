@@ -44,6 +44,13 @@ Agreed, and now in [foundation.md](foundation.md) and `schema/`, which
     and the std rule `exports_interfaces` finds an exported Component with children.
     `scripts/migrate.py` brings files forward: whatever was imported from a Component, it now
     exports.
+12. **Exports are global.** What a Component exports, any Component may import, wherever
+    the two are: nesting no longer scopes it, and re-exports are gone. W9 keeps only that an
+    Import takes Exports of the Component it is from; the root's and packages' own W9
+    conditions go, since where a Component is kept is for the tool to resolve. A Component
+    offers the Interactions of each child it exports, as an API of its own (W10), and is
+    placed beyond its parent's reach only if its parent exports it (W10). `imports_acyclic`
+    looks at every Component, not only siblings. `scripts/migrate.py` takes re-exports out.
 
 ## Stand-ins in the design
 
@@ -93,7 +100,8 @@ Beyond the foundation changes, the tool itself:
 - **Rule.** The name is provisional, and the StdLib's Assertions for standard terms are to be
   defined.
 - **Saving.** The order in which the Workspace saves through the Repository and asks the providers.
-- **Clients and Edit Languages.** UI, MCP Server and API import Documentation Store, By Value Store
-  and Systems Editor, which are implementations, to speak their kinds of Edit. Either clients may
-  depend on implementations, or those Edit Languages belong where a client can import them
-  without one. Until this is decided, the profile has no rule against importing an implementation.
+- **Clients and Edit Languages.** Decided: importing an interface is to implement or consume it;
+  importing an implementation is to take part in it. UI, MCP Server and API import Documentation
+  Store, By Value Store and Systems Editor, which are implementations, to speak their kinds of
+  Edit, and take part in none of them: those Edit Languages belong in interfaces the clients
+  import, and the profile can then say that clients import only interfaces.

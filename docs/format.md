@@ -74,8 +74,9 @@ not read; a `systemathic/2` file is brought forward by a migration script (to be
   an Instance inside its Deployment — and everything else refers to it by `id`.
 - **The System** has its `root` Component, and the `packages` it brought in beside it.
 - **A Component's `exports`** are its Exports, each with its `id` and what it exports under
-  one key: `component`, `interaction`, `transformation`, `language`, `medium`, or `export`
-  for a re-export of a child's Export. **Its `imports`** are its Imports, each with its `id`,
+  one key: `component`, `interaction`, `transformation`, `language` or `medium`. A file
+  with re-exports (an `export` key) is from before Exports were global: `scripts/migrate.py`
+  brings it forward. **Its `imports`** are its Imports, each with its `id`,
   the Component it is `from`, and the `exports` it takes, by id — none for an Import of the
   Component as a whole. `uses` lists the Languages it works in; `implements` the Components
   it implements.

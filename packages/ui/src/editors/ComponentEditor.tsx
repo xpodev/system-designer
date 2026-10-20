@@ -204,13 +204,9 @@ function Exports({ component: c }: { component: ComponentJson }) {
   const choices: Choice[] = model
     .exportable(c.id)
     .filter((x) => !direct.has(x))
-    .map((x) => {
-      const reexport = model.kind(x) === "Export";
-      const what = reexport ? model.resolve(x) : x;
-      return { id: x, label: model.name(what), hint: reexport ? `re-export, from ${model.exporter(x)?.name}` : model.kind(x) };
-    });
+    .map((x) => ({ id: x, label: model.name(x), hint: model.kind(x) }));
   return (
-    <Section title="Exports" icon="link" count={c.exports.length} hint="its API: what others may reach of it — its own, its children, or what they export">
+    <Section title="Exports" icon="link" count={c.exports.length} hint="its API: what any other Component may import — its own parts, and children others may place">
       <Chips
         values={c.exports.map((e) => e.id)}
         label={(e) => exportLabel(model, e)}
@@ -229,11 +225,9 @@ function Exports({ component: c }: { component: ComponentJson }) {
   );
 }
 
-/** An Export as it reads: what it exports, and whose Export it re-exports. */
+/** An Export as it reads: what it exports. */
 function exportLabel(model: ReturnType<typeof useModel>, exported: string): string {
-  const at = model.get(exported);
-  const again = at?.kind === "Export" ? at.export.export : undefined;
-  return again === undefined ? model.name(exported) : `${model.name(exported)} (from ${model.exporter(again)?.name ?? "?"})`;
+  return model.name(exported);
 }
 
 /** What a Component imports: from which Components, and which of their Exports it takes. */
@@ -243,16 +237,16 @@ function Imports({ component: c }: { component: ComponentJson }) {
   const importable = model.importable(c.id);
   const from = new Set(c.imports.map((i) => i.from));
   const fresh = importable.filter((k) => !from.has(k.id));
-  // Everything inside a Component it may import from, that it does not reach yet: to reach it, exported up the way.
+  // Everything of another Component that it does not reach yet: to reach it, its owner exports it.
   const reached = new Set(model.imported(c.id));
-  const inside = (k: ComponentJson): ComponentJson[] => k.components.flatMap((child) => [child, ...inside(child)]);
+  const lineage = new Set(model.ancestry(c.id).map((k) => k.id));
   const reachable: Choice[] = importable
-    .flatMap((k) => [k, ...inside(k)])
+    .filter((k) => !lineage.has(k.id))
     .flatMap((k) => [...k.languages, ...k.interactions, ...k.transformations, ...k.mediums].map((x) => ({ x, k })))
     .filter(({ x }) => !reached.has(x.id))
     .map(({ x, k }) => ({ id: x.id, label: x.name, hint: `${model.kind(x.id)} of ${k.name}` }));
   return (
-    <Section title="Imports" icon="link" count={c.imports.length} hint="what it depends on: its siblings' Exports, and what its parents import from">
+    <Section title="Imports" icon="link" count={c.imports.length} hint="what it depends on: other Components' Exports, wherever they are">
       {c.imports.map((i) => (
         <ImportRow key={i.id} component={c} imported={i} />
       ))}
@@ -270,11 +264,11 @@ function Imports({ component: c }: { component: ComponentJson }) {
             value={undefined}
             placeholder="Reach…"
             choices={reachable}
-            onChange={(item) => item && void w.act("ComponentEditor", "reach", { component: c.id, item }, { message: `Reached ${model.name(item)}, exported on the way` })}
+            onChange={(item) => item && void w.act("ComponentEditor", "reach", { component: c.id, item }, { message: `Reached ${model.name(item)}: exported by its owner, and imported` })}
           />
         )}
       </div>
-      {c.imports.length === 0 && importable.length === 0 && <span className="muted">Nothing to import: it has no siblings, and its parents import nothing.</span>}
+      {c.imports.length === 0 && importable.length === 0 && <span className="muted">Nothing to import: there is no other Component.</span>}
     </Section>
   );
 }

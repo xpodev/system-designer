@@ -30,22 +30,13 @@ export function topLevel(graph: Graph): string[] {
   return graph.ofEntity("System").flatMap((system) => [...graph.navigate(system, "root"), ...graph.navigate(system, "packages")]);
 }
 
-/** `e.*export.<target>`: what an Export makes reachable — its target, or what the Export it re-exports resolves to. */
+/** `e.<target>`: what an Export makes reachable. */
 export function resolve(graph: Graph, exported: string): string | undefined {
-  const seen = new Set<string>();
-  let current: string | undefined = exported;
-  while (current !== undefined && graph.has(current) && !seen.has(current)) {
-    seen.add(current);
-    const [next]: string[] = graph.navigate(current, "export");
-    if (next === undefined) {
-      const ends = graph.vocabulary.reachable(graph.get(current).entity);
-      for (const end of TARGETS) {
-        const [target] = ends.has(end) ? graph.navigate(current, end) : [];
-        if (target !== undefined) return target;
-      }
-      return undefined;
-    }
-    current = next;
+  if (!graph.has(exported)) return undefined;
+  const ends = graph.vocabulary.reachable(graph.get(exported).entity);
+  for (const end of TARGETS) {
+    const [target] = ends.has(end) ? graph.navigate(exported, end) : [];
+    if (target !== undefined) return target;
   }
   return undefined;
 }
@@ -62,7 +53,7 @@ export function offered(graph: Graph, component: string, entity?: string): strin
   return ofEntity(graph, graph.navigate(component, "exports").map((id) => resolve(graph, id)), entity);
 }
 
-/** `C.imports.exports.*export`: what a Component's Imports resolve to, of one Entity or of all. */
+/** `C.imports.exports`: what a Component's Imports resolve to, of one Entity or of all. */
 export function imported(graph: Graph, component: string, entity?: string): string[] {
   const exports = graph.navigate(component, "imports").flatMap((id) => graph.navigate(id, "exports"));
   return ofEntity(graph, exports.map((id) => resolve(graph, id)), entity);
@@ -74,7 +65,7 @@ export function importedComponents(graph: Graph, component: string): string[] {
   return ofEntity(graph, [...from, ...imported(graph, component, "Component")]);
 }
 
-/** `scope(C) = (C.*parent).languages ∪ C.imports.exports.*export.language`: the Languages a Component may use. */
+/** `scope(C) = (C.*parent).languages ∪ C.imports.exports.language`: the Languages a Component may use. */
 export function scope(graph: Graph, component: string): string[] {
   const found = new Set<string>();
   for (const owner of ancestry(graph, component)) for (const language of graph.navigate(owner, "languages")) found.add(language);
@@ -82,27 +73,25 @@ export function scope(graph: Graph, component: string): string[] {
   return [...found];
 }
 
-/**
- * The Components a Component may import from: its siblings, those each Component it is
- * nested in imports from, and those that it, or one it is nested in, imports.
- */
+/** The Components a Component may import from: every other Component, wherever it is. Exports are not scoped. */
 export function importable(graph: Graph, component: string): string[] {
-  const found = new Set<string>(siblings(graph, component));
-  const lineage = ancestry(graph, component);
-  for (const ancestor of lineage.slice(1)) for (const id of graph.navigate(ancestor, "imports")) for (const from of graph.navigate(id, "from")) found.add(from);
-  for (const owner of lineage) for (const id of imported(graph, owner, "Component")) found.add(id);
-  found.delete(component);
-  return [...found];
+  return graph.ofEntity("Component").filter((id) => id !== component);
 }
 
 /**
- * What a Component may export: its own Languages, Interactions, Transformations and Mediums,
- * its children, and what its children export, to re-export.
+ * Whether a Deployment of `deployed` may place an Instance of `component`, once it imports it:
+ * a Component of no parent, one its own ancestors hold, or one its parent exports.
  */
+export function placeable(graph: Graph, deployed: string, component: string): boolean {
+  const [parent] = graph.navigate(component, "parent");
+  if (parent === undefined || ancestry(graph, deployed).includes(parent)) return true;
+  return graph.navigate(parent, "exports").some((e) => graph.navigate(e, "component").includes(component));
+}
+
+/** What a Component may export: its own Languages, Interactions, Transformations and Mediums, and its children. */
 export function exportable(graph: Graph, component: string): string[] {
   const ends = graph.vocabulary.reachable("Component");
-  const own = ["languages", "interactions", "transformations", "mediums", "components"].flatMap((end) => (ends.has(end) ? graph.navigate(component, end) : []));
-  return [...own, ...graph.navigate(component, "components").flatMap((child) => graph.navigate(child, "exports"))];
+  return ["languages", "interactions", "transformations", "mediums", "components"].flatMap((end) => (ends.has(end) ? graph.navigate(component, end) : []));
 }
 
 /**

@@ -19,7 +19,7 @@ export interface MediationJson { id: string; how: string; down: string | null; u
 export interface ConnectionJson { id: string; from: string; to: string | null; toComponent: string | null; what: string[]; mediations: MediationJson[] }
 export interface InstanceJson { id: string; name: string; of: string; min: number; max: number | "N" }
 export interface DeploymentJson { id: string; name: string; instances: InstanceJson[]; connections: ConnectionJson[] }
-/** An Export: what it exports, under one key — `interaction`, `export` for a re-export, … */
+/** An Export: what it exports, under one key — `interaction`, `component`, … */
 export type ExportJson = { id: string } & Partial<Record<ExportKey, string>>;
 /** An Import: the Component it is from, and the Exports it takes. */
 export interface ImportJson { id: string; from: string; exports: string[] }
@@ -48,7 +48,7 @@ export interface SystemFile {
 }
 
 /** The keys under which an Export names what it exports: each is the name of its Entity, lower-cased. */
-export const EXPORT_KEYS = ["component", "interaction", "transformation", "language", "medium", "export"] as const;
+export const EXPORT_KEYS = ["component", "interaction", "transformation", "language", "medium"] as const;
 export type ExportKey = (typeof EXPORT_KEYS)[number];
 
 /** What an id is, and where it sits: the Component it is in, and what holds it there. */
@@ -294,16 +294,10 @@ export class Model {
     return this.vocab(language).flatMap((l) => l.entities);
   }
 
-  /** The thing an Export exports: its target, or, for a re-export, what the Export it re-exports resolves to. */
+  /** The thing an Export exports. */
   resolve(exported: string): string | undefined {
-    const seen = new Set<string>();
-    let at = this.byId.get(exported);
-    while (at?.kind === "Export" && !seen.has(at.export.id)) {
-      seen.add(at.export.id);
-      if (at.export.export === undefined) return EXPORT_KEYS.map((key) => at!.kind === "Export" ? at.export[key] : undefined).find((id) => id !== undefined);
-      at = this.byId.get(at.export.export);
-    }
-    return undefined;
+    const at = this.byId.get(exported);
+    return at?.kind === "Export" ? EXPORT_KEYS.map((key) => at.export[key]).find((id) => id !== undefined) : undefined;
   }
 
   /** The Component whose Export this is. */
@@ -346,21 +340,21 @@ export class Model {
     return found;
   }
 
-  /**
-   * The Components a Component may import from: its siblings, those each Component it is nested in
-   * imports from, and those that it, or one it is nested in, imports.
-   */
+  /** The Components a Component may import from: every other one, wherever it is. Exports are not scoped. */
   importable(component: string): ComponentJson[] {
-    const found = new Map<string, ComponentJson>();
-    for (const sibling of this.siblings(component)) found.set(sibling.id, sibling);
-    const lineage = this.ancestry(component);
-    for (const ancestor of lineage.slice(1)) for (const i of ancestor.imports) { const from = this.component(i.from); if (from) found.set(from.id, from); }
-    for (const owner of lineage) for (const id of this.imported(owner.id, "Component")) { const c = this.component(id); if (c) found.set(c.id, c); }
-    found.delete(component);
-    return [...found.values()];
+    const all = (c: ComponentJson): ComponentJson[] => [c, ...c.components.flatMap(all)];
+    return this.topLevel.flatMap(all).filter((c) => c.id !== component);
   }
 
-  /** What a Component may export: its own Languages, Interactions, Transformations and Mediums, its children, and its children's Exports. */
+  /** Whether a Deployment of `deployed` may place `component`: one of no parent, one its ancestors hold, or one its parent exports. */
+  placeable(deployed: string, component: string): boolean {
+    const at = this.byId.get(component);
+    const parent = at?.kind === "Component" ? at.parent : undefined;
+    if (!parent || this.ancestry(deployed).some((c) => c.id === parent.id)) return true;
+    return parent.exports.some((e) => e.component === component);
+  }
+
+  /** What a Component may export: its own Languages, Interactions, Transformations and Mediums, and its children. */
   exportable(component: string): string[] {
     const c = this.component(component);
     if (!c) return [];
@@ -370,7 +364,6 @@ export class Model {
       ...c.transformations.map((t) => t.id),
       ...c.mediums.map((m) => m.id),
       ...c.components.map((k) => k.id),
-      ...c.components.flatMap((k) => k.exports.map((e) => e.id)),
     ];
   }
 
