@@ -964,6 +964,18 @@ about mediation includes none of them.
 A script might, for instance, accept HTTP, JSON and In-process as primitives, or ask for a
 depth of 1.
 
+**The shape of a level.** A Component's Deployment is the level below it. It may be one
+domain, whose parts talk in one Language, or a chain of domains, where the meaning changes
+from one to the next. These rules name the Components whose Deployments must have a shape:
+
+| Rule | Checks |
+|------|--------|
+| `uniform(*components)` | One of each Deployment's Connection Languages contains all the others in its vocabulary. Two sibling extensions of one core are two domains. |
+| `pipeline(*components)` | Each Deployment is a straight chain of disjoint domains. Where the domain changes, the Instance is a translator that knows only the two; every other Instance knows only its own. |
+
+A translator changes what passes, one way; a mediator (see *Mediation*) keeps it, there and
+back.
+
 ---
 
 # Out of scope

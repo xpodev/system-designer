@@ -36,6 +36,7 @@ __all__ = [
     "opacity", "mediation_separate", "medium_blind", "mediators_minimal", "projection_acyclic", "generic_level", "imports_acyclic",
     "deployments_complete", "interactions_abstract", "exports_interfaces",
     "mediation_primitives", "mediation_depth", "mediations_realized",
+    "spoken", "containing", "disjoint", "uniform", "pipeline",
     "standard_rules", "standard",
 ]
 
@@ -628,6 +629,133 @@ def mediations_realized(*mediums: str, severity: str = ERROR) -> Rule:
                 yield Violation([mediation.connection, mediation], f"a Mediation of {mediation.connection.id} over {mediation.how.name} is not realized")
 
     return Rule(mediations_realized, severity)
+
+
+
+# -- the shape of a level ----------------------------------------------------------------
+
+def spoken(connection: Element) -> Element | None:
+    """The Language a Connection is over: its What's."""
+    return connection.what[0].language if connection.what else None
+
+
+def containing(languages: Sequence[Element]) -> Element | None:
+    """The one of `languages` whose vocabulary contains all the others, if any."""
+    return next((top for top in languages if all(other in vocab(top) for other in languages)), None)
+
+
+def disjoint(a: Element, b: Element) -> bool:
+    """Two Languages with no Language in both vocabularies: neither extends the other, nor do they extend one in common."""
+    return not set(vocab(a)) & set(vocab(b))
+
+
+def _deployments(system: System, names: Sequence[str]) -> Iterator[tuple[Element, Element]]:
+    for name in names:
+        component = system.component(name)
+        for deployment in component.deployments:
+            yield component, deployment
+
+
+def uniform(*components: str, severity: str = ERROR) -> Rule:
+    """A rule: every Deployment of each of `components`, by name, is uniform."""
+    if not components:
+        raise ValueError("uniform needs the Components that must be uniform, by name")
+
+    def uniform(system: System) -> Iterator[Violation]:
+        """A uniform level is one domain: one Language its Connections are over contains all the others.
+
+        Its parts talk in one Language, or in Languages that one extends: Combat, and Core and
+        Fighting, which Combat extends. Two sibling extensions of one core, Combat and Rendering,
+        are two contexts, not one domain: neither contains the other.
+
+        To fix it, make one Language the domain, give each domain a Component of its own, or
+        join the domains in a pipeline.
+        """
+        for component, deployment in _deployments(system, components):
+            languages = list(dict.fromkeys(l for c in deployment.connections if (l := spoken(c)) is not None))
+            if languages and containing(languages) is None:
+                yield Violation([component, deployment], f"{deployment.name} of {component.name} is not uniform: it speaks {_names(languages)}")
+
+    return Rule(uniform, severity)
+
+
+def pipeline(*components: str, severity: str = ERROR) -> Rule:
+    """A rule: every Deployment of each of `components`, by name, is a pipeline."""
+    if not components:
+        raise ValueError("pipeline needs the Components that must be pipelines, by name")
+
+    def pipeline(system: System) -> Iterator[Violation]:
+        """A pipeline is a straight chain of disjoint domains, each joined to the next by a translator that knows only those two.
+
+        Its Instances form one chain: each calls at most one other, and is called by at most
+        one, in one direction. Along the chain, the Connections' Languages stay in one domain
+        for a while, then change to a disjoint one; the Instance where they change is a
+        translator, and knows only the domain it is called in and the one it calls. Every other
+        Instance is a stage, and knows only its own domain. The pipeline starts and ends with a
+        stage. Connections to the deployed Component itself are not part of the chain.
+
+        A translator changes what the data means, one way. A mediator keeps it, there and back.
+
+        To fix it, straighten the chain, split a translator that knows more than two domains,
+        or give a domain that overlaps its neighbour a Language of its own.
+        """
+        for component, deployment in _deployments(system, components):
+            yield from _pipeline(component, deployment)
+
+    return Rule(pipeline, severity)
+
+
+def _pipeline(component: Element, deployment: Element) -> Iterator[Violation]:
+    where = f"{deployment.name} of {component.name}"
+    links = [c for c in deployment.connections if c.to is not None]
+    after: dict[Element, set[Element]] = {}
+    before: dict[Element, set[Element]] = {}
+    for link in links:
+        after.setdefault(getattr(link, "from"), set()).add(link.to)
+        before.setdefault(link.to, set()).add(getattr(link, "from"))
+    branching = [i for i in deployment.instances if len(after.get(i, ())) > 1 or len(before.get(i, ())) > 1]
+    if branching:
+        yield Violation([deployment, *branching], f"{where} is not a straight chain: {_names(branching)} branch")
+        return
+    starts = [i for i in deployment.instances if i not in before]
+    chain: list[Element] = []
+    current = starts[0] if len(starts) == 1 else None
+    while current is not None and current not in chain:
+        chain.append(current)
+        current = next(iter(after.get(current, ())), None)
+    if len(chain) != len(deployment.instances):
+        yield Violation(deployment, f"{where} is not a straight chain: its Instances are not one path")
+        return
+
+    def over(a: Element, b: Element) -> list[Element]:
+        return list(dict.fromkeys(l for c in links if getattr(c, "from") is a and c.to is b and (l := spoken(c)) is not None))
+
+    def known(instance: Element) -> set[Element]:
+        return {language for used in instance.of.uses for language in vocab(used)}
+
+    # The domain each Instance is in, read along the chain; a translator is in two.
+    hops = [over(a, b) for a, b in zip(chain, chain[1:])]
+    for (a, b), languages in zip(zip(chain, chain[1:]), hops):
+        if languages and containing(languages) is None:
+            yield Violation([a, b], f"in {where}, {a.name} calls {b.name} over {_names(languages)}, more than one domain")
+    domains = [containing(languages) for languages in hops]
+    for position, instance in enumerate(chain):
+        called = domains[position - 1] if position > 0 else None
+        calls = domains[position] if position < len(domains) else None
+        sides = [d for d in (called, calls) if d is not None]
+        if called is not None and calls is not None and not (called in vocab(calls) or calls in vocab(called)):
+            if not disjoint(called, calls):
+                yield Violation(instance, f"in {where}, {instance.name} joins {called.name} and {calls.name}, which overlap")
+                continue
+        else:
+            top = containing(sides)
+            sides = [top] if top is not None else sides
+        allowed = {language for side in sides for language in vocab(side)}
+        extra = sorted((l for l in known(instance) if l not in allowed), key=lambda l: str(l.name))
+        if sides and extra:
+            role = "translates" if len(sides) == 2 else "is a stage of"
+            between = " and ".join(str(side.name) for side in sides)
+            yield Violation(instance, f"in {where}, {instance.name} {role} {between}, and knows {_names(extra)} too")
 
 
 standard_rules: tuple[Rule, ...] = (

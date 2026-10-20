@@ -27,12 +27,14 @@ from systemathic.std import (  # noqa: E402
     mediation_depth,
     mediation_primitives,
     mediations_realized,
+    pipeline,
     pure,
     rule,
     scope,
     shared,
     standalone,
     standard,
+    uniform,
     vocab,
 )
 from systemathic import assist, host  # noqa: E402
@@ -77,6 +79,29 @@ def with_stack(game: dict, *mediums: str) -> dict:
     stack = [{"id": f"m{i}", "how": f"pkg.{how}.medium", "down": None, "up": None} for i, how in enumerate(mediums)]
     find(file, "game.online.client-1-attacks")["mediations"] = stack
     return file
+
+
+def line() -> dict:
+    """A pipeline from A to C: Source, AtoB, Middle, BtoC and Sink, each calling the next."""
+    def language(key: str) -> dict:
+        return {"id": key, "name": key.upper(), "extends": [], "entities": [{"id": f"{key}.v", "name": "V", "extends": []}], "relationships": [], "formulas": []}
+
+    def part(key: str, name: str, uses: list[str], takes: str | None, calls: str | None) -> dict:
+        interactions = [] if takes is None else [{"id": f"{key}.take", "name": "take", "language": takes, "parameters": [{"id": f"{key}.take.v", "name": "v", "type": f"{takes}.v"}], "output": None}]
+        exports = [{"id": f"{key}:take", "interaction": f"{key}.take"}] if takes else []
+        imports = [{"id": f"{key}<{calls}", "from": calls, "exports": [f"{calls}:take"]}] if calls else []
+        return {"id": key, "name": name, "uses": uses, "exports": exports, "imports": imports, "implements": [], "languages": [],
+                "interactions": interactions, "transformations": [], "mediums": [], "deployments": [], "components": []}
+
+    parts = [part("source", "Source", ["a"], None, "a2b"), part("a2b", "AtoB", ["a", "b"], "a", "middle"),
+             part("middle", "Middle", ["b"], "b", "b2c"), part("b2c", "BtoC", ["b", "c"], "b", "sink"), part("sink", "Sink", ["c"], "c", None)]
+    instances = [{"id": f"line.{x['id']}", "name": x["id"], "of": x["id"], "min": 1, "max": 1} for x in parts]
+    connections = [{"id": f"line.{a['id']}-{b['id']}", "from": f"line.{a['id']}", "to": f"line.{b['id']}", "toComponent": None, "what": [f"{b['id']}.take"], "mediations": []}
+                   for a, b in zip(parts, parts[1:])]
+    root = {"id": "pipe", "name": "Pipe", "uses": [], "exports": [], "imports": [], "implements": [], "languages": [language(k) for k in "abc"],
+            "interactions": [], "transformations": [], "mediums": [], "components": parts,
+            "deployments": [{"id": "line", "name": "Line", "instances": instances, "connections": connections}]}
+    return {"format": GAME["format"], "design": {"id": "pipeline", "name": "Pipeline", "root": root, "packages": []}, "attachments": []}
 
 
 def found(file: dict, *rules) -> dict[str, list[str]]:
@@ -204,6 +229,34 @@ class Standard(unittest.TestCase):
         for mediation in find(file, "game.online.client-1-attacks")["mediations"]:
             mediation["down"] = "game.combat-over-network.down"
         self.assertEqual(found(file)["mediators_minimal"], ["CombatOverNetwork mediates between Combat and Network, Network and Transport"])
+
+    def test_uniform(self):
+        self.assertEqual(found(GAME, uniform("Game")), {})
+        self.assertEqual(found(line(), uniform("Pipe"))["uniform"], ["Line of Pipe is not uniform: it speaks A, B, C"])
+        file = line()
+        for key in "bc":
+            find(file, key)["extends"].append("a")
+        self.assertEqual(found(file, uniform("Pipe"))["uniform"], ["Line of Pipe is not uniform: it speaks A, B, C"])
+        with self.assertRaises(ValueError):
+            uniform()
+
+    def test_pipeline(self):
+        self.assertEqual(found(line(), pipeline("Pipe")), {})
+        self.assertEqual(found(GAME, pipeline("Game"))["pipeline"], ["Online of Game is not a straight chain: server branch"])
+        file = line()
+        find(file, "a2b")["uses"].append("c")
+        find(file, "middle")["uses"].append("a")
+        self.assertEqual(found(file, pipeline("Pipe"))["pipeline"], [
+            "in Line of Pipe, a2b translates A and B, and knows C too",
+            "in Line of Pipe, middle is a stage of B, and knows A too",
+        ])
+        file = line()
+        for key in "bc":
+            find(file, key)["extends"].append("a")
+        self.assertEqual(found(file, pipeline("Pipe"))["pipeline"], ["in Line of Pipe, b2c joins B and C, which overlap"])
+        file = line()
+        find(file, "line")["connections"].append({"id": "line.extra", "from": "line.source", "to": "line.middle", "toComponent": None, "what": ["middle.take"], "mediations": []})
+        self.assertEqual(found(file, pipeline("Pipe"))["pipeline"], ["Line of Pipe is not a straight chain: middle, source branch"])
 
     def test_deployments_complete(self):
         file = copy.deepcopy(GAME)
