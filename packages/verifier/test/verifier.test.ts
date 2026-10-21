@@ -1,6 +1,7 @@
+import { setName } from "@systemathic/core";
 import { newSystem } from "@systemathic/tool";
 import { describe, expect, it } from "vitest";
-import { STANDARD, Verifier, ordered, profileSetting, scriptSetting, settingScript, snapshot, type HostRun, type Profile, type ScriptHost } from "../src/index.js";
+import { STANDARD, STRUCTURAL, Verifier, ordered, verifyStructure, profileSetting, scriptSetting, settingScript, snapshot, type HostRun, type Profile, type ScriptHost } from "../src/index.js";
 
 const rule = (name: string, severity: "error" | "warning" = "error") => ({ name, severity, about: name, script: "script" });
 const profile: Profile = { name: "profile", script: { path: "rules.py" }, rules: [rule("a"), rule("b", "warning")] };
@@ -58,5 +59,27 @@ describe("Verifier", () => {
     expect(scriptSetting("docs/rules.py", "other/deep/game.json")).toBe("../../docs/rules.py");
     expect(scriptSetting("rules.py", "./game.json")).toBe("rules.py");
     expect(scriptSetting("std", "docs/game.json")).toBe("std");
+  });
+});
+
+describe("the structural Rule", () => {
+  it("holds of a well-formed System", () => {
+    expect(verifyStructure(newSystem("Shop").design)).toEqual([]);
+    expect(STRUCTURAL).toMatchObject({ name: "structural", severity: "error" });
+  });
+
+  it("finds the core's ranges, axioms and the design's Formulas that do not hold, with what each found", () => {
+    const design = newSystem("Shop").design;
+    design.disconnect("system", "root");
+    design.add("Language", "loop");
+    setName(design, "loop", "Loop");
+    design.connect("loop", "extends", "loop");
+    design.add("Formula", "f", "all x in Nothing. x == x");
+    design.connect("loop", "formulas", "f");
+    const found = verifyStructure(design);
+    expect(found).toContainEqual(expect.objectContaining({ assertion: "range", subjects: ["system"], end: "root", count: 0, min: 1, max: 1 }));
+    const cycle = found.find((v) => typeof v.assertion === "object" && v.assertion.about === "No Language extends itself, eventually");
+    expect(cycle && "bindings" in cycle && cycle.bindings.get("l")).toBe("loop");
+    expect(found).toContainEqual(expect.objectContaining({ assertion: "fit", subjects: ["f"] }));
   });
 });

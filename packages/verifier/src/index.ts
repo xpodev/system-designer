@@ -2,10 +2,13 @@
  * The Verifier (docs/tool-design.md, Verification): scripts, profiles, and the Runs of a
  * profile on a Snapshot of a system context. Rules are written in scripts and run by a
  * ScriptHost — the mediation that knows the scripts' language — so nothing here knows how
- * rules are written or run. The Verifier knows nothing of diagnostics either; structural
- * errors blocking verification is the business of whoever starts a Run.
+ * rules are written or run. Beside them is the structural Rule, built in (`structural.ts`).
+ * The Verifier knows nothing of diagnostics either; structural errors blocking verification is
+ * the business of whoever starts a Run.
  */
 import { save, type SystemContext, type ToolSystem } from "@systemathic/tool";
+
+export { AXIOMS, STRUCTURAL, verifyStructure, type FormulaAssertion, type StructuralViolation } from "./structural.js";
 
 export type Severity = "error" | "warning";
 

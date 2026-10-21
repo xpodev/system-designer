@@ -1,13 +1,13 @@
 /**
  * The Diagnoser: what is wrong with a System, and what can be measured about it. Structural
- * errors are found without any knowledge of the well-formedness conditions written here: the
- * core's own ranges and axioms are evaluated on the System, which is a finite model. Rule
- * Violations of a verification Run reach it through its projection of Verification, so the
- * Verifier never knows diagnostics exist.
+ * errors are the Violations of the Verifier's structural Rule — the core's ranges and axioms,
+ * and the fit of the design's Formulas — which it always verifies; the Violations of a
+ * verification Run are those of the Rules it was given. Both reach it through its projection
+ * of Verification, so the Verifier never knows diagnostics exist.
  */
-import { analyzeFormula, coreSpec, counterexamples, describe, parse, type Formula, type Graph } from "@systemathic/core";
+import type { Graph } from "@systemathic/core";
 import type { SystemContext } from "@systemathic/tool";
-import type { Run } from "@systemathic/verifier";
+import { verifyStructure, type Run } from "@systemathic/verifier";
 import { axiomSuggestions, rangeSuggestions, type Suggestion } from "./suggestions.js";
 
 export { metrics, type Measure, type Metric } from "./metrics.js";
@@ -29,20 +29,14 @@ export interface Diagnostic {
   readonly suggestions: readonly Suggestion[];
 }
 
-const axioms: { readonly id: string; readonly about: string; readonly formula: Formula }[] = coreSpec.axioms.map((axiom) => ({
-  id: axiom.id,
-  about: axiom.about,
-  formula: parse(axiom.formula),
-}));
-
 /** Everything wrong with a system context: its structural errors, and the Violations of `run`, if given. */
 export function diagnose(context: SystemContext, run?: Run): Diagnostic[] {
   const graph = context.design;
-  const found = [...ranges(graph), ...violatedAxioms(graph), ...formulas(graph), ...(run ? violations(run, graph) : [])];
+  const found = [...structural(graph), ...(run ? violations(run, graph) : [])];
   return found.sort(compare);
 }
 
-/** Structural errors: errors found by a Condition, which must be solved before a System is verified. */
+/** Structural errors: errors of the structural Rule, which must be solved before a System is verified. */
 export function structuralErrors(diagnostics: readonly Diagnostic[]): Diagnostic[] {
   return diagnostics.filter((diagnostic) => diagnostic.severity === "error" && diagnostic.kind === "condition");
 }
@@ -61,51 +55,16 @@ function* violations(run: Run, graph: Graph): Generator<Diagnostic> {
   }
 }
 
-function* ranges(graph: Graph): Generator<Diagnostic> {
-  for (const instance of graph.all()) {
-    for (const [endName, steps] of graph.vocabulary.reachable(instance.entity)) {
-      if (steps.length !== 1) continue;
-      const { min, max } = steps[0]!.end;
-      const count = graph.navigate(instance.id, endName).length;
-      if (count >= min && (max === null || count <= max)) continue;
-      yield {
-        severity: "error",
-        check: "range",
-        kind: "condition",
-        message: `${describe(graph, instance.id)} has ${count} '${endName}', expected ${min}..${max ?? "N"}`,
-        subjects: [instance.id],
-        suggestions: rangeSuggestions(instance.id, endName, count, min, max),
-      };
-    }
-  }
-}
-
-function* violatedAxioms(graph: Graph): Generator<Diagnostic> {
-  for (const axiom of axioms) {
-    // A symmetric axiom fails once per ordering of the same things: report it once.
-    const seen = new Set<string>();
-    for (const env of counterexamples(axiom.formula, graph)) {
-      const subjects = [...new Set(env.values())];
-      const key = [...subjects].sort().join("\u0000");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      yield { severity: "error", check: axiom.id, kind: "condition", message: axiom.about, subjects, suggestions: axiomSuggestions(axiom.about, env) };
-    }
-  }
-}
-
-function* formulas(graph: Graph): Generator<Diagnostic> {
-  for (const formula of graph.ofEntity("Formula")) {
-    const analysis = analyzeFormula(graph, formula);
-    if (!analysis.ok) {
-      yield {
-        severity: "error",
-        check: "formula",
-        kind: "condition",
-        message: `the formula does not fit its Language: ${analysis.error}`,
-        subjects: [formula],
-        suggestions: [{ message: "Fix the formula's text, in the ASCII syntax, over its own Language", subjects: [formula] }],
-      };
+/** The projection of the structural Rule's Violations: each a Condition's error, with the Suggestions that fix it. */
+function* structural(graph: Graph): Generator<Diagnostic> {
+  for (const violation of verifyStructure(graph)) {
+    const found = { severity: "error", kind: "condition", message: violation.message, subjects: violation.subjects } as const;
+    if (violation.assertion === "range") {
+      yield { ...found, check: "range", suggestions: rangeSuggestions(violation.subjects[0], violation.end, violation.count, violation.min, violation.max) };
+    } else if (violation.assertion === "fit") {
+      yield { ...found, check: "formula", suggestions: [{ message: "Fix the formula's text, in the ASCII syntax, over its own Language", subjects: violation.subjects }] };
+    } else {
+      yield { ...found, check: violation.assertion.id, suggestions: axiomSuggestions(violation.assertion.about, violation.bindings) };
     }
   }
 }
