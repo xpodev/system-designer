@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Documentation: what a System and the things in it are for, kept with the System and edited on its History.",
+  "description": "Documentation: what a System and the things in it are for, as Descriptions kept with the System, read by anyone.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -13,11 +13,6 @@
     }
   },
   "dependencies": {
-    "@systemathic/editing": "workspace:*",
-    "@systemathic/editors": "workspace:*",
     "@systemathic/tool": "workspace:*"
-  },
-  "devDependencies": {
-    "@systemathic/tool-json": "workspace:*"
   }
 }

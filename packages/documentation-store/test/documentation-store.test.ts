@@ -3,7 +3,8 @@ import { ArgumentError, ComponentEditor, LanguageEditor } from "@systemathic/edi
 import { newSystem, open, save } from "@systemathic/tool";
 import { readSystem, writeSystem } from "@systemathic/tool-json";
 import { describe as group, expect, it } from "vitest";
-import { describe, descriptionOf, descriptions, documentationEditor, documentationProvider } from "../src/index.js";
+import { descriptionOf, descriptions } from "@systemathic/documentation";
+import { describe, documentationEditor, documentationProvider } from "../src/index.js";
 import type { SystemContext } from "@systemathic/tool";
 
 /** The System as it is stored, once Documentation has saved into a copy of it. */

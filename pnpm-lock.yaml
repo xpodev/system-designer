@@ -101,6 +101,15 @@ importers:
 
   packages/documentation:
     dependencies:
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+
+  packages/documentation-store:
+    dependencies:
+      '@systemathic/documentation':
+        specifier: workspace:*
+        version: link:../documentation
       '@systemathic/editing':
         specifier: workspace:*
         version: link:../editing
@@ -162,9 +171,9 @@ importers:
       '@systemathic/diagnoser':
         specifier: workspace:*
         version: link:../diagnoser
-      '@systemathic/documentation':
+      '@systemathic/documentation-store':
         specifier: workspace:*
-        version: link:../documentation
+        version: link:../documentation-store
       '@systemathic/editing':
         specifier: workspace:*
         version: link:../editing

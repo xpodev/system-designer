@@ -14,7 +14,7 @@ import { exportSelection, importPackage, parsePackage, type Catalog } from "@sys
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
 import { configurationEditor, configurationsProvider, problems as configurationProblems } from "@systemathic/configurations";
-import { documentationEditor, documentationProvider } from "@systemathic/documentation";
+import { documentationEditor, documentationProvider } from "@systemathic/documentation-store";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
 import { perspectives, view, type Perspective, type View } from "@systemathic/perspectives";

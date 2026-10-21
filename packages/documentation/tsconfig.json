@@ -9,12 +9,6 @@
   ],
   "references": [
     {
-      "path": "../editing"
-    },
-    {
-      "path": "../editors"
-    },
-    {
       "path": "../tool"
     }
   ]

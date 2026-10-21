@@ -93,14 +93,17 @@ Beyond the foundation changes, the tool itself:
 - Rule scripts read the current Configuration from the System's attachment; the Workspace in
   scripts (`workspace.plugins`) is still to be designed.
 - The tool's own architecture as the design draws it: Edits as data with a single
-  `Editor.apply`, Readers that take a System, structural errors as StdLib Formula Assertions,
-  and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
+  `Editor.apply`, structural errors as StdLib Formula Assertions, and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
   the current shape (Effects on a History; the Host holding open Systems).
 - ~~Removing a thing removes what depends on it, metadata included~~: done. Removing an Entity
   takes every Relationship with an end of it. A Description or a Choice of what is no longer
   there is kept only for undo, and not saved; a Choice of a removed Deployment chooses none.
-- Readers take a System, not a Target; structural errors are the Systemathic formulas verified as
-  StdLib Formula Assertions.
+- ~~Readers take a System, not a Target~~: done. Every reader takes a System, and none reaches
+  what edits: Documentation is read from `@systemathic/documentation`, and described through the
+  Documentation Store, `@systemathic/documentation-store`.
+- Structural errors are the Systemathic formulas verified as StdLib Formula Assertions. Today
+  the Diagnoser evaluates the core's axioms and ranges itself; the Verifier would hold them as
+  a structural Rule beside the profile's.
 - ~~Each metadata provider stores and loads its own metadata; the Repository knows none~~:
   done. A Metadata Provider loads when a System is opened and saves when it is saved, wherever
   it likes: in its attachment, which the Repository keeps with the design without reading it,

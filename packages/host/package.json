@@ -17,7 +17,7 @@
     "@systemathic/configurations": "workspace:*",
     "@systemathic/core": "workspace:*",
     "@systemathic/diagnoser": "workspace:*",
-    "@systemathic/documentation": "workspace:*",
+    "@systemathic/documentation-store": "workspace:*",
     "@systemathic/editing": "workspace:*",
     "@systemathic/editors": "workspace:*",
     "@systemathic/exporter": "workspace:*",

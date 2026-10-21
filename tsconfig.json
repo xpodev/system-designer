@@ -20,6 +20,9 @@
       "path": "packages/documentation"
     },
     {
+      "path": "packages/documentation-store"
+    },
+    {
       "path": "packages/configurations"
     },
     {

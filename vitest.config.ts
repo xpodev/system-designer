@@ -12,6 +12,7 @@ export default defineConfig({
       "@systemathic/editing": source("editing"),
       "@systemathic/editors": source("editors"),
       "@systemathic/documentation": source("documentation"),
+      "@systemathic/documentation-store": source("documentation-store"),
       "@systemathic/configurations": source("configurations"),
       "@systemathic/diagnoser": source("diagnoser"),
       "@systemathic/verifier": source("verifier"),
