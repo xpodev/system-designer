@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Target, undo } from "@systemathic/editing";
 import { ArgumentError, ComponentEditor, DeploymentEditor } from "@systemathic/editors";
-import { open, save } from "@systemathic/tool";
+import { open, save, type SystemContext } from "@systemathic/tool";
 import { readSystem, writeSystem } from "@systemathic/tool-json";
 import { describe as group, expect, it } from "vitest";
 import {
@@ -14,11 +14,18 @@ import {
   current,
   occupants,
   problems,
-  saved,
+  configurationsProvider,
   setCurrent,
   setRules,
   unchoose,
 } from "../src/index.js";
+
+/** The System as it is stored, once Configurations has saved into a copy of it. */
+async function saved(context: SystemContext) {
+  const copy = open(save(context));
+  await configurationsProvider.save(copy, undefined);
+  return save(copy);
+}
 
 const game = JSON.parse(readFileSync(new URL("../../../examples/game.systemathic.json", import.meta.url), "utf8"));
 const load = () => {
@@ -103,7 +110,7 @@ group("configurations", () => {
     expect(() => unchoose(s, root.id)).toThrow(ArgumentError);
   });
 
-  it("go with what they choose, until the System is saved, so undo brings them back", () => {
+  it("go with what they choose, until the System is saved, so undo brings them back", async () => {
     const { target, s } = load();
     const choices = () => configuration(target.context, "game.release")!.root.choices.map((c) => [c.instance, c.deployment]);
     const before = choices();
@@ -114,7 +121,7 @@ group("configurations", () => {
       ["game.online.client-1", "game.client.desktop"],
     ]);
     expect(problems(target.context).filter((p) => p.check === "C1")).toEqual([]);
-    const file = writeSystem(saved(save(target.context)));
+    const file = writeSystem(await saved(target.context));
     expect(file.attachments).toContainEqual({
       owner: "configurations",
       data: expect.objectContaining({ configurations: [expect.objectContaining({ id: "game.release", root: expect.objectContaining({ choices: [expect.anything(), expect.anything()] }) })] }),

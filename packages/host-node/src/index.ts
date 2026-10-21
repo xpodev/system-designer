@@ -7,7 +7,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Catalog, parsePackage } from "@systemathic/catalog";
-import { DEFAULT_PORT, Host, type Files } from "@systemathic/host";
+import { DEFAULT_PORT, Host, type Files, type MetadataProvider } from "@systemathic/host";
 import { PythonHost } from "@systemathic/python-host";
 
 export { serve, type ServeOptions } from "./server.js";
@@ -60,8 +60,13 @@ export function standardCatalog(folder = STANDARD_CATALOG): Catalog {
   return new Catalog(files.map((file) => parsePackage(JSON.parse(readFileSync(join(folder, file), "utf8")), "standard", file)));
 }
 
-/** A Host on this machine: files under `cwd`, rules run by Python, the standard catalog. */
-export function nodeHost(options: { cwd?: string; catalog?: Catalog; python?: string } = {}): Host {
+/** A Host on this machine: files under `cwd`, rules run by Python, the standard catalog, and the standard Metadata Providers unless given others. */
+export function nodeHost(options: { cwd?: string; catalog?: Catalog; python?: string; providers?: readonly MetadataProvider[] } = {}): Host {
   const cwd = options.cwd ?? process.cwd();
-  return new Host({ files: new NodeFiles(cwd), catalog: options.catalog ?? standardCatalog(), scripts: new PythonHost(options.python, cwd) });
+  return new Host({
+    files: new NodeFiles(cwd),
+    catalog: options.catalog ?? standardCatalog(),
+    scripts: new PythonHost(options.python, cwd),
+    ...(options.providers === undefined ? {} : { providers: options.providers }),
+  });
 }

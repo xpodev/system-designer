@@ -1,9 +1,10 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HostClient, HostError, type HostEvent } from "@systemathic/host";
+import { HostClient, HostError, STANDARD_PROVIDERS, type HostEvent, type MetadataProvider } from "@systemathic/host";
+
 import { nodeHost, serve } from "../src/index.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -74,6 +75,33 @@ describe("Host", () => {
     expect(broken.problems[0]).toMatchObject({ line: 2, severity: "error" });
     expect((await host.symbols()).some((s) => s.name === "mediation_primitives")).toBe(true);
   }, 30_000);
+
+  it("asks every Metadata Provider when a System is opened and saved; each keeps its metadata its own way", async () => {
+    const dir = workspace();
+    // Notes kept in a file of their own beside the System, not in its attachments.
+    const notes = new Map<object, string>();
+    const beside = (location: string) => join(dir, location.replace(/\.json$/, ".notes.txt"));
+    const notesProvider: MetadataProvider = {
+      async load(context, location) {
+        if (location !== undefined && existsSync(beside(location))) notes.set(context, readFileSync(beside(location), "utf8"));
+      },
+      async save(system, location) {
+        if (location !== undefined) writeFileSync(beside(location), "saved with the System");
+      },
+    };
+    const host = nodeHost({ cwd: dir, providers: [...STANDARD_PROVIDERS, notesProvider] });
+    const { id } = await host.open("game.json");
+    const { session } = await host.startSession(id, "ui");
+    await host.apply(id, session, "DocumentationEditor", "describe", { subject: "game.server", text: "Runs the game." });
+    await host.save(id, "copy.json");
+    expect(readFileSync(join(dir, "copy.notes.txt"), "utf8")).toBe("saved with the System");
+    const file = JSON.parse(readFileSync(join(dir, "copy.json"), "utf8"));
+    expect(file.attachments.map((a: { owner: string }) => a.owner)).not.toContain("notes");
+    expect(file.attachments.find((a: { owner: string }) => a.owner === "documentation").data.descriptions["game.server"]).toBe("Runs the game.");
+    const reopened = nodeHost({ cwd: dir, providers: [notesProvider] });
+    await reopened.open("copy.json");
+    expect([...notes.values()]).toEqual(["saved with the System"]);
+  });
 
   it("keeps the script named from the System's file, wherever the System is saved", async () => {
     const dir = workspace();

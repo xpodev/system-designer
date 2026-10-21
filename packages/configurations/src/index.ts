@@ -16,7 +16,7 @@
 import { boundOf, identityPath, nameOf, resolve, type Graph } from "@systemathic/core";
 import type { Effect, Edit, EditSession } from "@systemathic/editing";
 import { ArgumentError, type Operation } from "@systemathic/editors";
-import type { SystemContext, ToolSystem } from "@systemathic/tool";
+import type { MetadataProvider, SystemContext } from "@systemathic/tool";
 
 /** Who the attachment the Configurations are kept in belongs to. */
 export const ATTACHMENT_OWNER = "configurations";
@@ -70,18 +70,20 @@ export function configurations(context: SystemContext): readonly Configuration[]
 }
 
 /**
- * `system` as it is saved: the Choices of what is no longer in the design, kept only so undo can
- * bring them back, are left behind with the History.
+ * Configurations as a Metadata Provider. They are kept in its attachment, so there is nothing to
+ * load; what it saves leaves out the Choices of what is no longer in the design, kept only so
+ * undo can bring them back.
  */
-export function saved(system: ToolSystem): ToolSystem {
-  const attachments = system.attachments.map((attachment) => {
-    if (attachment.owner !== ATTACHMENT_OWNER) return attachment;
-    const data = attachment.data as Partial<Stored> | undefined;
-    if (!Array.isArray(data?.configurations)) return attachment;
-    return { owner: ATTACHMENT_OWNER, data: { ...data, configurations: kept(data).map((c) => present(system.design, c)) } };
-  });
-  return { design: system.design, attachments };
-}
+export const configurationsProvider: MetadataProvider = {
+  async load() {},
+  async save(system) {
+    const data = stored(system);
+    if (!Array.isArray(data?.configurations)) return;
+    const present = configurations(system);
+    for (const attachment of system.attachments.filter((a) => a.owner === ATTACHMENT_OWNER)) system.detach(attachment);
+    system.attach({ owner: ATTACHMENT_OWNER, data: { ...data, configurations: present } });
+  },
+};
 
 /** The Configuration with this id, if there is one. */
 export function configuration(context: SystemContext, id: string): Configuration | undefined {

@@ -3,7 +3,15 @@ import { ArgumentError, ComponentEditor, LanguageEditor } from "@systemathic/edi
 import { newSystem, open, save } from "@systemathic/tool";
 import { readSystem, writeSystem } from "@systemathic/tool-json";
 import { describe as group, expect, it } from "vitest";
-import { describe, descriptionOf, descriptions, documentationEditor, saved } from "../src/index.js";
+import { describe, descriptionOf, descriptions, documentationEditor, documentationProvider } from "../src/index.js";
+import type { SystemContext } from "@systemathic/tool";
+
+/** The System as it is stored, once Documentation has saved into a copy of it. */
+async function saved(context: SystemContext) {
+  const copy = open(save(context));
+  await documentationProvider.save(copy, undefined);
+  return save(copy);
+}
 
 function game() {
   const target = new Target(newSystem("Game"));
@@ -57,15 +65,15 @@ group("documentation", () => {
     expect(descriptionOf(reopened, monster)).toBe("Something to fight.");
   });
 
-  it("leaves the Descriptions of what was removed behind when it is saved", () => {
+  it("leaves the Descriptions of what was removed behind when it is saved", async () => {
     const { target, s, monster } = game();
     describe(s, "system", "A small game.");
     describe(s, monster, "Something to fight.");
     LanguageEditor.remove(s, target.graph.navigate(monster, "language")[0]!);
-    const file = writeSystem(saved(save(target.context)));
+    const file = writeSystem(await saved(target.context));
     expect(file.attachments).toEqual([{ owner: "documentation", data: { descriptions: { system: "A small game." } } }]);
     describe(s, "system", "");
-    expect(writeSystem(saved(save(target.context))).attachments).toEqual([]);
+    expect(writeSystem(await saved(target.context)).attachments).toEqual([]);
     undo(s);
     undo(s);
     expect(descriptionOf(target.context, monster)).toBe("Something to fight.");

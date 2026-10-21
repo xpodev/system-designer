@@ -11,7 +11,7 @@
  */
 import type { Effect, Edit, EditSession } from "@systemathic/editing";
 import { ArgumentError, type Operation } from "@systemathic/editors";
-import type { SystemContext, ToolSystem } from "@systemathic/tool";
+import type { MetadataProvider, SystemContext, ToolSystem } from "@systemathic/tool";
 
 /** Who the attachment the Descriptions are kept in belongs to. */
 export const ATTACHMENT_OWNER = "documentation";
@@ -64,19 +64,20 @@ export function descriptionOf(context: SystemContext, id: string): string | unde
 }
 
 /**
- * `system` as it is saved: the Descriptions of Subjects no longer there, kept only so undo can
- * bring them back, are left behind with the History.
+ * Documentation as a Metadata Provider. Its Descriptions are kept in its attachment, so there is
+ * nothing to load; what it saves leaves out the Descriptions of Subjects no longer there, kept
+ * only so undo can bring them back.
  */
-export function saved(system: ToolSystem): ToolSystem {
-  const attachments = system.attachments.flatMap((attachment) => {
-    if (attachment.owner !== ATTACHMENT_OWNER) return [attachment];
-    const all = (attachment.data as Partial<Stored> | undefined)?.descriptions;
-    if (typeof all !== "object" || all === null) return [attachment];
-    const kept = Object.fromEntries(Object.entries(all).filter(([id]) => isSubject(system.design, id)));
-    return Object.keys(kept).length > 0 ? [{ owner: ATTACHMENT_OWNER, data: { ...attachment.data as object, descriptions: kept } }] : [];
-  });
-  return { design: system.design, attachments };
-}
+export const documentationProvider: MetadataProvider = {
+  async load() {},
+  async save(system) {
+    const data = system.attachments.find((attachment) => attachment.owner === ATTACHMENT_OWNER)?.data as Partial<Stored> | undefined;
+    if (typeof data?.descriptions !== "object" || data.descriptions === null) return;
+    const kept = Object.fromEntries(Object.entries(data.descriptions).filter(([id]) => isSubject(system.design, id)));
+    for (const attachment of system.attachments.filter((a) => a.owner === ATTACHMENT_OWNER)) system.detach(attachment);
+    if (Object.keys(kept).length > 0) system.attach({ owner: ATTACHMENT_OWNER, data: { ...data, descriptions: kept } });
+  },
+};
 
 /** Sets the Description of `subject`, or removes it; the Effect says how to put back what was there. */
 function write(context: SystemContext, subject: string, text: string | undefined): Effect {

@@ -101,7 +101,11 @@ Beyond the foundation changes, the tool itself:
   there is kept only for undo, and not saved; a Choice of a removed Deployment chooses none.
 - Readers take a System, not a Target; structural errors are the Systemathic formulas verified as
   StdLib Formula Assertions.
-- Each metadata provider stores and loads its own metadata; the Repository knows none.
+- ~~Each metadata provider stores and loads its own metadata; the Repository knows none~~:
+  done. A Metadata Provider loads when a System is opened and saves when it is saved, wherever
+  it likes: in its attachment, which the Repository keeps with the design without reading it,
+  or elsewhere. The Host asks every provider it is given (the standard ones: Documentation and
+  Configurations), naming none.
 - ~~Profile paths~~: done. A System's profile setting names its script relative to the folder
   of the System's file, and saving the System elsewhere renames it from there.
 
@@ -119,6 +123,10 @@ Beyond the foundation changes, the tool itself:
 - **Rule.** The name is provisional, and the StdLib's Assertions for standard terms are to be
   defined.
 - **Saving.** The order in which the Workspace saves through the Repository and asks the providers.
+  The tool asks the providers first, each saving into a copy of the System, and then writes the
+  copy through the Repository; the design does not say so yet. Nor does it say that a System
+  the Repository stores carries the providers' attachments, a segment it keeps without reading:
+  the Repository is described as storing the design only.
 - ~~**Clients and Edit Languages.**~~ Done: each Edit Language is a vocabulary of its own
   (Kernel Edits … Configuration Edits), and the profile says clients import no implementation.
 - **Dispatch by kind.** The tool routes each call to the one occupant of a fan-out for its kind —

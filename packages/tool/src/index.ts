@@ -52,6 +52,20 @@ export class SystemContext {
   }
 }
 
+/**
+ * A provider of one kind of metadata about Systems (Metadata Provider). Where it keeps its
+ * metadata is its own business: in its attachment, which is stored with the design and read by
+ * no one else, or anywhere it likes. The Workspace asks every provider when a System is opened
+ * and when it is saved; neither knows the other. A location is where the System is stored, if
+ * anywhere.
+ */
+export interface MetadataProvider {
+  /** Loads its metadata into `context`, a System just opened from `location`. */
+  load(context: SystemContext, location: string | undefined): Promise<void>;
+  /** Saves its metadata for `system`, a copy of an open System about to be stored at `location`: into its attachment there, or elsewhere. */
+  save(system: SystemContext, location: string | undefined): Promise<void>;
+}
+
 /** `new() → SystemContext`: an empty, well-formed System: a System and its root Component, of one name. */
 export function newSystem(name = "Untitled", id = "system"): SystemContext {
   const design = coreGraph();

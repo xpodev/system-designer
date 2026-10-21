@@ -13,12 +13,12 @@ import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
-import { configurationEditor, problems as configurationProblems, saved as savedConfigurations } from "@systemathic/configurations";
-import { documentationEditor, saved } from "@systemathic/documentation";
+import { configurationEditor, configurationsProvider, problems as configurationProblems } from "@systemathic/configurations";
+import { documentationEditor, documentationProvider } from "@systemathic/documentation";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
 import { perspectives, view, type Perspective, type View } from "@systemathic/perspectives";
-import { newSystem, open, save, type SystemContext } from "@systemathic/tool";
+import { newSystem, open, save, type MetadataProvider, type SystemContext, type ToolSystem } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type SystemFile } from "@systemathic/tool-json";
 import {
   ATTACHMENT_OWNER as VERIFIER,
@@ -35,6 +35,11 @@ import {
   type ScriptSymbol,
 } from "@systemathic/verifier";
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
+
+export type { MetadataProvider };
+
+/** The tool's own Metadata Providers, connected to every Host that is not given others. */
+export const STANDARD_PROVIDERS: readonly MetadataProvider[] = [documentationProvider, configurationsProvider];
 
 /** Every operation a client may apply: the concept editors', and the tool contexts' that edit on the History too. */
 const OPERATIONS: readonly Operation[] = [...Object.values(editors).flat(), ...documentationEditor, ...configurationEditor];
@@ -66,6 +71,8 @@ export interface HostOptions {
   readonly files: Files;
   readonly catalog: Catalog;
   readonly scripts: ScriptHost & ScriptAssistant;
+  /** The Metadata Providers asked whenever a System is opened or saved; the standard ones if none are given. */
+  readonly providers?: readonly MetadataProvider[];
 }
 
 export class Host implements HostApi {
@@ -75,12 +82,14 @@ export class Host implements HostApi {
   private readonly library: Catalog;
   private readonly verifier: Verifier;
   private readonly scripts: ScriptHost & ScriptAssistant;
+  private readonly providers: readonly MetadataProvider[];
   private next = 1;
 
   constructor(options: HostOptions) {
     this.store = options.files;
     this.library = options.catalog;
     this.scripts = options.scripts;
+    this.providers = options.providers ?? STANDARD_PROVIDERS;
     this.verifier = new Verifier(this.scripts);
   }
 
@@ -101,7 +110,7 @@ export class Host implements HostApi {
   }
 
   async create(name: string): Promise<ContextInfo> {
-    return this.info(this.host(newSystem(name)));
+    return this.info(await this.load(newSystem(name), undefined));
   }
 
   async open(path: string) {
@@ -117,7 +126,7 @@ export class Host implements HostApi {
       if (error instanceof FormatError || error instanceof SyntaxError) throw new HostError(400, `${path}: not a System file: ${error.message}`);
       throw error;
     }
-    const hosted = this.host(open(read.system), file);
+    const hosted = await this.load(open(read.system), file);
     return { ...this.info(hosted), problems: read.problems };
   }
 
@@ -131,7 +140,7 @@ export class Host implements HostApi {
       const moved = scriptSetting(settingScript(setting, hosted.path), file);
       if (moved !== setting.script) await this.setAttachment(context, VERIFIER, { ...setting, script: moved });
     }
-    await this.store.write(file, JSON.stringify(writeSystem(saved(savedConfigurations(save(hosted.target.context)))), null, 2) + "\n");
+    await this.store.write(file, JSON.stringify(writeSystem(await this.stored(hosted, file)), null, 2) + "\n");
     hosted.path = file;
     hosted.saved = hosted.target.history.edits.length;
     this.emit({ type: "contexts" });
@@ -203,7 +212,8 @@ export class Host implements HostApi {
   }
 
   async system(context: string): Promise<SystemFile> {
-    return writeSystem(saved(savedConfigurations(save(this.get(context).target.context))));
+    const hosted = this.get(context);
+    return writeSystem(await this.stored(hosted, hosted.path));
   }
 
   async history(context: string): Promise<EditInfo[]> {
@@ -345,6 +355,19 @@ export class Host implements HostApi {
     } catch (error) {
       throw new HostError(400, `${path}: ${(error as Error).message}`);
     }
+  }
+
+  /** Hosts a System opened from `path`, once every provider has loaded its metadata into it. */
+  private async load(context: SystemContext, path: string | undefined): Promise<Hosted> {
+    for (const provider of this.providers) await provider.load(context, path);
+    return this.host(context, path);
+  }
+
+  /** An open System as it is stored at `path`: a copy, into which every provider has saved its metadata. */
+  private async stored(hosted: Hosted, path: string | undefined): Promise<ToolSystem> {
+    const copy = open(save(hosted.target.context));
+    for (const provider of this.providers) await provider.save(copy, path);
+    return save(copy);
   }
 
   private host(context: SystemContext, path?: string): Hosted {
