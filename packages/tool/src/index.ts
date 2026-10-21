@@ -66,6 +66,29 @@ export interface MetadataProvider {
   save(system: SystemContext, location: string | undefined): Promise<void>;
 }
 
+/** What could not be followed in a stored System: where, and why. It is reported, not refused. */
+export interface StorageProblem {
+  readonly at: string;
+  readonly message: string;
+}
+
+/** What is stored at a location is not a System at all. */
+export class NotASystem extends Error {}
+
+/**
+ * Where Systems are stored (Repository). It stores the design, with the attachments as they
+ * are, reading none of them: what is in them is each Metadata Provider's business. A location
+ * is the Repository's own: a path, a key, …
+ */
+export interface Repository {
+  /** The one form two names of the same location share. */
+  resolve(location: string): string;
+  /** The System stored at `location`, and what could not be followed in it; undefined if nothing is stored there. Throws NotASystem if what is there is not one. */
+  open(location: string): Promise<{ system: ToolSystem; problems: readonly StorageProblem[] } | undefined>;
+  /** Stores `system` at `location`, and gives back where it was stored. */
+  save(system: ToolSystem, location: string): Promise<string>;
+}
+
 /** `new() → SystemContext`: an empty, well-formed System: a System and its root Component, of one name. */
 export function newSystem(name = "Untitled", id = "system"): SystemContext {
   const design = coreGraph();

@@ -106,8 +106,12 @@ Beyond the foundation changes, the tool itself:
   with the History: undoing across reopening would take a durable author in place of the
   session, every Edit Kind's Effect as data, the whole History saved, and the Descriptions and
   Choices of removed things saved with it.
-- Workspace and Repository as separate parts. Today the Host holds open Systems and reads and
-  writes their files itself.
+- ~~Workspace and Repository as separate parts~~: done. A Repository (`@systemathic/tool`) opens
+  and saves a System at a location, with its attachments as they are; the JSON File Repository
+  is the Host's. The Workspace holds the open Systems, and is the only part that knows both the
+  Repository and the providers. The Host goes through it, and keeps the rest: sessions, Runs,
+  scripts, views. Scripts, packages and exported selections are still read and written as
+  files by the Host.
 - ~~Removing a thing removes what depends on it, metadata included~~: done. Removing an Entity
   takes every Relationship with an end of it. A Description or a Choice of what is no longer
   there is kept only for undo, and not saved; a Choice of a removed Deployment chooses none.

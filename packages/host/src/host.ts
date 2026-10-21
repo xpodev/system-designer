@@ -12,15 +12,15 @@
 import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
-import { Target, type Edit, type EditSession } from "@systemathic/editing";
+import type { Edit, EditSession, Target } from "@systemathic/editing";
 import { ATTACHMENT_OWNER as LOG, entries, keep, keeping, log, type Entry } from "@systemathic/log";
 import { configurationEditor, configurationsProvider, problems as configurationProblems } from "@systemathic/configurations";
 import { documentationEditor, documentationProvider } from "@systemathic/documentation-store";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
 import { perspectives, view, type Perspective, type View } from "@systemathic/perspectives";
-import { newSystem, open, save, type MetadataProvider, type SystemContext, type ToolSystem } from "@systemathic/tool";
-import { FormatError, readSystem, writeSystem, type SystemFile } from "@systemathic/tool-json";
+import { NotASystem, type MetadataProvider, type SystemContext } from "@systemathic/tool";
+import { writeSystem, type SystemFile } from "@systemathic/tool-json";
 import {
   ATTACHMENT_OWNER as VERIFIER,
   profileSetting,
@@ -36,14 +36,14 @@ import {
   type ScriptSymbol,
 } from "@systemathic/verifier";
 import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
+import type { Files } from "./files.js";
+import { JsonFileRepository } from "./repository.js";
+import { Workspace, type Listen, type OpenSystem } from "./workspace.js";
 
-export type { MetadataProvider };
+export type { Files, Listen, MetadataProvider };
 
 /** The tool's own Metadata Providers, connected to every Host that is not given others. */
 export const STANDARD_PROVIDERS: readonly MetadataProvider[] = [documentationProvider, configurationsProvider];
-
-/** Connects an Edit Listener to the Target of an open System, to be told of every Edit on it. */
-export type Listen = (target: Target) => unknown;
 
 /** The tool's own Edit Listeners, connected to every open System unless the Host is given others: the Log. */
 export const STANDARD_LISTENERS: readonly Listen[] = [log];
@@ -65,29 +65,6 @@ export const STANDARD_CHECKS: readonly Check[] = [configurationChecks];
  */
 export const STANDARD_EDITORS: readonly (readonly Operation[])[] = [...Object.values(editors), documentationEditor, configurationEditor];
 
-/**
- * The files a Host reads and writes: Systems, scripts, packages. Paths are relative to the
- * Host's workspace, with forward slashes; `resolve` gives the one form two names of the same
- * file share.
- */
-export interface Files {
-  resolve(path: string): string;
-  /** A file's text; undefined if there is none. */
-  read(path: string): Promise<string | undefined>;
-  write(path: string, text: string): Promise<void>;
-  /** The files whose names end with `suffix`, sorted. */
-  list(suffix: string): Promise<string[]>;
-}
-
-interface Hosted {
-  readonly id: string;
-  readonly target: Target;
-  path?: string;
-  run?: { run: Run; info: RunInfo };
-  /** How many Edits the History had when it was last read from or written to its file. */
-  saved: number;
-}
-
 export interface HostOptions {
   readonly files: Files;
   readonly catalog: Catalog;
@@ -103,25 +80,28 @@ export interface HostOptions {
 }
 
 export class Host implements HostApi {
-  private readonly hosted = new Map<string, Hosted>();
+  /** The Systems open here, stored as JSON files among the Host's files. */
+  private readonly workspace: Workspace;
+  /** The latest verification Run of each open System, by its id. */
+  private readonly runs = new Map<string, { run: Run; info: RunInfo }>();
   private readonly listeners = new Set<(event: HostEvent) => void>();
   private readonly store: Files;
   private readonly library: Catalog;
   private readonly verifier: Verifier;
   private readonly scripts: ScriptHost & ScriptAssistant;
-  private readonly providers: readonly MetadataProvider[];
-  private readonly connected: readonly Listen[];
   /** Every operation a client may apply, of every editor the Host was given. */
   private readonly operations: readonly Operation[];
   private readonly checks: readonly Check[];
-  private next = 1;
 
   constructor(options: HostOptions) {
     this.store = options.files;
     this.library = options.catalog;
     this.scripts = options.scripts;
-    this.providers = options.providers ?? STANDARD_PROVIDERS;
-    this.connected = options.listeners ?? STANDARD_LISTENERS;
+    this.workspace = new Workspace(new JsonFileRepository(options.files), options.providers ?? STANDARD_PROVIDERS, options.listeners ?? STANDARD_LISTENERS, (system) => {
+      const { id, target } = system;
+      target.onEdit((edit) => this.emit({ type: "edit", context: id, edit: this.edit(target, edit) }));
+      this.emit({ type: "contexts" });
+    });
     this.operations = (options.editors ?? STANDARD_EDITORS).flat();
     this.checks = options.checks ?? STANDARD_CHECKS;
     this.verifier = new Verifier(this.scripts);
@@ -140,43 +120,36 @@ export class Host implements HostApi {
   }
 
   async contexts(): Promise<ContextInfo[]> {
-    return [...this.hosted.values()].map((hosted) => this.info(hosted));
+    return this.workspace.all.map((hosted) => this.info(hosted));
   }
 
   async create(name: string): Promise<ContextInfo> {
-    return this.info(await this.load(newSystem(name), undefined));
+    return this.info(await this.workspace.new(name));
   }
 
   async open(path: string) {
-    const file = this.store.resolve(path);
-    const already = [...this.hosted.values()].find((hosted) => hosted.path === file);
-    if (already) return { ...this.info(already), problems: [] };
-    const text = await this.store.read(file);
-    if (text === undefined) throw new HostError(404, `${path}: no such file`);
-    let read;
+    let opened;
     try {
-      read = readSystem(JSON.parse(text));
+      opened = await this.workspace.open(path);
     } catch (error) {
-      if (error instanceof FormatError || error instanceof SyntaxError) throw new HostError(400, `${path}: not a System file: ${error.message}`);
+      if (error instanceof NotASystem) throw new HostError(400, `${path}: ${error.message}`);
       throw error;
     }
-    const hosted = await this.load(open(read.system), file);
-    return { ...this.info(hosted), problems: read.problems };
+    if (opened === undefined) throw new HostError(404, `${path}: no such file`);
+    return { ...this.info(opened.system), problems: opened.problems };
   }
 
   async save(context: string, path?: string) {
     const hosted = this.get(context);
-    const file = path === undefined ? hosted.path : this.store.resolve(path);
+    const file = path === undefined ? hosted.location : this.workspace.resolve(path);
     if (file === undefined) throw new HostError(400, "this System has no file yet: save it to a path");
     const setting = profileSetting(hosted.target.context.attachments);
-    if (setting !== undefined && file !== hosted.path) {
+    if (setting !== undefined && file !== hosted.location) {
       // The script stays where it is: the setting names it from where the System now is.
-      const moved = scriptSetting(settingScript(setting, hosted.path), file);
+      const moved = scriptSetting(settingScript(setting, hosted.location), file);
       if (moved !== setting.script) await this.setAttachment(context, VERIFIER, { ...setting, script: moved });
     }
-    await this.store.write(file, JSON.stringify(writeSystem(await this.stored(hosted, file)), null, 2) + "\n");
-    hosted.path = file;
-    hosted.saved = hosted.target.history.edits.length;
+    await this.workspace.save(hosted, file);
     this.emit({ type: "contexts" });
     this.emit({ type: "saved", context, path: file });
     return { path: file };
@@ -247,7 +220,7 @@ export class Host implements HostApi {
 
   async system(context: string): Promise<SystemFile> {
     const hosted = this.get(context);
-    return writeSystem(await this.stored(hosted, hosted.path));
+    return writeSystem(await this.workspace.stored(hosted));
   }
 
   async history(context: string): Promise<EditInfo[]> {
@@ -287,7 +260,7 @@ export class Host implements HostApi {
     const errors = structuralErrors(diagnose(hosted.target.context));
     if (errors.length > 0) throw new HostError(409, `${errors.length} structural error(s) must be solved before verifying`);
     const setting = profileSetting(hosted.target.context.attachments);
-    const path = script ?? (setting === undefined ? STANDARD.path : settingScript(setting, hosted.path));
+    const path = script ?? (setting === undefined ? STANDARD.path : settingScript(setting, hosted.location));
     let run: Run;
     try {
       const source = path === STANDARD.path ? undefined : await this.store.read(path);
@@ -309,7 +282,7 @@ export class Host implements HostApi {
       failures: run.failures,
       profileRules: run.profile.rules.map(({ name, severity, about, doc, script }) => ({ name, severity, about, ...(doc ? { doc } : {}), script })),
     };
-    hosted.run = { run, info };
+    this.runs.set(context, { run, info });
     this.emit({ type: "verified", context, run: info });
     return info;
   }
@@ -318,11 +291,11 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const setting = profileSetting(hosted.target.context.attachments);
     if (setting && setting.script !== STANDARD.path) {
-      const path = settingScript(setting, hosted.path);
+      const path = settingScript(setting, hosted.location);
       const source = await this.store.read(path);
       return { path, profile: setting.profile, source: source ?? TEMPLATE, exists: source !== undefined };
     }
-    const beside = hosted.path ? hosted.path.replace(/\.systemathic\.json$|\.json$/, ".rules.py") : "rules.py";
+    const beside = hosted.location ? hosted.location.replace(/\.systemathic\.json$|\.json$/, ".rules.py") : "rules.py";
     return { path: beside, profile: "profile", source: TEMPLATE, exists: false };
   }
 
@@ -331,8 +304,8 @@ export class Host implements HostApi {
     const script = this.store.resolve(path);
     await this.store.write(script, source);
     const current = profileSetting(hosted.target.context.attachments);
-    const same = current !== undefined && settingScript(current, hosted.path) === script;
-    await this.setAttachment(context, VERIFIER, { script: scriptSetting(script, hosted.path), profile: same ? current.profile : "profile" });
+    const same = current !== undefined && settingScript(current, hosted.location) === script;
+    await this.setAttachment(context, VERIFIER, { script: scriptSetting(script, hosted.location), profile: same ? current.profile : "profile" });
     return { path: script };
   }
 
@@ -348,12 +321,12 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const errors = structuralErrors(diagnose(hosted.target.context));
     if (errors.length > 0) throw new HostError(409, `${errors.length} structural error(s) must be solved before exporting`);
-    const specification = specify(hosted.target.context, hosted.run?.run.profile);
+    const specification = specify(hosted.target.context, this.runs.get(context)?.run.profile);
     return { specification, markdown: toMarkdown(specification) };
   }
 
   async documentation(context: string) {
-    const documentation = document(this.get(context).target.context, this.get(context).run?.run.profile);
+    const documentation = document(this.get(context).target.context, this.runs.get(context)?.run.profile);
     return { documentation, markdown: documentationMarkdown(documentation) };
   }
 
@@ -398,36 +371,12 @@ export class Host implements HostApi {
   }
 
   /** Everything wrong with an open System: its structural errors, its latest Run's Violations, and what every check finds. */
-  private diagnosed(hosted: Hosted): Diagnostic[] {
-    return [...diagnose(hosted.target.context, hosted.run?.run), ...this.checks.flatMap((check) => check(hosted.target.context))];
+  private diagnosed(hosted: OpenSystem): Diagnostic[] {
+    return [...diagnose(hosted.target.context, this.runs.get(hosted.id)?.run), ...this.checks.flatMap((check) => check(hosted.target.context))];
   }
 
-  /** Hosts a System opened from `path`, once every provider has loaded its metadata into it. */
-  private async load(context: SystemContext, path: string | undefined): Promise<Hosted> {
-    for (const provider of this.providers) await provider.load(context, path);
-    return this.host(context, path);
-  }
-
-  /** An open System as it is stored at `path`: a copy, into which every provider has saved its metadata. */
-  private async stored(hosted: Hosted, path: string | undefined): Promise<ToolSystem> {
-    const copy = open(save(hosted.target.context));
-    for (const provider of this.providers) await provider.save(copy, path);
-    return save(copy);
-  }
-
-  private host(context: SystemContext, path?: string): Hosted {
-    const id = `c${this.next++}`;
-    const target = new Target(context);
-    const hosted: Hosted = path === undefined ? { id, target, saved: 0 } : { id, target, path, saved: 0 };
-    for (const listen of this.connected) listen(target);
-    target.onEdit((edit) => this.emit({ type: "edit", context: id, edit: this.edit(target, edit) }));
-    this.hosted.set(id, hosted);
-    this.emit({ type: "contexts" });
-    return hosted;
-  }
-
-  private get(context: string): Hosted {
-    const hosted = this.hosted.get(context);
+  private get(context: string): OpenSystem {
+    const hosted = this.workspace.get(context);
     if (!hosted) throw new HostError(404, `no system context ${context}`);
     return hosted;
   }
@@ -438,13 +387,13 @@ export class Host implements HostApi {
     return session;
   }
 
-  private info(hosted: Hosted): ContextInfo {
+  private info(hosted: OpenSystem): ContextInfo {
     const { target } = hosted;
     const [system] = target.graph.ofEntity("System");
     return {
       id: hosted.id,
       name: (system && nameOf(target.graph, system)) ?? hosted.id,
-      ...(hosted.path === undefined ? {} : { path: hosted.path }),
+      ...(hosted.location === undefined ? {} : { path: hosted.location }),
       edits: target.history.edits.length,
       sessions: target.sessionCount,
       clients: target.activeSessions.map((session) => session.client),
