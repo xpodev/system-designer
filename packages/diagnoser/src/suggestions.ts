@@ -2,13 +2,26 @@
  * Ways to fix a structural error, by the axiom it violates. A Suggestion says what to do and
  * names the Subjects it would change, taken from the assignment that falsified the axiom
  * (its variables, as the schema names them). Axioms without an entry here get none.
+ *
+ * Where there is one fix, and nothing to choose for it, the Suggestion carries it too: the
+ * request that makes it, as data, for whoever can edit to apply. The Diagnoser reaches no
+ * editor; it only names the operation.
  */
-import type { Environment } from "@systemathic/core";
+import { parameters, type Environment, type Graph } from "@systemathic/core";
+
+/** An operation of an editor, by name, with its arguments: what a client asks the Host to apply. */
+export interface Request {
+  readonly editor: string;
+  readonly name: string;
+  readonly args: Readonly<Record<string, unknown>>;
+}
 
 export interface Suggestion {
   readonly message: string;
   /** Ids of what the fix would change. */
   readonly subjects: readonly string[];
+  /** The request that makes the fix, when there is exactly one and nothing to choose for it. */
+  readonly fix?: Request;
 }
 
 type Suggest = (env: Environment) => Suggestion;
@@ -119,12 +132,68 @@ const byAxiom: Readonly<Record<string, Suggest>> = {
   "An identity starts at a placement in a Deployment of the System's root": fix("Start the identity at a placement in a Deployment of the System's root", "f"),
 };
 
+type Fix = (env: Environment, graph: Graph) => Request | undefined;
+
+const first = (graph: Graph, id: string | undefined, end: string) => (id === undefined ? undefined : graph.navigate(id, end)[0]);
+
+/** Makes `component` use `language`. */
+const use = (component: string | undefined, language: string | undefined): Request | undefined =>
+  component === undefined || language === undefined ? undefined : { editor: "ComponentEditor", name: "use", args: { component, language } };
+
+/** Whether `to` is reached from `from` through `end`, one or more times. */
+function reaches(graph: Graph, from: string, to: string, end: string): boolean {
+  const seen = new Set<string>();
+  const pending = [from];
+  while (pending.length > 0) {
+    const id = pending.pop()!;
+    if (id === to) return true;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    pending.push(...graph.navigate(id, end));
+  }
+  return false;
+}
+
+/** Stops `id` extending the next one in its cycle: `editor`.unextend. */
+const breakCycle =
+  (editor: string, variable: string, own: string): Fix =>
+  (env, graph) => {
+    const id = env.get(variable);
+    const next = id === undefined ? undefined : graph.navigate(id, "extends").find((x) => reaches(graph, x, id, "extends"));
+    return id === undefined || next === undefined ? undefined : { editor, name: "unextend", args: { [own]: id, extended: next } };
+  };
+
+/** The one fix of each axiom that has one, by its `about`. */
+const fixes: Readonly<Record<string, Fix>> = {
+  "No Language extends itself, eventually": breakCycle("LanguageEditor", "l", "language"),
+  "No Entity extends itself, eventually": breakCycle("EntityEditor", "e", "entity"),
+  "An Interaction is over a Language its Component uses": (env, graph) => use(first(graph, env.get("i"), "component"), first(graph, env.get("i"), "language")),
+  "A Transformation's inputs are in the vocabulary of a Language its Component uses": (env, graph) => {
+    const t = env.get("t");
+    const component = first(graph, t, "component");
+    if (t === undefined || component === undefined) return undefined;
+    const used = graph.navigate(component, "uses");
+    const language = parameters(graph, t)
+      .map((p) => first(graph, first(graph, p, "type"), "language"))
+      .find((l) => l !== undefined && !used.includes(l));
+    return use(component, language);
+  },
+  "A Transformation's output is in the vocabulary of a Language its Component uses": (env, graph) =>
+    use(first(graph, env.get("t"), "component"), first(graph, first(graph, env.get("t"), "output"), "language")),
+  "An Export has a target": (env) => {
+    const e = env.get("e");
+    return e === undefined ? undefined : { editor: "ComponentEditor", name: "unexport", args: { export: e } };
+  },
+};
+
 /** The axioms there are suggestions for. */
 export const suggestedAxioms: readonly string[] = Object.keys(byAxiom);
 
-export function axiomSuggestions(about: string, env: Environment): Suggestion[] {
+export function axiomSuggestions(about: string, env: Environment, graph: Graph): Suggestion[] {
   const suggest = byAxiom[about];
-  return suggest ? [suggest(env)] : [];
+  if (!suggest) return [];
+  const request = fixes[about]?.(env, graph);
+  return [request === undefined ? suggest(env) : { ...suggest(env), fix: request }];
 }
 
 /** For a range error: add or remove links through the end. */

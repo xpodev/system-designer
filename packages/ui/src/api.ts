@@ -91,7 +91,8 @@ export interface Diagnostic {
   kind: "condition" | "rule" | "configuration";
   message: string;
   subjects: string[];
-  suggestions: { message: string; subjects: string[] }[];
+  /** Each may carry `fix`: the request that makes it, to apply as it is. */
+  suggestions: { message: string; subjects: string[]; fix?: { editor: string; name: string; args: Record<string, unknown> } }[];
 }
 
 export interface ScriptSymbol {

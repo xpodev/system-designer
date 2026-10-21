@@ -11,7 +11,7 @@ import { verifyStructure, type Run } from "@systemathic/verifier";
 import { axiomSuggestions, rangeSuggestions, type Suggestion } from "./suggestions.js";
 
 export { metrics, type Measure, type Metric } from "./metrics.js";
-export type { Suggestion } from "./suggestions.js";
+export type { Request, Suggestion } from "./suggestions.js";
 
 export type Severity = "error" | "warning";
 
@@ -64,7 +64,7 @@ function* structural(graph: Graph): Generator<Diagnostic> {
     } else if (violation.assertion === "fit") {
       yield { ...found, check: "formula", suggestions: [{ message: "Fix the formula's text, in the ASCII syntax, over its own Language", subjects: violation.subjects }] };
     } else {
-      yield { ...found, check: violation.assertion.id, suggestions: axiomSuggestions(violation.assertion.about, violation.bindings) };
+      yield { ...found, check: violation.assertion.id, suggestions: axiomSuggestions(violation.assertion.about, violation.bindings, graph) };
     }
   }
 }

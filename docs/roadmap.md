@@ -95,8 +95,10 @@ Beyond the foundation changes, the tool itself:
 - Edits as data. An Edit is already data where it travels: a request, `{editor, name, args}`,
   is the mediation of `Editor.apply`, and each kind of Edit is its own editor's, so nothing
   knows them all; the Host is given its editors, as it is given Metadata Providers and Edit
-  Listeners, and names none. Still to do: a Diagnostic's Suggestion carries the request that
-  fixes it. The Host is given its checks too — the Configurations' C1–C4 among the standard
+  Listeners, and names none. A Suggestion with one fix, and nothing to choose for it, carries
+  the request that makes it, and the UI applies it in one click (Language and Entity cycles,
+  a Language its Component should use, an Export of nothing); the rest need a choice, a name or
+  a place, and stay advice. The Host is given its checks too — the Configurations' C1–C4 among the standard
   ones — and makes them wherever it diagnoses, its views included.
 - ~~A readable record of edits that outlives the History~~: done. The Log, an Edit Listener,
   records who did what, and when, in its own attachment, kept with the System — only for a

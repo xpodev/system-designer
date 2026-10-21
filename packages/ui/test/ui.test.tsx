@@ -241,6 +241,22 @@ describe("the UI", () => {
     await waitFor(() => expect(document.querySelector(".statusbar .status-errors")).toBeNull());
   });
 
+  it("fixes a problem in one click, where its Suggestion carries the fix", async () => {
+    const id = await openGame();
+    const session = (await host.startSession(id, "mcp")).session;
+    await act(async () => {
+      await host.apply(id, session, "LanguageEditor", "extend", { language: "core", extended: "combat" });
+    });
+    await waitFor(() => expect(document.querySelector(".statusbar .status-errors")).not.toBeNull(), { timeout: 5000 });
+    fireEvent.click(document.querySelector(".statusbar .status-errors")!);
+    // Break the cycle where it was made: Core stops extending Combat, as it did before.
+    const problems = await screen.findAllByText("No Language extends itself, eventually");
+    const core = problems.map((p) => p.closest("li")!).find((li) => li.querySelector(".problem-where")?.textContent === "Core")!;
+    fireEvent.click(within(core).getByRole("button", { name: "Fix" }));
+    await waitFor(() => expect(screen.queryByText("No Language extends itself, eventually")).toBeNull(), { timeout: 5000 });
+    await waitFor(() => expect(document.querySelector(".statusbar .status-errors")).toBeNull(), { timeout: 5000 });
+  });
+
   it("edits a Component in the order of design: what it uses, its Interactions, its Transformations", async () => {
     const id = await openGame("component.systemathic.json");
     fireEvent.click(explorerRow("Server"));

@@ -1414,6 +1414,10 @@ td > .row-description {
   content: "→ ";
   color: var(--muted);
 }
+.fix-button {
+  margin-left: 6px;
+  color: var(--accent);
+}
 
 /* Bottom panel */
 .panel {

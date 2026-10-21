@@ -42,6 +42,11 @@ export function Problems({ ids }: { ids: string[] }) {
             {d.suggestions.map((s, j) => (
               <span key={j} className="problem-fix">
                 {s.message}
+                {s.fix && (
+                  <button className="link-chip fix-button" onClick={() => void w.act(s.fix!.editor, s.fix!.name, s.fix!.args, { message: s.message })}>
+                    Fix
+                  </button>
+                )}
               </span>
             ))}
             <span className="problem-subjects">

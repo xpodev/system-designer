@@ -1,6 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { Target } from "@systemathic/editing";
+import { editors } from "@systemathic/editors";
 import { coreSpec } from "@systemathic/core";
-import { open } from "@systemathic/tool";
+import { newSystem, open } from "@systemathic/tool";
 import { readSystem } from "@systemathic/tool-json";
 import { snapshot, type Run } from "@systemathic/verifier";
 import { describe, expect, it } from "vitest";
@@ -16,6 +18,36 @@ describe("suggestions", () => {
     expect(w3!.suggestions).toEqual([{ message: "Rename one of the two ends", subjects: ["core.hunts.hunters", "core.pack.followers"] }]);
     const [w5] = diagnose(context("broken/w5.systemathic.json")).filter((d) => d.check === "W5");
     expect(w5!.suggestions).toEqual([{ message: "Import the Language from the Component that exports it, or stop using it", subjects: ["game.server", "lib.network"] }]);
+  });
+
+  it("carry the request that fixes them, where there is one, and applying it fixes the error", () => {
+    const fixed: string[] = [];
+    for (const file of readdirSync(new URL("broken/", examples)).filter((name) => name.endsWith(".systemathic.json"))) {
+      for (const diagnostic of diagnose(context(`broken/${file}`))) {
+        for (const { fix } of diagnostic.suggestions) {
+          if (fix === undefined) continue;
+          const target = new Target(context(`broken/${file}`));
+          const operation = editors[fix.editor]?.find((o) => o.name === fix.name);
+          expect(operation, `${fix.editor}.${fix.name}`).toBeDefined();
+          operation!.run(target.startSession("test"), fix.args);
+          const still = diagnose(target.context).filter((d) => d.check === diagnostic.check && d.subjects.join() === diagnostic.subjects.join());
+          expect(still, `${file}: ${diagnostic.message}`).toEqual([]);
+          fixed.push(`${file} ${diagnostic.check}`);
+        }
+      }
+    }
+    expect(fixed.length).toBeGreaterThan(0);
+  });
+
+  it("carry the removal of an Export of nothing", () => {
+    const shop = newSystem("Shop");
+    shop.design.add("Export", "nothing");
+    shop.design.connect("system.root", "exports", "nothing");
+    const [found] = diagnose(shop).filter((d) => d.message === "An Export has a target");
+    expect(found!.suggestions[0]!.fix).toEqual({ editor: "ComponentEditor", name: "unexport", args: { export: "nothing" } });
+    const target = new Target(shop);
+    editors.ComponentEditor!.find((o) => o.name === "unexport")!.run(target.startSession("test"), found!.suggestions[0]!.fix!.args);
+    expect(structuralErrors(diagnose(target.context))).toEqual([]);
   });
 
   it("say how to fix a range", () => {
