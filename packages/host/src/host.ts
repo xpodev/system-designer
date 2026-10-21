@@ -48,6 +48,16 @@ export type Listen = (target: Target) => unknown;
 /** The tool's own Edit Listeners, connected to every open System unless the Host is given others: the Log. */
 export const STANDARD_LISTENERS: readonly Listen[] = [log];
 
+/** A check of an open System beyond its structural Rule and its profile: what it finds is diagnosed with the rest. */
+export type Check = (context: SystemContext) => readonly Diagnostic[];
+
+/** Whether each Configuration fits the design (C1–C4), as Diagnostics of their own kind. */
+const configurationChecks: Check = (context) =>
+  configurationProblems(context).map((problem) => ({ severity: "error", check: problem.check, kind: "configuration", message: problem.message, subjects: problem.subjects, suggestions: [] }));
+
+/** The tool's own checks, made by every Host unless it is given others: the Configurations'. */
+export const STANDARD_CHECKS: readonly Check[] = [configurationChecks];
+
 /**
  * The tool's own editors, each the operations of one Language's kinds of Edit, given to every
  * Host unless it is given others: the concept editors', and those of the tool contexts that
@@ -88,6 +98,8 @@ export interface HostOptions {
   readonly listeners?: readonly Listen[];
   /** The editors whose operations clients may apply, each one Language's kinds of Edit; the standard ones if none are given. */
   readonly editors?: readonly (readonly Operation[])[];
+  /** The checks made whenever an open System is diagnosed; the standard ones if none are given. */
+  readonly checks?: readonly Check[];
 }
 
 export class Host implements HostApi {
@@ -101,6 +113,7 @@ export class Host implements HostApi {
   private readonly connected: readonly Listen[];
   /** Every operation a client may apply, of every editor the Host was given. */
   private readonly operations: readonly Operation[];
+  private readonly checks: readonly Check[];
   private next = 1;
 
   constructor(options: HostOptions) {
@@ -110,6 +123,7 @@ export class Host implements HostApi {
     this.providers = options.providers ?? STANDARD_PROVIDERS;
     this.connected = options.listeners ?? STANDARD_LISTENERS;
     this.operations = (options.editors ?? STANDARD_EDITORS).flat();
+    this.checks = options.checks ?? STANDARD_CHECKS;
     this.verifier = new Verifier(this.scripts);
   }
 
@@ -252,11 +266,7 @@ export class Host implements HostApi {
   }
 
   async diagnostics(context: string): Promise<Diagnostic[]> {
-    const hosted = this.get(context);
-    const configured = configurationProblems(hosted.target.context).map(
-      (problem): Diagnostic => ({ severity: "error", check: problem.check, kind: "configuration", message: problem.message, subjects: problem.subjects, suggestions: [] }),
-    );
-    return [...diagnose(hosted.target.context, hosted.run?.run), ...configured];
+    return this.diagnosed(this.get(context));
   }
 
   async view(context: string, perspective: string, subject?: string): Promise<View> {
@@ -267,7 +277,7 @@ export class Host implements HostApi {
     if (info.needs !== undefined && (subject === undefined || !graph.has(subject) || graph.get(subject).entity !== info.needs)) {
       throw new HostError(400, `the ${info.title} perspective needs the id of a ${info.needs}`);
     }
-    const options = { diagnostics: diagnose(hosted.target.context, hosted.run?.run), ...(subject === undefined ? {} : { subject }) };
+    const options = { diagnostics: this.diagnosed(hosted), ...(subject === undefined ? {} : { subject }) };
     return view(hosted.target.context, perspective as Perspective, options);
   }
 
@@ -385,6 +395,11 @@ export class Host implements HostApi {
     } catch (error) {
       throw new HostError(400, `${path}: ${(error as Error).message}`);
     }
+  }
+
+  /** Everything wrong with an open System: its structural errors, its latest Run's Violations, and what every check finds. */
+  private diagnosed(hosted: Hosted): Diagnostic[] {
+    return [...diagnose(hosted.target.context, hosted.run?.run), ...this.checks.flatMap((check) => check(hosted.target.context))];
   }
 
   /** Hosts a System opened from `path`, once every provider has loaded its metadata into it. */

@@ -60,8 +60,8 @@ export function standardCatalog(folder = STANDARD_CATALOG): Catalog {
   return new Catalog(files.map((file) => parsePackage(JSON.parse(readFileSync(join(folder, file), "utf8")), "standard", file)));
 }
 
-/** A Host on this machine: files under `cwd`, rules run by Python, the standard catalog, and the standard providers, listeners and editors unless given others. */
-export function nodeHost(options: { cwd?: string; catalog?: Catalog; python?: string } & Pick<HostOptions, "providers" | "listeners" | "editors"> = {}): Host {
+/** A Host on this machine: files under `cwd`, rules run by Python, the standard catalog, and the standard providers, listeners, editors and checks unless given others. */
+export function nodeHost(options: { cwd?: string; catalog?: Catalog; python?: string } & Pick<HostOptions, "providers" | "listeners" | "editors" | "checks"> = {}): Host {
   const cwd = options.cwd ?? process.cwd();
   return new Host({
     files: new NodeFiles(cwd),
@@ -70,5 +70,6 @@ export function nodeHost(options: { cwd?: string; catalog?: Catalog; python?: st
     ...(options.providers === undefined ? {} : { providers: options.providers }),
     ...(options.listeners === undefined ? {} : { listeners: options.listeners }),
     ...(options.editors === undefined ? {} : { editors: options.editors }),
+    ...(options.checks === undefined ? {} : { checks: options.checks }),
   });
 }

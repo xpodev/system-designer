@@ -96,8 +96,8 @@ Beyond the foundation changes, the tool itself:
   is the mediation of `Editor.apply`, and each kind of Edit is its own editor's, so nothing
   knows them all; the Host is given its editors, as it is given Metadata Providers and Edit
   Listeners, and names none. Still to do: a Diagnostic's Suggestion carries the request that
-  fixes it. And the Host still asks Configurations by name for its checks (C1–C4) when it
-  diagnoses.
+  fixes it. The Host is given its checks too — the Configurations' C1–C4 among the standard
+  ones — and makes them wherever it diagnoses, its views included.
 - ~~A readable record of edits that outlives the History~~: done. The Log, an Edit Listener,
   records who did what, and when, in its own attachment, kept with the System — only for a
   System told to keep one; stopping forgets it. Undo still ends

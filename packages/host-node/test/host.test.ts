@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HostClient, HostError, STANDARD_EDITORS, STANDARD_PROVIDERS, type HostEvent, type MetadataProvider } from "@systemathic/host";
+import { HostClient, HostError, STANDARD_CHECKS, STANDARD_EDITORS, STANDARD_PROVIDERS, type Check, type HostEvent, type MetadataProvider } from "@systemathic/host";
 
 import type { Operation } from "@systemathic/editors";
 import { nodeHost, serve } from "../src/index.js";
@@ -127,6 +127,22 @@ describe("Host", () => {
     const opened = await bare.open("game.json");
     expect((await bare.editors()).map((o) => o.editor)).toEqual(["MarkEditor"]);
     await expect(bare.apply(opened.id, (await bare.startSession(opened.id, "ui")).session, "DocumentationEditor", "describe", { subject: "game.server", text: "x" })).rejects.toThrow(HostError);
+  });
+
+  it("diagnoses with every check it is given, in its views too", async () => {
+    const lonely: Check = (context) =>
+      context.design.ofEntity("Deployment").length > 0 ? [] : [{ severity: "warning", check: "lonely", kind: "configuration", message: "nothing is deployed", subjects: [], suggestions: [] }];
+    const host = nodeHost({ cwd: workspace(), checks: [...STANDARD_CHECKS, lonely] });
+    const { id } = await host.create("Empty");
+    expect((await host.diagnostics(id)).map((d) => d.check)).toEqual(["lonely"]);
+
+    const game = await host.open("game.json");
+    const { session } = await host.startSession(game.id, "ui");
+    const release = "game.release";
+    await host.apply(game.id, session, "ConfigurationEditor", "choose", { parent: `${release}#root`, instance: "game.online.server", deployment: "game.client.desktop" });
+    expect((await host.diagnostics(game.id)).filter((d) => d.kind === "configuration").map((d) => d.check)).toContain("C1");
+    const shown = (await host.view(game.id, "diagnostics")).items.find((item) => item.id === "configuration");
+    expect(Number(shown?.detail)).toBeGreaterThan(0);
   });
 
   it("keeps a Log of who did what, if told to, saved with the System, which outlives its History", async () => {
