@@ -23,6 +23,8 @@ import { FormatError, readSystem, writeSystem, type SystemFile } from "@systemat
 import {
   ATTACHMENT_OWNER as VERIFIER,
   profileSetting,
+  scriptSetting,
+  settingScript,
   snapshot,
   STANDARD,
   Verifier,
@@ -123,6 +125,12 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const file = path === undefined ? hosted.path : this.store.resolve(path);
     if (file === undefined) throw new HostError(400, "this System has no file yet: save it to a path");
+    const setting = profileSetting(hosted.target.context.attachments);
+    if (setting !== undefined && file !== hosted.path) {
+      // The script stays where it is: the setting names it from where the System now is.
+      const moved = scriptSetting(settingScript(setting, hosted.path), file);
+      if (moved !== setting.script) await this.setAttachment(context, VERIFIER, { ...setting, script: moved });
+    }
     await this.store.write(file, JSON.stringify(writeSystem(saved(savedConfigurations(save(hosted.target.context)))), null, 2) + "\n");
     hosted.path = file;
     hosted.saved = hosted.target.history.edits.length;
@@ -229,7 +237,7 @@ export class Host implements HostApi {
     const errors = structuralErrors(diagnose(hosted.target.context));
     if (errors.length > 0) throw new HostError(409, `${errors.length} structural error(s) must be solved before verifying`);
     const setting = profileSetting(hosted.target.context.attachments);
-    const path = script ?? setting?.script ?? STANDARD.path;
+    const path = script ?? (setting === undefined ? STANDARD.path : settingScript(setting, hosted.path));
     let run: Run;
     try {
       const source = path === STANDARD.path ? undefined : await this.store.read(path);
@@ -260,8 +268,9 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const setting = profileSetting(hosted.target.context.attachments);
     if (setting && setting.script !== STANDARD.path) {
-      const source = await this.store.read(setting.script);
-      return { path: setting.script, profile: setting.profile, source: source ?? TEMPLATE, exists: source !== undefined };
+      const path = settingScript(setting, hosted.path);
+      const source = await this.store.read(path);
+      return { path, profile: setting.profile, source: source ?? TEMPLATE, exists: source !== undefined };
     }
     const beside = hosted.path ? hosted.path.replace(/\.systemathic\.json$|\.json$/, ".rules.py") : "rules.py";
     return { path: beside, profile: "profile", source: TEMPLATE, exists: false };
@@ -272,7 +281,8 @@ export class Host implements HostApi {
     const script = this.store.resolve(path);
     await this.store.write(script, source);
     const current = profileSetting(hosted.target.context.attachments);
-    await this.setAttachment(context, VERIFIER, { script, profile: current?.script === script ? current.profile : "profile" });
+    const same = current !== undefined && settingScript(current, hosted.path) === script;
+    await this.setAttachment(context, VERIFIER, { script: scriptSetting(script, hosted.path), profile: same ? current.profile : "profile" });
     return { path: script };
   }
 

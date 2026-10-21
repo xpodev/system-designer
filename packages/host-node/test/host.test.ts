@@ -1,4 +1,4 @@
-import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -73,6 +73,23 @@ describe("Host", () => {
     const broken = await host.checkScript("from systemathic.std import *\nprofile = Profile(nothing)\n");
     expect(broken.problems[0]).toMatchObject({ line: 2, severity: "error" });
     expect((await host.symbols()).some((s) => s.name === "mediation_primitives")).toBe(true);
+  }, 30_000);
+
+  it("keeps the script named from the System's file, wherever the System is saved", async () => {
+    const dir = workspace();
+    mkdirSync(join(dir, "sub"));
+    copyFileSync(join(dir, "game.json"), join(dir, "sub/game.json"));
+    const host = nodeHost({ cwd: dir });
+    const { id } = await host.open("sub/game.json");
+    const fresh = await host.script(id);
+    expect(fresh.path).toBe("sub/game.rules.py");
+    await host.saveScript(id, fresh.path, fresh.source);
+    expect(await host.attachment(id, "verifier")).toEqual({ script: "game.rules.py", profile: "profile" });
+    await host.save(id, "elsewhere/moved.json");
+    expect(await host.attachment(id, "verifier")).toEqual({ script: "../sub/game.rules.py", profile: "profile" });
+    expect(JSON.parse(readFileSync(join(dir, "elsewhere/moved.json"), "utf8")).attachments).toContainEqual({ owner: "verifier", data: { script: "../sub/game.rules.py", profile: "profile" } });
+    expect(await host.script(id)).toMatchObject({ path: "sub/game.rules.py", exists: true });
+    expect((await host.verify(id)).script).toBe("sub/game.rules.py");
   }, 30_000);
 
   it("refuses malformed requests, never ill-formed results", async () => {

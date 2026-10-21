@@ -58,6 +58,12 @@ describe("systemathic", () => {
     expect(out.at(-1)).toBe("docs/system-designer.systemathic.json: profile (21 rules): 0 errors, 10 warnings, 0 failed rules");
   }, 30_000);
 
+  it("verify: finds the System's own profile from where its file is", async () => {
+    const { fake, out } = io();
+    expect(await run(["verify", "docs/system-designer.systemathic.json"], fake)).toBe(0);
+    expect(out.at(-1)).toBe("docs/system-designer.systemathic.json: profile (21 rules): 0 errors, 10 warnings, 0 failed rules");
+  }, 30_000);
+
   it("verify: uses the standard rules when the System names no profile", async () => {
     const { fake, out } = io();
     expect(await run(["verify", "examples/game.systemathic.json"], fake)).toBe(0);

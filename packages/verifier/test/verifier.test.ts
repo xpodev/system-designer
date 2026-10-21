@@ -1,6 +1,6 @@
 import { newSystem } from "@systemathic/tool";
 import { describe, expect, it } from "vitest";
-import { STANDARD, Verifier, ordered, profileSetting, snapshot, type HostRun, type Profile, type ScriptHost } from "../src/index.js";
+import { STANDARD, Verifier, ordered, profileSetting, scriptSetting, settingScript, snapshot, type HostRun, type Profile, type ScriptHost } from "../src/index.js";
 
 const rule = (name: string, severity: "error" | "warning" = "error") => ({ name, severity, about: name, script: "script" });
 const profile: Profile = { name: "profile", script: { path: "rules.py" }, rules: [rule("a"), rule("b", "warning")] };
@@ -47,5 +47,16 @@ describe("Verifier", () => {
   it("reads the default profile from its attachment", () => {
     expect(profileSetting([{ owner: "verifier", data: { script: "rules.py", profile: "strict" } }])).toEqual({ script: "rules.py", profile: "strict" });
     expect(profileSetting([{ owner: "ui", data: {} }])).toBeUndefined();
+  });
+
+  it("names the script from the folder of the System's file", () => {
+    expect(settingScript({ script: "rules.py", profile: "p" }, "docs/game.json")).toBe("docs/rules.py");
+    expect(settingScript({ script: "../rules/game.py", profile: "p" }, "docs/game.json")).toBe("rules/game.py");
+    expect(settingScript({ script: "rules.py", profile: "p" }, undefined)).toBe("rules.py");
+    expect(settingScript({ script: "std", profile: "standard" }, "docs/game.json")).toBe("std");
+    expect(scriptSetting("docs/rules.py", "docs/game.json")).toBe("rules.py");
+    expect(scriptSetting("docs/rules.py", "other/deep/game.json")).toBe("../../docs/rules.py");
+    expect(scriptSetting("rules.py", "./game.json")).toBe("rules.py");
+    expect(scriptSetting("std", "docs/game.json")).toBe("std");
   });
 });

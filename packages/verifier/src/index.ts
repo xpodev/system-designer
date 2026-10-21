@@ -157,7 +157,11 @@ export function ordered(violations: readonly Violation[]): Violation[] {
   return [...violations].sort((a, b) => rank(a) - rank(b) || a.rule.name.localeCompare(b.rule.name) || a.message.localeCompare(b.message));
 }
 
-/** The profile a System is verified against by default, kept as an attachment of the Verifier's. */
+/**
+ * The profile a System is verified against by default, kept as an attachment of the Verifier's.
+ * Its script is named relative to the folder of the System's file, so the two move together; `std`
+ * is the standard library, wherever the System is.
+ */
 export interface ProfileSetting {
   readonly script: string;
   readonly profile: string;
@@ -168,4 +172,33 @@ export const ATTACHMENT_OWNER = "verifier";
 export function profileSetting(attachments: ToolSystem["attachments"]): ProfileSetting | undefined {
   const data = attachments.find((attachment) => attachment.owner === ATTACHMENT_OWNER)?.data as Partial<ProfileSetting> | undefined;
   return typeof data?.script === "string" && typeof data.profile === "string" ? { script: data.script, profile: data.profile } : undefined;
+}
+
+/** The folders of a path with forward slashes, with `.` and `..` taken out as far as they go. */
+function steps(path: string): string[] {
+  const kept: string[] = [];
+  for (const step of path.split("/")) {
+    if (step === "" || step === ".") continue;
+    if (step === ".." && kept.length > 0 && kept.at(-1) !== "..") kept.pop();
+    else kept.push(step);
+  }
+  return kept;
+}
+
+const folderOf = (file: string | undefined) => (file === undefined ? [] : steps(file).slice(0, -1));
+
+/** The path of a setting's script, in the terms of `system`: the path of the System's file, or undefined if it has none. */
+export function settingScript(setting: ProfileSetting, system: string | undefined): string {
+  if (setting.script === STANDARD.path) return setting.script;
+  return steps([...folderOf(system), setting.script].join("/")).join("/");
+}
+
+/** How a setting names `script`, a path in the terms of `system`, the path of the System's file. */
+export function scriptSetting(script: string, system: string | undefined): string {
+  if (script === STANDARD.path) return script;
+  const from = folderOf(system);
+  const to = steps(script);
+  let shared = 0;
+  while (shared < from.length && shared < to.length && from[shared] === to[shared] && from[shared] !== "..") shared++;
+  return [...from.slice(shared).map(() => ".."), ...to.slice(shared)].join("/");
 }

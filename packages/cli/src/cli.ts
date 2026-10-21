@@ -8,13 +8,15 @@
  *   systemathic new <file> [name]                           write an empty System
  *   systemathic serve [--port N] [file ...]                 host Systems for the UI and MCP, on this machine
  *
- * `verify` uses the System's own profile setting, if it has one, or the standard rules; so
+ * `verify` uses the System's own profile setting, if it has one — its script found from the
+ * System's file — or the standard rules; so
  * does `export`, for the specification's Requirements, if a script or setting names one. A
  * System with structural errors is neither verified nor exported as a specification; its
  * documentation can always be exported.
  *
  * Exit codes: 0 nothing wrong, 1 structural errors, load problems or rule errors, 2 unusable input.
  */
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe } from "@systemathic/core";
 import { diagnose, structuralErrors } from "@systemathic/diagnoser";
@@ -23,7 +25,7 @@ import { nodeHost, serve } from "@systemathic/host-node";
 import { PythonHost } from "@systemathic/python-host";
 import { newSystem, open, save } from "@systemathic/tool";
 import { FormatError, readSystem, writeSystem, type ReadResult } from "@systemathic/tool-json";
-import { ordered, profileSetting, snapshot, STANDARD, Verifier, type ScriptHost } from "@systemathic/verifier";
+import { ordered, profileSetting, snapshot, STANDARD, Verifier, type ProfileSetting, type ScriptHost } from "@systemathic/verifier";
 
 export interface Io {
   readFile(path: string): string;
@@ -101,7 +103,7 @@ async function verify(file: string, script: string | undefined, profileName: str
   const verifier = new Verifier(io.scripts ?? new PythonHost());
   let run;
   try {
-    const path = script ?? setting?.script ?? STANDARD.path;
+    const path = script ?? (setting === undefined ? STANDARD.path : scriptOf(setting, file));
     const profile = await verifier.profile({ path }, profileName ?? (script === undefined ? setting?.profile : undefined));
     run = await verifier.verify(snapshot(context), profile);
   } catch (error) {
@@ -134,7 +136,7 @@ async function exportSpecification(file: string, as: "md" | "json" | "docs", scr
   if (script !== undefined || setting !== undefined) {
     try {
       const verifier = new Verifier(io.scripts ?? new PythonHost());
-      profile = await verifier.profile({ path: script ?? setting!.script }, profileName ?? (script === undefined ? setting?.profile : undefined));
+      profile = await verifier.profile({ path: script ?? scriptOf(setting!, file) }, profileName ?? (script === undefined ? setting?.profile : undefined));
     } catch (error) {
       io.err(`${file}: cannot read the profile: ${(error as Error).message}`);
       return 2;
@@ -193,6 +195,11 @@ function create(file: string, name: string | undefined, io: Io): number {
   io.writeFile(file, JSON.stringify(writeSystem(system), null, 2) + "\n");
   io.out(`wrote ${file}`);
   return 0;
+}
+
+/** Where a profile setting's script is, for the System in `file`; a script on the command line is from where it runs. */
+function scriptOf(setting: ProfileSetting, file: string): string {
+  return setting.script === STANDARD.path ? setting.script : join(dirname(file), setting.script);
 }
 
 function count(n: number, noun: string): string {

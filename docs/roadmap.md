@@ -102,8 +102,8 @@ Beyond the foundation changes, the tool itself:
 - Readers take a System, not a Target; structural errors are the Systemathic formulas verified as
   StdLib Formula Assertions.
 - Each metadata provider stores and loads its own metadata; the Repository knows none.
-- Profile paths: a System's profile setting names its script relative to where the host runs.
-  It should be relative to the System's file.
+- ~~Profile paths~~: done. A System's profile setting names its script relative to the folder
+  of the System's file, and saving the System elsewhere renames it from there.
 
 ## Open in the design
 
