@@ -25,7 +25,7 @@ export function wellFormednessProblems(graph: Graph): string[] {
   return problems;
 }
 
-describe("System files, systemathic/3", () => {
+describe("System files, systemathic/4", () => {
   it("reads the example without problems, and it is well-formed", () => {
     const { system, problems } = readSystem(game);
     expect(problems).toEqual([]);
@@ -56,17 +56,43 @@ describe("System files, systemathic/3", () => {
     expect(analyzeFormula(system.design, "core.no-leadership-cycles")).toMatchObject({ ok: true, ends: ["core.pack.leader"] });
   });
 
-  it("reads and writes what a Component implements, Instance ranges and a Function without an output", () => {
+  it("reads and writes a Deployment kept outside its box, what an Instance runs, an identity, an exposure, Instance ranges and a Function without an output", () => {
     const file = structuredClone(game);
-    const [, , , server, client] = file.design.root.components;
-    client.implements = ["game.server"];
-    file.design.root.deployments[0].instances[1].max = "N";
+    const [, , , server] = file.design.root.components;
+    const online = file.design.root.deployments[0];
+    online.instances[1].max = "N";
+    online.exposes.push({ id: "game.online:server", instance: "game.online.server" });
     server.interactions[0].output = null;
+    server.deployments.push({ id: "game.server.backup", name: "Backup", of: "game.server", instances: [], connections: [], imports: [], exposes: [] });
+    online.instances[0].runs = "game.server.backup";
+    const plugin = {
+      id: "plugin", name: "Plugin", uses: [], exports: [], imports: [], languages: [], interactions: [], transformations: [], mediums: [],
+      deployments: [
+        {
+          id: "plugin.fast", name: "Fast", of: "game.server", instances: [], connections: [], exposes: [],
+          imports: [{ id: "fast<server", from: "game.server", exports: [] }, { id: "fast>server", path: ["game.online.server"] }],
+        },
+      ],
+      components: [],
+    };
+    file.design.packages.push(plugin);
     const { system, problems } = readSystem(file);
     expect(problems).toEqual([]);
-    expect(system.design.navigate("game.client", "implements")).toEqual(["game.server"]);
+    expect(system.design.navigate("plugin.fast", "component")).toEqual(["game.server"]);
+    expect(system.design.navigate("plugin.fast", "keeper")).toEqual(["plugin"]);
+    expect(system.design.navigate("game.online.server", "runs")).toEqual(["game.server.backup"]);
     expect(system.design.navigate("game.server.attack", "output")).toEqual([]);
     expect(writeSystem(system)).toEqual(file);
+  });
+
+  it("names what an earlier format said, and how to bring it forward", () => {
+    const old = structuredClone(game);
+    old.design.root.components[3].implements = ["game.client"];
+    expect(readSystem(old).problems).toContainEqual({
+      at: "$.design.root.components[3].implements",
+      message: "`implements` is gone: an alternative implementation is a Deployment of the box; run scripts/migrate.py on this file",
+    });
+    expect(() => readSystem({ ...structuredClone(game), format: "systemathic/3" })).toThrow('scripts/migrate.py brings "systemathic/2" and "systemathic/3" forward');
   });
 
   it("reports references to nothing, or to the wrong kind of thing, and drops them", () => {

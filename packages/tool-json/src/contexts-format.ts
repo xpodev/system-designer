@@ -1,10 +1,11 @@
 /**
  * ContextsFormat: a Component as JSON. A Component nests what it owns — its Exports, Imports,
  * Languages (read and written by KernelFormat), Interactions, Transformations and children —
- * and refers to the Languages it uses and what it implements. An Export names what it exports
- * under one key, `component`, `interaction`, `transformation` or `language`; an Import names the Component it is `from` and the `exports` it takes. Layers
- * above Contexts add their parts of a Component, and their keys of an Export, through the
- * extension hooks, so this module knows nothing of them.
+ * and refers to the Languages it uses. An Export names what it exports under one key,
+ * `component`, `interaction`, `transformation` or `language`; an Import names the Component it
+ * is `from` and the `exports` it takes. Layers above Contexts add their parts of a Component,
+ * their keys of an Export, and their forms of an Import through the extension hooks, so this
+ * module knows nothing of them.
  */
 import { nameOf, setName, type Graph } from "@systemathic/core";
 import { readFunction, writeFunction, type FunctionJson } from "./functions-format.js";
@@ -13,11 +14,12 @@ import { array, object, string, type Reader } from "./reader.js";
 
 export interface InteractionJson extends FunctionJson { language: string }
 export type TransformationJson = FunctionJson;
-/** An Export: its id, and what it exports under one key (`interaction`, `export`, ...). */
+/** An Export: its id, and what it exports under one key (`interaction`, `deployment`, ...). */
 export type ExportJson = { id: string } & Record<string, string>;
-export interface ImportJson { id: string; from: string; exports: string[] }
+/** An Import from a Component, taking some of its Exports; or, from a Deployment only, an identity: a `path` of placements. */
+export type ImportJson = { id: string; from: string; exports: string[] } | { id: string; path: string[] };
 export interface ComponentJson {
-  id: string; name: string; uses: string[]; exports: ExportJson[]; imports: ImportJson[]; implements: string[];
+  id: string; name: string; uses: string[]; exports: ExportJson[]; imports: ImportJson[];
   languages: KernelLanguageJson[]; interactions: InteractionJson[]; transformations: TransformationJson[];
   mediums: unknown[]; deployments: unknown[];
   components: ComponentJson[];
@@ -30,6 +32,9 @@ export interface Extension {
   writeComponent?(graph: Graph, component: string): Record<string, unknown>;
   readExport?(reader: Reader, exported: string, json: Record<string, unknown>, at: string): void;
   writeExport?(graph: Graph, exported: string): Record<string, string>;
+  /** Reads an Import that is not from a Component; returns whether it did. */
+  readImport?(reader: Reader, imported: string, json: Record<string, unknown>, at: string): boolean;
+  writeImport?(graph: Graph, imported: string): ImportJson | undefined;
 }
 
 /** The keys under which an Export names what it exports, here: each is the Export's end. */
@@ -52,16 +57,8 @@ export function readComponent(reader: Reader, value: unknown, at: string, extens
     if (exported.export !== undefined) reader.problems.push({ at: `${where}.export`, message: "a re-export: Exports are global now, so run scripts/migrate.py on this file" });
     for (const extension of extensions) extension.readExport?.(reader, exportId, exported, where);
   });
-  array(json.imports, `${at}.imports`).forEach((value, index) => {
-    const where = `${at}.imports[${index}]`;
-    const imported = object(value, where);
-    const importId = reader.create("Import", imported.id, where);
-    if (importId === undefined) return;
-    graph.connect(id, "imports", importId);
-    reader.refer(importId, "from", imported.from, `${where}.from`);
-    array(imported.exports, `${where}.exports`).forEach((ref, i) => reader.refer(importId, "exports", ref, `${where}.exports[${i}]`));
-  });
-  array(json.implements, `${at}.implements`).forEach((ref, i) => reader.refer(id, "implements", ref, `${at}.implements[${i}]`));
+  readImports(reader, id, json.imports, `${at}.imports`, extensions);
+  if (json.implements !== undefined) reader.problems.push({ at: `${at}.implements`, message: "`implements` is gone: an alternative implementation is a Deployment of the box; run scripts/migrate.py on this file" });
   array(json.languages, `${at}.languages`).forEach((value, index) => {
     const language = readLanguage(reader, value, `${at}.languages[${index}]`);
     if (language !== undefined) graph.connect(id, "languages", language);
@@ -101,12 +98,7 @@ export function writeComponent(graph: Graph, component: string, extensions: read
       for (const extension of extensions) Object.assign(exported, extension.writeExport?.(graph, id));
       return exported;
     }),
-    imports: graph.navigate(component, "imports").map((id) => ({
-      id,
-      from: graph.navigate(id, "from")[0] ?? "",
-      exports: graph.navigate(id, "exports"),
-    })),
-    implements: graph.navigate(component, "implements"),
+    imports: writeImports(graph, component, extensions),
     languages: graph.navigate(component, "languages").map((language) => writeLanguage(graph, language)),
     interactions: graph.navigate(component, "interactions").map((id) => ({
       id,
@@ -119,4 +111,29 @@ export function writeComponent(graph: Graph, component: string, extensions: read
   for (const extension of extensions) Object.assign(json, extension.writeComponent?.(graph, component));
   json.components = graph.navigate(component, "components").map((child) => writeComponent(graph, child, extensions));
   return json as unknown as ComponentJson;
+}
+
+/** Reads the Imports of a Component or a Deployment into `owner`'s `imports`. */
+export function readImports(reader: Reader, owner: string, value: unknown, at: string, extensions: readonly Extension[]): void {
+  array(value, at).forEach((item, index) => {
+    const where = `${at}[${index}]`;
+    const imported = object(item, where);
+    const importId = reader.create("Import", imported.id, where);
+    if (importId === undefined) return;
+    reader.graph.connect(owner, "imports", importId);
+    if (extensions.some((extension) => extension.readImport?.(reader, importId, imported, where))) return;
+    reader.refer(importId, "from", imported.from, `${where}.from`);
+    array(imported.exports, `${where}.exports`).forEach((ref, i) => reader.refer(importId, "exports", ref, `${where}.exports[${i}]`));
+  });
+}
+
+/** Writes the Imports of a Component or a Deployment. */
+export function writeImports(graph: Graph, owner: string, extensions: readonly Extension[]): ImportJson[] {
+  return graph.navigate(owner, "imports").map((id) => {
+    for (const extension of extensions) {
+      const written = extension.writeImport?.(graph, id);
+      if (written !== undefined) return written;
+    }
+    return { id, from: graph.navigate(id, "from")[0] ?? "", exports: graph.navigate(id, "exports") };
+  });
 }

@@ -53,7 +53,7 @@ export function Panel({ tab, onTab, onClose, height }: { tab: PanelTab; onTab(ta
                     <Icon name={d.severity === "error" ? "error" : "warning"} size={15} />
                     <span className="problem-message">{d.message}</span>
                     <span className="problem-where">{d.subjects.filter((s) => model.get(s)).slice(0, 3).map((s) => model.name(s)).join(", ")}</span>
-                    <span className="problem-check">{d.kind === "rule" ? d.check : `${d.check} · structural`}</span>
+                    <span className="problem-check">{d.kind === "rule" ? d.check : d.kind === "configuration" ? `${d.check} · configuration` : `${d.check} · structural`}</span>
                     {d.suggestions[0] && <span className="problem-fix">→ {d.suggestions[0].message}</span>}
                   </li>
                 );

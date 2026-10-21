@@ -102,7 +102,7 @@ describe("the UI", () => {
   it("opens a System on its overview, with its health and its parts", async () => {
     await openGame();
     expect(await screen.findByText("Well-formed")).toBeTruthy();
-    expect(screen.getByText("10 Components · 6 Languages · 4 Deployments")).toBeTruthy();
+    expect(screen.getByText("10 Components · 6 Languages · 5 Deployments")).toBeTruthy();
   });
 
   it("opens a Language from the Explorer, and edits it in place", async () => {
@@ -274,7 +274,7 @@ describe("the UI", () => {
     expect(editor.querySelectorAll(".parameter")).toHaveLength(1);
   });
 
-  it("exports a Component's API, and reaches inside another, wherever it is, through what that one exports", async () => {
+  it("exports a Component's API, and a Deployment reaches inside another, wherever it is, through what that one exports", async () => {
     const id = await openGame("exports.systemathic.json");
     const session = (await host.startSession(id, "test")).session;
     await act(async () => {
@@ -283,39 +283,69 @@ describe("the UI", () => {
       await host.apply(id, session, "InteractionEditor", "addInteraction", { component: inner, language: "combat", name: "parry", output: "fighting.damage" });
     });
     fireEvent.click(explorerRow("Client"));
-    const editor = await editorTitled("Client");
+    fireEvent.click(within(await editorTitled("Client")).getByText("Desktop", { selector: ".card-title" }));
+    const editor = await editorTitled("Desktop");
+    // A Deployment's needs: what calls is a Deployment, and it imports what it needs.
     const reach = [...editor.querySelectorAll<HTMLSelectElement>(".picker")].find((p) => p.textContent?.includes("Reach…"))!;
     fireEvent.change(reach, { target: { value: "game.server.inner.parry" } });
     await waitFor(async () => {
-      const client = (await host.system(id)).design.root.components.find((c: { id: string }) => c.id === "game.client") as { imports: { from: string; exports: string[] }[] };
-      expect(client.imports.find((i) => i.from === "game.server.inner")?.exports).toEqual(["game.server.inner:game.server.inner.parry"]);
+      const client = (await host.system(id)).design.root.components.find((c: { id: string }) => c.id === "game.client") as { deployments: { id: string; imports: { from: string; exports: string[] }[] }[] };
+      const desktop = client.deployments.find((d) => d.id === "game.client.desktop")!;
+      expect(desktop.imports.find((i) => i.from === "game.server.inner")?.exports).toEqual(["game.server.inner:game.server.inner.parry"]);
     });
     await waitFor(() => expect(within(editor).getAllByText("parry").length).toBeGreaterThan(0));
   });
 
-  it("connects in a Deployment, and asks before adding the import the Connection needs", async () => {
+  it("connects through interfaces, and asks before a call out through the box brings the import it needs", async () => {
     const id = await openGame("connect.systemathic.json");
     const session = (await host.startSession(id, "test")).session;
     await act(async () => {
       await host.apply(id, session, "DeploymentEditor", "remove", { item: "game.local.client-attacks" });
-      await host.apply(id, session, "ComponentEditor", "unimport", { component: "game.client", item: "game.server:game.server.attack" });
-      await host.apply(id, session, "ComponentEditor", "unimport", { component: "game.client.input", item: "game.server:game.server.attack" });
+      await host.apply(id, session, "DeploymentEditor", "remove", { item: "game.client.desktop.input-attacks" });
+      await host.apply(id, session, "ComponentEditor", "unimport", { component: "game.client.desktop", item: "game.server:game.server.attack" });
     });
+    // Between two Instances, a Connection is structure: nothing to import.
     fireEvent.click(explorerRow("Local"));
-    const editor = await editorTitled("Local");
-    const client = [...editor.querySelectorAll<HTMLElement>(".instance-row")].find((r) => r.textContent?.includes("client"))!;
+    const local = await editorTitled("Local");
+    const client = [...local.querySelectorAll<HTMLElement>(".instance-row")].find((r) => r.textContent?.includes("client"))!;
     menuItem(client, "Connect to server");
     const panel = await waitFor(() => {
-      const found = editor.querySelector<HTMLElement>(".connect-panel");
-      expect(found?.textContent).toContain("Client does not import attack");
+      const found = local.querySelector<HTMLElement>(".connect-panel");
+      expect(found).toBeTruthy();
       return found!;
     });
+    expect(panel.textContent).not.toContain("does not import");
     fireEvent.click(within(panel).getByText("Connect"));
     await waitFor(async () => {
-      const file = await host.system(id);
-      const game = root0(file) as unknown as { components: { id: string; imports: { from: string; exports: string[] }[] }[]; deployments: { id: string; connections: unknown[] }[] };
-      expect(game.components.find((c) => c.id === "game.client")!.imports.find((i) => i.from === "game.server")!.exports).toEqual(["game.server:game.server.attack"]);
+      const game = root0(await host.system(id)) as unknown as { deployments: { id: string; connections: unknown[] }[] };
       expect(game.deployments.find((d) => d.id === "game.local")!.connections).toHaveLength(1);
+    });
+    // Out through the box: the Desktop must import attack, as its need — asked first.
+    fireEvent.click(explorerRow("Client"));
+    fireEvent.click(within(await editorTitled("Client")).getByText("Desktop", { selector: ".card-title" }));
+    const desktop = await editorTitled("Desktop");
+    const input = [...desktop.querySelectorAll<HTMLElement>(".instance-row")].find((r) => r.textContent?.includes("input"))!;
+    menuItem(input, "Connect to Client itself");
+    const offered = await waitFor(() => {
+      const found = desktop.querySelector<HTMLElement>(".connect-panel");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    // Carry attack, and only attack.
+    for (const box of offered.querySelectorAll<HTMLInputElement>(".what-choices input[type=checkbox]")) {
+      const wanted = box.parentElement!.textContent!.startsWith("attack()");
+      if (box.checked !== wanted) fireEvent.click(box);
+    }
+    const out = await waitFor(() => {
+      const found = desktop.querySelector<HTMLElement>(".connect-panel");
+      expect(found?.textContent).toContain("Desktop does not import attack");
+      return found!;
+    });
+    fireEvent.click(within(out).getByText("Connect"));
+    await waitFor(async () => {
+      const game = root0(await host.system(id)) as unknown as { components: { id: string; deployments: { id: string; imports: { from: string; exports: string[] }[] }[] }[] };
+      const clientBox = game.components.find((c) => c.id === "game.client")!;
+      expect(clientBox.deployments.find((d) => d.id === "game.client.desktop")!.imports.find((i) => i.from === "game.server")!.exports).toEqual(["game.server:game.server.attack"]);
     });
   });
 

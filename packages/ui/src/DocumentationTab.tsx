@@ -314,9 +314,9 @@ export function RuleDoc({ rule, open, onName }: { rule: { name: string; severity
   );
 }
 
-/** A Configuration's Choices, one line each, down the tree: `server is filled by Server, as Single`. */
+/** A Configuration's Choices, one line each, down the tree: `server runs Single`. */
 function choiceLines(model: ReturnType<typeof useModel>, choice: ChoiceJson): string[] {
-  const as = choice.deployment === null ? "left open" : `as ${model.name(choice.deployment)}`;
-  const line = choice.instance === null ? `the root, ${as}` : `${model.name(choice.instance)} is filled by ${model.name(choice.component)}, ${as}`;
+  const runs = choice.deployment === null ? "is an interface" : `runs ${model.name(choice.deployment)}`;
+  const line = choice.instance === null ? (choice.deployment === null ? "the root, left open" : `the root is solved by ${model.name(choice.deployment)}`) : `${model.name(choice.instance)} ${runs}`;
   return [line, ...choice.choices.flatMap((c) => choiceLines(model, c))];
 }

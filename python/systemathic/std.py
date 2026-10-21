@@ -16,11 +16,17 @@ the Violations it finds; a **profile** is the set of rules a System is verified 
 The standard rules are offered, never imposed: a profile has exactly the rules it lists.
 Rules that need arguments — which Mediums are primitive, how deep a stack must go — take
 them explicitly, with no defaults.
+
+What is verified is the **current Configuration**: the Deployment chosen for the root, and
+everything chosen below it (docs/foundation.md, *What is verified*). Rules over Deployments,
+Connections and Mediations read only those; a System with no Configuration has every
+Deployment read.
 """
 
 from __future__ import annotations
 
 import inspect
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, Sequence
 
@@ -31,10 +37,11 @@ __all__ = [
     "vocab", "ancestry", "siblings", "scope", "is_core", "is_extension",
     "leaf", "self_contained", "pure", "standalone", "shared", "dependencies",
     "resolve", "imported", "imported_components", "offered",
+    "Occupant", "configuration", "occupants", "in_use", "connections", "mediations",
     "what_language", "ends", "source", "target", "round_trip", "is_projection", "hows", "abstract_language", "abstract",
     "items", "interface", "implementations",
     "opacity", "mediation_separate", "medium_blind", "mediators_minimal", "projection_acyclic", "generic_level", "imports_acyclic",
-    "deployments_complete", "interactions_abstract", "exports_interfaces",
+    "interactions_abstract", "fan_out_silent", "construction_acyclic", "apis_placed",
     "mediation_primitives", "mediation_depth", "mediations_realized",
     "spoken", "containing", "disjoint", "uniform", "pipeline",
     "standard_rules", "standard",
@@ -215,8 +222,27 @@ def pure(component: Element) -> bool:
 
 
 def dependencies(component: Element) -> list[Element]:
-    """The Components it depends on: those it imports from, and those its Imports resolve to."""
-    return imported_components(component)
+    """The Components it depends on: those its Imports, and those of the Deployments it keeps and
+    the current Configuration uses, are from or take, and the box of each identity they import.
+    Depending on a Component nested in another is depending on what it is nested in, up to the
+    first Component both share: a child does not exist without its parent."""
+    used = set(in_use(component.model.system)) if component.model.system is not None else set()
+    owners = [component, *(d for d in component.kept if d in used)]
+    targets: list[Element] = []
+    for owner in owners:
+        targets += imported_components(owner)
+        for each in owner.imports:
+            if each.steps and each.steps[-1].instance is not None and each.steps[-1].instance.of is not None:
+                targets.append(each.steps[-1].instance.of)
+    mine = set(ancestry(component))
+    found: list[Element] = []
+    for target in targets:
+        for outer in ancestry(target):
+            if outer in mine:
+                break
+            if outer is not component and outer not in found:
+                found.append(outer)
+    return found
 
 
 def standalone(component: Element) -> bool:
@@ -225,25 +251,95 @@ def standalone(component: Element) -> bool:
 
 
 def interface(component: Element) -> bool:
-    """Something implements it."""
-    return bool(component.implementations)
+    """It has no Deployment: its implementation is undefined, and nothing relies on more than its interface."""
+    return not component.deployments
 
 
 def implementations(component: Element) -> list[Element]:
-    """The Components that implement it, eventually: those implementing them too."""
-    found: list[Element] = []
-    pending = list(component.implementations)
-    while pending:
-        current = pending.pop(0)
-        if current not in found and current is not component:
-            found.append(current)
-            pending.extend(current.implementations)
-    return found
+    """Its Deployments: the ways it may be built, wherever they are kept."""
+    return list(component.deployments)
 
 
 def shared(component: Element) -> bool:
-    """Its siblings import it, to run Instances of their own."""
-    return any(component in imported_components(sibling) for sibling in siblings(component))
+    """Its siblings' Deployments place it, each an Instance of its own."""
+    beside = set(siblings(component))
+    return any(instance.deployment is not None and instance.deployment.component in beside for instance in component.instances)
+
+
+# -- what is verified: the current Configuration ------------------------------------------
+
+@dataclass(eq=False)
+class Occupant:
+    """One real Instance under the current Configuration: the placement it occupies (none for the
+    System's root), the Deployment it runs, if any, and the occupant it is inside."""
+
+    instance: Element | None
+    deployment: Element | None
+    parent: "Occupant | None"
+
+    @property
+    def path(self) -> tuple[Element, ...]:
+        """Its identity: the placements from the root down to it."""
+        found: list[Element] = []
+        current: Occupant | None = self
+        while current is not None and current.instance is not None:
+            found.append(current.instance)
+            current = current.parent
+        return tuple(reversed(found))
+
+
+def configuration(system: System) -> dict | None:
+    """The current Configuration, as stored: the one the Configurations name `current`, or the first."""
+    for attachment in getattr(system.model, "attachments", []):
+        if attachment.get("owner") == "configurations":
+            data = attachment.get("data") or {}
+            found = data.get("configurations") or []
+            current = data.get("current")
+            return next((c for c in found if c.get("id") == current), found[0] if found else None)
+    return None
+
+
+def occupants(system: System) -> list[Occupant]:
+    """Every real Instance under the current Configuration, from the root down. A placement the
+    Configuration makes no Choice for is one occupant, running the Deployment the design fixes, if any."""
+    chosen = configuration(system)
+    if chosen is None:
+        return []
+    elements = system.model.elements
+    found: list[Occupant] = []
+
+    def walk(occupant: Occupant, choices: list[dict]) -> None:
+        found.append(occupant)
+        if occupant.deployment is None:
+            return
+        for placement in occupant.deployment.instances:
+            mine = [c for c in choices if c.get("instance") == placement.id]
+            if not mine:
+                walk(Occupant(placement, placement.runs, occupant), [])
+            for choice in mine:
+                deployment = elements.get(choice["deployment"]) if choice.get("deployment") else placement.runs
+                walk(Occupant(placement, deployment, occupant), choice.get("choices", []))
+
+    root = chosen.get("root") or {}
+    walk(Occupant(None, elements.get(root.get("deployment") or ""), None), root.get("choices", []))
+    return found
+
+
+def in_use(system: System) -> list[Element]:
+    """The Deployments the current Configuration uses; every Deployment, if there is no Configuration."""
+    if configuration(system) is None:
+        return system.all("Deployment")
+    return list(dict.fromkeys(o.deployment for o in occupants(system) if o.deployment is not None))
+
+
+def connections(system: System) -> list[Element]:
+    """The Connections of the Deployments in use."""
+    return [c for d in in_use(system) for c in d.connections]
+
+
+def mediations(system: System) -> list[Element]:
+    """The Mediations of the Connections in use."""
+    return [m for c in connections(system) for m in c.mediations]
 
 
 # -- Connections and Mediations -----------------------------------------------------------
@@ -361,8 +457,8 @@ def opacity(system: System) -> Iterator[Violation]:
     """Every mediated Connection is opaque: what uses and what offers do not know how they are connected.
 
     For a Connection mediated over a stack, neither end's Component uses any Language below
-    its What's — the Languages of the Mediums it passes through. They import the realization,
-    and only the Deployment, and the realization, know the how.
+    its What's — the Languages of the Mediums it passes through. The realization is the
+    Deployment's, and only the Deployment, through it, knows the how.
 
     This is what makes a how swappable: the Connection can move from one Medium to another
     without touching either end. An end that speaks the Medium's Language is coupled to it.
@@ -370,7 +466,7 @@ def opacity(system: System) -> Iterator[Violation]:
     To fix it, stop the end using the Medium's Language, and move whatever needed it into the
     realization.
     """
-    for connection in system.all("Connection"):
+    for connection in connections(system):
         below = [m.how.language for m in connection.mediations if m.how is not None and m.how.language is not None]
         for end in ends(connection):
             spoken = {language for used in end.uses for language in vocab(used)}
@@ -395,7 +491,7 @@ def mediation_separate(system: System) -> Iterator[Violation]:
     To fix it, mediate over a Medium of another Language, or remove the Mediation.
     """
     seen: set[tuple[Element, Element]] = set()
-    for mediation in system.all("Mediation"):
+    for mediation in mediations(system):
         what = what_language(mediation)
         how = mediation.how.language if mediation.how is not None else None
         if what is None or how is None or (what, how) in seen:
@@ -421,7 +517,7 @@ def medium_blind(system: System) -> Iterator[Violation]:
     needed it into the realization.
     """
     seen: set[tuple[Element, Element]] = set()
-    for mediation in system.all("Mediation"):
+    for mediation in mediations(system):
         what, medium = what_language(mediation), mediation.how
         if what is None or medium is None or medium.component is None or (medium, what) in seen:
             continue
@@ -445,7 +541,7 @@ def mediators_minimal(system: System) -> Iterator[Violation]:
     Component does elsewhere.
     """
     pairs: dict[Element, list[frozenset[Element]]] = {}
-    for mediation in system.all("Mediation"):
+    for mediation in mediations(system):
         what = what_language(mediation)
         how = mediation.how.language if mediation.how is not None else None
         if what is None or how is None:
@@ -511,27 +607,6 @@ def imports_acyclic(system: System) -> Iterator[Violation]:
         yield Violation(cycle, f"depend on each other: {_names(cycle)}")
 
 
-@rule(severity=ERROR)
-def deployments_complete(system: System) -> Iterator[Violation]:
-    """In every Deployment, every Interaction an Instance's Component imports is reached by a Connection.
-
-    An import says a Component needs another's operation. A Deployment that places the
-    Component and connects none of its Instance's needs leaves that need unmet: the
-    Deployment does not say who serves it.
-
-    To fix it, connect the Instance to an Instance that offers the Interaction, or to the
-    deployed Component.
-    """
-    for deployment in system.all("Deployment"):
-        for instance in deployment.instances:
-            if instance.of is None:
-                continue
-            reached = {interaction for connection in instance.outgoing for interaction in connection.what}
-            for interaction in imported(instance.of, "Interaction"):
-                if interaction not in reached:
-                    yield Violation([deployment, instance, interaction], f"in {deployment.name}, nothing serves {instance.name}'s {interaction.name}")
-
-
 @rule(severity=WARNING)
 def interactions_abstract(system: System) -> Iterator[Violation]:
     """Every imported Interaction is abstract: no Component is reached through an implementation vocabulary.
@@ -542,27 +617,102 @@ def interactions_abstract(system: System) -> Iterator[Violation]:
     To fix it, offer the Interaction over the abstract Language, and mediate it over the how.
     """
     implementation = hows(system)
-    for component in system.all("Component"):
-        for interaction in imported(component, "Interaction"):
+    for deployment in in_use(system):
+        for interaction in imported(deployment, "Interaction"):
             if interaction.language in implementation:
-                yield Violation([component, interaction], f"{component.name} imports {interaction.name}, over {interaction.language.name}, which Mediations are over")
+                yield Violation([deployment, interaction], f"{deployment.name} imports {interaction.name}, over {interaction.language.name}, which Mediations are over")
+
+
+@rule(severity=ERROR)
+def fan_out_silent(system: System) -> Iterator[Violation]:
+    """An Interaction carried to a ranged Instance gives nothing back.
+
+    A Connection to an Instance of range more than one reaches every occupant: that is how one
+    caller informs many without knowing them. A reply from each would leave the caller with as
+    many answers as there are occupants, and the design saying nothing of which it gets.
+
+    To fix it, give the Interaction no output, and have each occupant answer through an
+    interface the caller owns, if it must answer at all.
+    """
+    for connection in connections(system):
+        target = connection.to
+        if target is None or (target.max is not None and target.max <= 1):
+            continue
+        for interaction in connection.what:
+            if interaction.output is not None:
+                yield Violation([connection, interaction], f"{interaction.name} is carried to {target.name}, ranged, and gives something back")
+
+
+@rule(severity=ERROR)
+def construction_acyclic(system: System) -> Iterator[Violation]:
+    """The current Configuration can be built: no occupant waits, eventually, on itself.
+
+    Building a Deployment's occupant waits for what it is built on: some occupant running each
+    Deployment it imports, and the very occupant of each identity it imports, if that runs a
+    Deployment. Calls bind late, once everything is built, and do not count: construction
+    performs no Interactions. Build, repeatedly, any occupant whose waits are met; whatever is
+    left waits on itself, or on a Deployment no occupant runs.
+
+    To fix it, take one Import out of the loop — often one that only calls, and so need not be a
+    Deployment's — or choose a Deployment that does not wait on it.
+    """
+    running = [o for o in occupants(system) if o.deployment is not None]
+    by_deployment: dict[Element, list[Occupant]] = defaultdict(list)
+    by_path: dict[tuple[Element, ...], list[Occupant]] = defaultdict(list)
+    for o in running:
+        by_deployment[o.deployment].append(o)
+        by_path[o.path].append(o)
+
+    def waits(o: Occupant) -> list[tuple[str, list[Occupant]]]:
+        found: list[tuple[str, list[Occupant]]] = []
+        for each in o.deployment.imports:
+            if each.steps:
+                path = tuple(step.instance for step in each.steps)
+                for there in by_path.get(path, []):
+                    found.append(("/" + "/".join(str(i.name) for i in path), [there]))
+            else:
+                for export in each.exports:
+                    if export.deployment is not None:
+                        found.append((str(export.deployment.name), by_deployment.get(export.deployment, [])))
+        return found
+
+    built: set[Occupant] = set()
+    pending = list(running)
+    progress = True
+    while progress:
+        progress = False
+        for o in list(pending):
+            if all(any(p in built for p in options) for _, options in waits(o)):
+                built.add(o)
+                pending.remove(o)
+                progress = True
+    for o in pending:
+        stuck = [name for name, options in waits(o) if not any(p in built for p in options)]
+        where = "/" + "/".join(str(i.name) for i in o.path) if o.path else "the root"
+        yield Violation(o.deployment, f"{o.deployment.name}, at {where}, cannot be built: it waits for {', '.join(stuck)}")
 
 
 @rule(severity=WARNING)
-def exports_interfaces(system: System) -> Iterator[Violation]:
-    """Only interfaces are exported: no Export makes reachable a Component that has children.
+def apis_placed(system: System) -> Iterator[Violation]:
+    """A Deployment places every API its box exports: an extension point an interface declares is
+    there in every implementation.
 
-    A Component's children are its implementation. Exporting one with children of its own
-    hands that implementation out as API: whoever imports it can place it, and depends on
-    how it is built.
+    A box that exports a child as an API says that whoever implements the box offers it, and that
+    plug-ins can attach to it. A Deployment that places none of it leaves them nothing to attach
+    to in that implementation. A Deployment with nothing placed has its insides redacted, and is
+    not judged.
 
-    To fix it, export an interface — a Component without children, offering what the API
-    needs — and keep the Component with children as its implementation, unexported.
+    To fix it, place an Instance of the API in the Deployment.
     """
-    for export in system.all("Export"):
-        target = resolve(export)
-        if target is not None and target.kind == "Component" and target.components:
-            yield Violation([export.exporter, target], f"{export.exporter.name} exports {target.name}, which has children: an implementation")
+    for deployment in in_use(system):
+        box = deployment.component
+        if box is None or not deployment.instances:
+            continue
+        placed = {instance.of for instance in deployment.instances}
+        for export in box.exports:
+            api = export.component
+            if api is not None and api not in placed:
+                yield Violation([deployment, api], f"{deployment.name} of {box.name} places no {api.name}, an API its box exports")
 
 
 def _mediums(system: System, names: Sequence[str]) -> set[Element]:
@@ -583,7 +733,7 @@ def mediation_primitives(*mediums: str, severity: str = ERROR) -> Rule:
         To fix it, mediate the Connection, down to one of the primitive Mediums.
         """
         primitive = _mediums(system, mediums)
-        for connection in system.all("Connection"):
+        for connection in connections(system):
             stack = connection.mediations
             if not stack or stack[-1].how not in primitive:
                 yield Violation(connection, f"{connection.id} is not mediated down to a primitive ({', '.join(mediums)})")
@@ -598,7 +748,7 @@ def mediation_depth(levels: int, severity: str = ERROR) -> Rule:
 
         To fix it, mediate the Connection further down.
         """
-        for connection in system.all("Connection"):
+        for connection in connections(system):
             if len(connection.mediations) < levels:
                 yield Violation(connection, f"{connection.id} has {len(connection.mediations)} level(s) of Mediation, not {levels}")
 
@@ -616,7 +766,7 @@ def mediations_realized(*mediums: str, severity: str = ERROR) -> Rule:
         To fix it, realize the Mediation, or create its realization.
         """
         required = _mediums(system, mediums)
-        for mediation in system.all("Mediation"):
+        for mediation in mediations(system):
             if mediation.how in required and (mediation.down is None or mediation.up is None):
                 yield Violation([mediation.connection, mediation], f"a Mediation of {mediation.connection.id} over {mediation.how.name} is not realized")
 
@@ -642,10 +792,12 @@ def disjoint(a: Element, b: Element) -> bool:
 
 
 def _deployments(system: System, names: Sequence[str]) -> Iterator[tuple[Element, Element]]:
+    used = set(in_use(system))
     for name in names:
         component = system.component(name)
         for deployment in component.deployments:
-            yield component, deployment
+            if deployment in used:
+                yield component, deployment
 
 
 def uniform(*components: str, severity: str = ERROR) -> Rule:
@@ -752,7 +904,7 @@ def _pipeline(component: Element, deployment: Element) -> Iterator[Violation]:
 
 standard_rules: tuple[Rule, ...] = (
     opacity, mediation_separate, medium_blind, mediators_minimal, projection_acyclic, generic_level,
-    imports_acyclic, deployments_complete, interactions_abstract, exports_interfaces,
+    imports_acyclic, interactions_abstract, fan_out_silent, construction_acyclic, apis_placed,
 )
 
 #: Every standard rule that needs no arguments, at its default severity.

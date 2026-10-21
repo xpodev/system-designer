@@ -3,7 +3,7 @@
  * The core's Entities are Subjects here, and Diagnostics are Marks; nothing else of the tool
  * is known. A UI draws a View; an LLM reads the same View as structured data.
  */
-import { coreEntities, coreSpec, describe as describeElement, mediationStack, nameOf, parameters, resolve, scope, type Graph } from "@systemathic/core";
+import { coreEntities, coreSpec, describe as describeElement, identityPath, identityTarget, mediationStack, nameOf, parameters, resolve, scope, type Graph } from "@systemathic/core";
 import { diagnose, metrics, type Diagnostic } from "@systemathic/diagnoser";
 import type { SystemContext } from "@systemathic/tool";
 import { ViewBuilder, type LinkEnd, type Perspective, type View } from "./view.js";
@@ -19,7 +19,7 @@ export interface PerspectiveInfo {
 }
 
 export const perspectives: readonly PerspectiveInfo[] = [
-  { perspective: "outline", title: "Outline", about: "Everything in the System, as a tree: its root and packages, each Component nested, with its Languages, Interactions, Transformations, Mediums, imports, what it implements, and Deployments." },
+  { perspective: "outline", title: "Outline", about: "Everything in the System, as a tree: its root and packages, each Component nested, with its Languages, Interactions, Transformations, Mediums, imports, and the Deployments it keeps — of itself, or of another box it implements." },
   { perspective: "language", title: "Language", about: "One Language: its Entities and what they extend, the Relationships between them, its Formulas, and the Interactions over it.", needs: "Language" },
   { perspective: "component", title: "Component", about: "One Component: its Languages and what they extend, its children, the Languages each uses, and what each imports from which.", needs: "Component" },
   { perspective: "deployment", title: "Deployment", about: "One Deployment: its Instances, and its Connections — each with its What and the Mediums it is mediated over.", needs: "Deployment" },
@@ -118,7 +118,8 @@ function signature(graph: Graph, func: string): string {
 /** What an Instance places, and how many occupy it when that is not exactly one: `of Client, 0..N`. */
 function instanceDetail(graph: Graph, instance: string): string {
   const range = rangeText(graph, instance);
-  return `of ${named(graph, first(graph, instance, "of"))}${range === "1..1" ? "" : `, ${range}`}`;
+  const runs = first(graph, instance, "runs");
+  return `of ${named(graph, first(graph, instance, "of"))}${range === "1..1" ? "" : `, ${range}`}${runs === undefined ? "" : `, runs ${named(graph, runs)}`}`;
 }
 
 /** What an Entity extends, as `: A, B`, or nothing. */
@@ -135,8 +136,27 @@ export function mediationText(graph: Graph, connection: string): string {
 }
 
 /** Where a Connection goes: an Instance, or the deployed Component itself. */
+/** Where a Connection goes: an Instance, the box, or the placement an identity names. */
 function connectionTarget(graph: Graph, connection: string): string | undefined {
-  return first(graph, connection, "to") ?? first(graph, connection, "toComponent");
+  const identity = first(graph, connection, "toIdentity");
+  return first(graph, connection, "to") ?? first(graph, connection, "toComponent") ?? (identity === undefined ? undefined : identityTarget(graph, identity));
+}
+
+/** An Import, as it reads: from a Component, or an identity's path. */
+function importLabel(graph: Graph, imported: string): string {
+  const path = identityPath(graph, imported);
+  return path.length > 0 ? `imports /${path.map((p) => name(graph, p)).join("/")}` : `imports from ${named(graph, first(graph, imported, "from"))}`;
+}
+
+/** The Imports of a Component or a Deployment, each with what it takes. */
+function outlineImports(graph: Graph, view: ViewBuilder, owner: string, item: string): void {
+  for (const imported of graph.navigate(owner, "imports")) {
+    const path = identityPath(graph, imported).length > 0;
+    const m = view.item({ subject: imported, kind: "Import", label: importLabel(graph, imported), detail: path ? "identity" : "Component" }, item);
+    for (const exported of graph.navigate(imported, "exports")) {
+      view.item({ id: `${m}/${exported}`, subject: exported, kind: "Export", label: exportedName(graph, exported), detail: exportedDetail(graph, exported) }, m);
+    }
+  }
 }
 
 function outlineComponent(graph: Graph, view: ViewBuilder, component: string, parent: string): void {
@@ -164,18 +184,14 @@ function outlineComponent(graph: Graph, view: ViewBuilder, component: string, pa
   for (const exported of graph.navigate(component, "exports")) {
     view.item({ subject: exported, kind: "Export", label: `exports ${exportedName(graph, exported)}`, detail: exportedDetail(graph, exported) }, item);
   }
-  for (const imported of graph.navigate(component, "imports")) {
-    const from = first(graph, imported, "from");
-    const m = view.item({ subject: imported, kind: "Import", label: `imports from ${named(graph, from)}`, detail: "Component" }, item);
-    for (const exported of graph.navigate(imported, "exports")) {
-      view.item({ id: `${m}/${exported}`, subject: exported, kind: "Export", label: exportedName(graph, exported), detail: exportedDetail(graph, exported) }, m);
+  outlineImports(graph, view, component, item);
+  for (const deployment of graph.navigate(component, "kept")) {
+    const box = first(graph, deployment, "component");
+    const d = view.item({ subject: deployment, kind: "Deployment", label: name(graph, deployment), detail: box === component ? undefined : `of ${named(graph, box)}` }, item);
+    outlineImports(graph, view, deployment, d);
+    for (const exposed of graph.navigate(deployment, "exposes")) {
+      view.item({ subject: exposed, kind: "Export", label: `exposes ${named(graph, first(graph, exposed, "instance"))}`, detail: "Instance" }, d);
     }
-  }
-  for (const implemented of graph.navigate(component, "implements")) {
-    view.item({ id: `${item}/implements/${implemented}`, subject: implemented, kind: "implements", label: `implements ${name(graph, implemented)}`, detail: "Component" }, item);
-  }
-  for (const deployment of graph.navigate(component, "deployments")) {
-    const d = view.item({ subject: deployment, kind: "Deployment", label: name(graph, deployment) }, item);
     for (const instance of graph.navigate(deployment, "instances")) {
       view.item({ subject: instance, kind: "Instance", label: name(graph, instance), detail: instanceDetail(graph, instance) }, d);
     }
@@ -263,12 +279,18 @@ const builders: Readonly<Record<Perspective, Builder>> = {
     for (const language of own) for (const extended of graph.navigate(language, "extends")) view.link(language, extended, "extends");
     for (const child of children) {
       for (const language of graph.navigate(child, "uses")) view.link(child, language, "uses");
-      for (const imported of graph.navigate(child, "imports")) {
-        const from = first(graph, imported, "from");
-        const taken = graph.navigate(imported, "exports").map((e) => exportedName(graph, e));
-        if (from !== undefined && from !== child) view.link(child, from, "imports", taken.join(", ") || named(graph, from));
+      // What it imports: its vocabulary, and what the Deployments it keeps need.
+      for (const owner of [child, ...graph.navigate(child, "kept")]) {
+        for (const imported of graph.navigate(owner, "imports")) {
+          const from = first(graph, imported, "from");
+          const taken = graph.navigate(imported, "exports").map((e) => exportedName(graph, e));
+          if (from !== undefined && from !== child) view.link(child, from, "imports", taken.join(", ") || named(graph, from));
+        }
       }
-      for (const implemented of graph.navigate(child, "implements")) view.link(child, implemented, "implements");
+      for (const kept of graph.navigate(child, "kept")) {
+        const box = first(graph, kept, "component");
+        if (box !== undefined && box !== child) view.link(child, box, "implements", name(graph, kept));
+      }
     }
     return view;
   },
@@ -352,6 +374,7 @@ const builders: Readonly<Record<Perspective, Builder>> = {
     const groups = [
       { id: "structural", label: "Structural errors", has: (d: Diagnostic) => d.kind === "condition" && d.severity === "error" },
       { id: "errors", label: "Rule errors", has: (d: Diagnostic) => d.kind === "rule" && d.severity === "error" },
+      { id: "configuration", label: "Configuration errors", has: (d: Diagnostic) => d.kind === "configuration" },
       { id: "warnings", label: "Warnings", has: (d: Diagnostic) => d.severity === "warning" },
     ];
     for (const group of groups) {

@@ -88,7 +88,7 @@ export interface PerspectiveInfo {
 export interface Diagnostic {
   severity: "error" | "warning";
   check: string;
-  kind: "condition" | "rule";
+  kind: "condition" | "rule" | "configuration";
   message: string;
   subjects: string[];
   suggestions: { message: string; subjects: string[] }[];

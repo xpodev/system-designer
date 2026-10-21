@@ -1,5 +1,5 @@
 {
-  "format": "systemathic/3",
+  "format": "systemathic/4",
   "design": {
     "id": "lib.json.system",
     "name": "JSON",
@@ -24,7 +24,6 @@
         }
       ],
       "imports": [],
-      "implements": [],
       "languages": [
         {
           "id": "lib.json",

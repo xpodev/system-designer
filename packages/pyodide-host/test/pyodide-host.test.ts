@@ -27,10 +27,11 @@ describe("RuleHost in WebAssembly", () => {
   it("verifies the tool's design against its own profile, as Python does", async () => {
     const script = { path: "docs/system-designer.rules.py", source: text("docs/system-designer.rules.py") };
     const profile = await verifier.profile(script);
-    expect(profile.rules).toHaveLength(19);
+    expect(profile.rules).toHaveLength(21);
     const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
-    expect(run.violations).toEqual([]);
+    // Only warnings: replies from fan-outs, which the tool's design routes by kind (docs/roadmap.md).
+    expect(new Set(run.violations.map((v) => `${v.rule.name} ${v.rule.severity}`))).toEqual(new Set(["fan_out_silent warning"]));
   }, 120_000);
 
   it("runs the standard rules", async () => {

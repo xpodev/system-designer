@@ -33,6 +33,8 @@ from systemathic.std import (  # noqa: E402
     scope,
     shared,
     standalone,
+    in_use,
+    occupants,
     standard,
     uniform,
     vocab,
@@ -42,6 +44,8 @@ from systemathic import assist, host  # noqa: E402
 EXAMPLES = PYTHON.parent / "examples"
 DOCS = PYTHON.parent / "docs"
 GAME = json.loads((EXAMPLES / "game.systemathic.json").read_text(encoding="utf-8"))
+#: The game as it was in `systemathic/3`, for the migration.
+GAME_V3 = json.loads((Path(__file__).resolve().parent / "fixtures" / "game-v3.systemathic.json").read_text(encoding="utf-8"))
 
 
 def find(node, id: str) -> dict:
@@ -154,8 +158,8 @@ class Binding(unittest.TestCase):
         self.assertEqual(len(system.model.problems), 1)
 
     def test_rejects_the_previous_model(self):
-        with self.assertRaisesRegex(ValueError, "systemathic/3"):
-            read({"format": "systemathic/2"})
+        with self.assertRaisesRegex(ValueError, "systemathic/4"):
+            read({"format": "systemathic/3"})
 
     def test_orders_chains_however_they_were_linked(self):
         file = copy.deepcopy(GAME)
@@ -262,40 +266,82 @@ class Standard(unittest.TestCase):
         file = copy.deepcopy(GAME)
         find(file, "game.physics")["imports"].append({"id": "physics<input", "from": "game.client.input", "exports": []})
         find(file, "game.client.input")["imports"].append({"id": "input<physics", "from": "game.physics", "exports": []})
-        self.assertEqual(found(file)["imports_acyclic"], ["depend on each other: Input, Physics, Server"])
+        # Physics depends on Input, and so on the Client it is nested in.
+        self.assertEqual(found(file)["imports_acyclic"], ["depend on each other: Client, Input, Physics, Server"])
 
     def test_migration_takes_re_exports_out(self):
         sys.path.insert(0, str(PYTHON.parent / "scripts"))
         from migrate import migrate
 
-        file = copy.deepcopy(GAME)
+        file = copy.deepcopy(GAME_V3)
         find(file, "game")["exports"].append({"id": "game:attack", "export": "game.server:game.server.attack"})
         find(file, "game.client.input")["imports"] = [{"id": "input<game", "from": "game", "exports": ["game:attack"]}]
         file["attachments"].append({"owner": "game:attack", "data": "a re-export"})
         migrated = migrate(file)
         self.assertEqual(find(migrated, "game")["exports"], [{"id": "game:game.server", "component": "game.server"}])
-        self.assertEqual(find(migrated, "game.client.input")["imports"], [{"id": "game.client.input<game.server", "from": "game.server", "exports": ["game.server:game.server.attack"]}])
+        self.assertEqual(find(migrated, "game.client.input.implementation")["imports"], [{"id": "game.client.input<game.server", "from": "game.server", "exports": ["game.server:game.server.attack"]}])
         self.assertNotIn("game:attack", [a["owner"] for a in migrated["attachments"]])
         self.assertEqual(found(migrated), {})
 
-    def test_deployments_complete(self):
+    def test_migration_makes_implementations_deployments(self):
+        sys.path.insert(0, str(PYTHON.parent / "scripts"))
+        from migrate import migrate
+
+        file = copy.deepcopy(GAME_V3)
+        bot = {"id": "game.bot", "name": "Bot", "uses": ["combat"], "exports": [], "imports": [], "implements": ["game.client"],
+               "languages": [], "interactions": [], "transformations": [], "mediums": [], "deployments": [], "components": []}
+        find(file, "game")["components"].append(bot)
+        find(file, "game.online")["instances"].append({"id": "game.online.bot", "name": "bot", "of": "game.bot", "min": 1, "max": 1})
+        migrated = migrate(file)
+        self.assertEqual(migrated["format"], "systemathic/4")
+        self.assertNotIn("implements", find(migrated, "game.bot"))
+        self.assertEqual(find(migrated, "game.bot.client"), {"id": "game.bot.client", "name": "Bot", "of": "game.client", "instances": [], "connections": [], "imports": [{"id": "game.bot.client<game.client", "from": "game.client", "exports": []}], "exposes": []})
+        self.assertEqual(find(migrated, "game.online.bot")["of"], "game.client")
+        self.assertEqual(find(migrated, "game.online.bot")["runs"], "game.bot.client")
+        # Imports of Interactions move to Deployments: the Client's to the one it keeps.
+        self.assertEqual([m["from"] for m in find(migrated, "game.client")["imports"]], ["pkg.in-process"])
+        self.assertIn("game.server", [m["from"] for m in find(migrated, "game.client.desktop")["imports"]])
+        # Realizations are the Deployment's: Online imports them.
+        self.assertIn("game.combat-over-network", [m["from"] for m in find(migrated, "game.online")["imports"]])
+
+    def test_only_the_current_configuration_is_verified(self):
+        system = read(GAME)
+        self.assertEqual([d.name for d in in_use(system)], ["Online", "Single", "Desktop"])
+        self.assertEqual([o.path for o in occupants(system)][:2], [(), (system.element("game.online.server"),)])
         file = copy.deepcopy(GAME)
-        connections = find(file, "game.local")["connections"]
-        connections.clear()
-        self.assertEqual(found(file)["deployments_complete"], ["in Local, nothing serves client's attack"])
+        file["attachments"] = [a for a in file["attachments"] if a["owner"] != "configurations"]
+        self.assertEqual(len(in_use(read(file))), 5)
 
     def test_interactions_abstract(self):
         file = copy.deepcopy(GAME)
         find(file, "pkg.netstack")["exports"].append({"id": "netstack:send", "interaction": "pkg.netstack.send"})
-        find(file, "game.client")["imports"].append({"id": "client<netstack", "from": "pkg.netstack", "exports": ["netstack:send"]})
-        self.assertIn("Client imports send, over Network, which Mediations are over", found(file)["interactions_abstract"])
+        find(file, "game.client.desktop")["imports"].append({"id": "client<netstack", "from": "pkg.netstack", "exports": ["netstack:send"]})
+        self.assertIn("Desktop imports send, over Network, which Mediations are over", found(file)["interactions_abstract"])
 
-    def test_exports_interfaces(self):
+    def test_fan_out_silent(self):
+        file = copy.deepcopy(GAME)
+        find(file, "game.online.server")["max"] = "N"
+        self.assertEqual(found(file)["fan_out_silent"], ["attack is carried to server, ranged, and gives something back"] * 2)
+
+    def test_construction_acyclic(self):
+        file = copy.deepcopy(GAME)
+        find(file, "game.server")["exports"].append({"id": "server:single", "deployment": "game.server.single"})
+        find(file, "game.client")["exports"].append({"id": "client:desktop", "deployment": "game.client.desktop"})
+        find(file, "game.client.desktop")["imports"].append({"id": "desktop<server", "from": "game.server", "exports": ["server:single"]})
+        self.assertNotIn("construction_acyclic", found(file))
+        find(file, "game.server.single")["imports"].append({"id": "single<client", "from": "game.client", "exports": ["client:desktop"]})
+        self.assertEqual(found(file)["construction_acyclic"], [
+            "Single, at /server, cannot be built: it waits for Desktop",
+            "Desktop, at /client-1, cannot be built: it waits for Single",
+            "Desktop, at /client-2, cannot be built: it waits for Single",
+        ])
+
+    def test_apis_placed(self):
         file = copy.deepcopy(GAME)
         find(file, "game")["exports"].append({"id": "game:game.server", "component": "game.server"})
-        self.assertNotIn("exports_interfaces", found(file))
-        find(file, "game")["exports"].append({"id": "game:game.client", "component": "game.client"})
-        self.assertEqual(found(file)["exports_interfaces"], ["Game exports Client, which has children: an implementation"])
+        self.assertNotIn("apis_placed", found(file))
+        find(file, "game")["exports"].append({"id": "game:game.physics", "component": "game.physics"})
+        self.assertEqual(found(file)["apis_placed"], ["Online of Game places no Physics, an API its box exports"])
 
     def test_mediation_rules_take_their_arguments_and_have_none_by_default(self):
         with self.assertRaises(TypeError):
@@ -311,9 +357,9 @@ class Standard(unittest.TestCase):
                 "game.online.client-2-attacks is not mediated down to a primitive (In-process)",
             ],
         })
-        self.assertEqual(len(found(GAME, mediation_depth(2))["mediation_depth"]), 2)
+        # Only the current Configuration's Connections: Online's, and Desktop's inside each client.
+        self.assertEqual(len(found(GAME, mediation_depth(2))["mediation_depth"]), 1)
         self.assertEqual(found(GAME, mediations_realized("In-process"))["mediations_realized"], [
-            "a Mediation of game.local.client-attacks over In-process is not realized",
             "a Mediation of game.client.desktop.input-attacks over In-process is not realized",
         ])
 
@@ -389,8 +435,9 @@ class RuleHost(unittest.TestCase):
     def test_runs_the_tool_designs_own_profile(self):
         result = self.run_host("run", str(DOCS / "system-designer.rules.py"), str(DOCS / "system-designer.systemathic.json"))
         self.assertEqual(result["profile"], "profile")
-        self.assertEqual(len(result["rules"]), 19)
-        self.assertEqual(result["violations"], [])
+        self.assertEqual(len(result["rules"]), 21)
+        # Only warnings: replies from fan-outs, which the tool's design routes by kind (docs/roadmap.md).
+        self.assertEqual({(v["rule"], v["severity"]) for v in result["violations"]}, {("fan_out_silent", "warning")})
         self.assertEqual(result["failures"], [])
 
     def test_reports_a_broken_rule_and_runs_the_others(self):
@@ -403,7 +450,7 @@ class RuleHost(unittest.TestCase):
     def test_describes_a_script(self):
         result = host.describe("std")
         self.assertEqual([p["name"] for p in result["profiles"]], ["standard"])
-        self.assertEqual(len(result["rules"]), 10)
+        self.assertEqual(len(result["rules"]), 11)
         opacity = result["rules"][0]
         self.assertEqual(opacity["about"], "Every mediated Connection is opaque: what uses and what offers do not know how they are connected.")
         self.assertIn("This is what makes a how swappable", opacity["doc"])

@@ -2,7 +2,7 @@
 
 The tool's design is [system-designer.systemathic.json](system-designer.systemathic.json),
 verified against [system-designer.rules.py](system-designer.rules.py). The tool was rebuilt
-from it on the six-layer core and `systemathic/3`, and opens and verifies it. Wherever the
+from it on the six-layer core, and now reads `systemathic/4`, and opens and verifies it. Wherever the
 design still says more than the tool can express, the System holds a stand-in. This is the list
 of those stand-ins, of how the tool's own architecture still differs from the design, and of
 what is still open in the design.
@@ -15,16 +15,16 @@ Agreed, and now in [foundation.md](foundation.md) and `schema/`, which
 1. **Functions.** A layer between Kernel and Contexts holding **Function** and **Parameter**.
    Interaction and Transformation are Functions. A Transformation takes inputs in one Language
    and gives an output in another; no Relationship between the two is required.
-2. **`implements`.** A Component may implement another: the implemented Component is an
-   interface, and its own children are its default implementation.
+2. **`implements`** — *superseded by 13*: a Component implemented another, the implemented one
+   an interface whose children were its default implementation.
 3. **`output 0..1`.** An Interaction may give nothing back. There is no Unit: it would cross
    Languages.
 4. **Instance ranges.** An Instance has a range; `0..N` is a fan-out, which is how events work.
 5. **Systems is the top Language.** It holds System, and ties the layers together.
 6. **Configuration leaves the core.** It is the tool's: **Configurations** is a metadata type
    provider, like Documentation and By Value, with its Configuration Store in the Tool. A
-   Configuration chooses, per Instance occupant, the Component that fills it (the placed one or
-   an implementer) and its Deployment, and names its profile.
+   Configuration chooses, per Instance occupant, the Deployment of its box it runs (13), and
+   names its profile.
 7. **Std vocabulary is dropped.** Actions and the like are the UI's business only.
 8. **Language packages.** A package of Languages is not a Component.
 9. **Transformations are signatures only.** Entity and Relationship mappings, context Entities
@@ -51,6 +51,19 @@ Agreed, and now in [foundation.md](foundation.md) and `schema/`, which
     offers the Interactions of each child it exports, as an API of its own (W10), and is
     placed beyond its parent's reach only if its parent exports it (W10). `imports_acyclic`
     looks at every Component, not only siblings. `scripts/migrate.py` takes re-exports out.
+13. **Boxes and their Deployments** ([proposal](proposals/boxes-and-deployments.md)). A
+    Component is a box with an interface; a Deployment is its internal layout, of one box and
+    kept in one Component — the box, or another, such as a plug-in package. `implements` goes:
+    an alternative implementation is another Deployment of the box; a box with none is an
+    interface. Deployments are abstract: their Instances are placements, real under a real
+    Instance running them, so an identity is a path of exposed placements from the root (Step,
+    W16). A box imports only vocabulary; a Deployment imports its needs, met by presence in the
+    current Configuration, never by Connections, which are its structure. An Instance may run
+    a fixed Deployment. Realizations belong to the Connection's Deployment, not its ends (W12).
+    A Choice names only a Deployment; one Configuration is current, and the verifier verifies
+    only what it uses, with checks C1–C4. `exports_interfaces` and `deployments_complete` are
+    retired; `fan_out_silent`, `construction_acyclic` and `apis_placed` are new. The format is
+    `systemathic/4`; `scripts/migrate.py` brings files forward.
 
 ## Stand-ins in the design
 
@@ -60,10 +73,12 @@ What the System holds in place of what it means:
 |---|---|---|
 | a language package (8) | a Component | Systemathic |
 
-The others are gone: every implementation `implements` its interface (the profile reads it
-from the design), the fan-outs have range `0..N`, Metadata Provider `save` and Edit Listener
-`applied` give nothing back, and the Configurations Local and Browser are kept as metadata,
-each choosing what fills every Instance of the Tool.
+The others are gone: every implementation is a Deployment of its interface, kept in the
+Component whose code it is (the profile reads it from the design), the fan-outs have range
+`0..N`, Metadata Provider `save` and Edit Listener `applied` give nothing back, and the
+Configurations Local and Browser are kept as metadata, each choosing what every Instance of
+the Tool runs. The Edit Languages are vocabularies of their own, and the clients import no
+implementation (`clients_import_interfaces`).
 
 ## New tool tasks
 
@@ -72,7 +87,11 @@ Beyond the foundation changes, the tool itself:
 - ~~Edit `implements`, ranges, no-output Interactions and Configurations choosing
   implementations~~: done, through ComponentEditor, DeploymentEditor, FunctionEditor and the
   configurations package's ConfigurationEditor.
-- ~~The UI, on the new core and format~~: done, with Exports and Imports.
+- ~~The UI, on the new core and format~~: done, with Exports and Imports, and boxes and their
+  Deployments: a box's Deployments wherever kept, what a Component implements, a Deployment's
+  needs and identities, what an Instance runs, exposing placements, the current Configuration.
+- Rule scripts read the current Configuration from the System's attachment; the Workspace in
+  scripts (`workspace.plugins`) is still to be designed.
 - The tool's own architecture as the design draws it: Edits as data with a single
   `Editor.apply`, Readers that take a System, structural errors as StdLib Formula Assertions,
   and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
@@ -100,8 +119,9 @@ Beyond the foundation changes, the tool itself:
 - **Rule.** The name is provisional, and the StdLib's Assertions for standard terms are to be
   defined.
 - **Saving.** The order in which the Workspace saves through the Repository and asks the providers.
-- **Clients and Edit Languages.** Decided: importing an interface is to implement or consume it;
-  importing an implementation is to take part in it. UI, MCP Server and API import Documentation
-  Store, By Value Store and Systems Editor, which are implementations, to speak their kinds of
-  Edit, and take part in none of them: those Edit Languages belong in interfaces the clients
-  import, and the profile can then say that clients import only interfaces.
+- ~~**Clients and Edit Languages.**~~ Done: each Edit Language is a vocabulary of its own
+  (Kernel Edits … Configuration Edits), and the profile says clients import no implementation.
+- **Dispatch by kind.** The tool routes each call to the one occupant of a fan-out for its kind —
+  the Edit Kind for an Edit, the Format for a rendering, the Source for a path — and the model
+  cannot say so: a Connection to a ranged Instance reaches every occupant. `fan_out_silent` is a
+  warning in the tool's profile until the model can say which occupant answers.

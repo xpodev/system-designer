@@ -1,5 +1,5 @@
 /**
- * ToolFormat: a System file, `systemathic/3` (docs/format.md). A file holds the design — the
+ * ToolFormat: a System file, `systemathic/4` (docs/format.md). A file holds the design — the
  * System, its root and its packages, each Component in the core layers' formats — and the
  * attachments, opaque. This is where the layers are put together: each layer above Contexts
  * extends what the layers below it read and write.
@@ -11,7 +11,7 @@ import { deployment } from "./deployment-format.js";
 import { mediations, mediums } from "./mediation-format.js";
 import { array, FormatError, object, Reader, string, type LoadProblem } from "./reader.js";
 
-export const FORMAT = "systemathic/3";
+export const FORMAT = "systemathic/4";
 
 export interface AttachmentJson { owner: string; data: unknown }
 export interface DesignJson { id: string; name: string; root: ComponentJson; packages: ComponentJson[] }
@@ -30,7 +30,7 @@ export interface ReadResult {
 export function readSystem(value: unknown): ReadResult {
   const json = object(value, "$");
   if (json.format !== FORMAT) {
-    const found = typeof json.format === "string" ? ` (this one is "${json.format}"; scripts/migrate.py brings "systemathic/2" forward)` : "";
+    const found = typeof json.format === "string" ? ` (this one is "${json.format}"; scripts/migrate.py brings "systemathic/2" and "systemathic/3" forward)` : "";
     throw new FormatError(`$.format: expected "${FORMAT}"${found}`);
   }
   const reader = new Reader(coreGraph());

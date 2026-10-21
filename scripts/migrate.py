@@ -1,4 +1,4 @@
-"""Bring a System file forward from `systemathic/2` to `systemathic/3` (docs/format.md).
+"""Bring a System file forward, from `systemathic/2` or `systemathic/3`, to `systemathic/4` (docs/format.md).
 
     python scripts/migrate.py FILE [FILE ...]                       rewrite each file in place
     python scripts/migrate.py --signatures SIGS.json FILE [FILE ...]   with more signatures
@@ -31,6 +31,22 @@ Exports are global, so a `systemathic/3` file with re-exports is brought forward
   parent, so that it may be placed;
 - a Component that re-exported an Interaction of its child exports the child instead, as
   an API: a Component offers the Interactions of the APIs it exports.
+
+Boxes and their Deployments (`systemathic/4`, docs/proposals/boxes-and-deployments.md):
+- `implements` goes. A Component `X` implementing `I` keeps a Deployment of `I` instead: its
+  own Deployments, for the first `I`, or an empty one, named for `X` — an implementation with
+  its insides redacted;
+- an Instance of an `X` that implements one `I` becomes an Instance of `I` that `runs` it;
+- a Component imports only vocabulary: its Imports of anything but Languages move to the
+  Deployments it keeps, as their needs; one that keeps none, and calls or is built on
+  something, gets an empty Deployment of its own, to hold those needs;
+- a Deployment names its box, `of`; gains `imports` and `exposes`; an Instance gains `runs`,
+  a Connection `toIdentity`; a Deployment imports each top-level Component it places, and its
+  box if it is kept outside it;
+- a Connection's Deployment imports the Mediums and realizations its Mediations use, where it
+  has no access to them otherwise: realizations are the Deployment's, not the ends', whose
+  imports of them go;
+- a Configuration's Choice names only a Deployment of its occupant's box, or none.
 """
 
 from __future__ import annotations
@@ -271,10 +287,192 @@ def global_exports(file: dict) -> dict:
     return file
 
 
+def slug(name: str) -> str:
+    return "-".join("".join(ch.lower() if ch.isalnum() else " " for ch in name).split()) or "x"
+
+
+def boxes(file: dict) -> dict:
+    """`systemathic/3` to `systemathic/4`: implementations become Deployments, needs move to them."""
+    design = file["design"]
+    components: dict[str, dict] = {}
+    parents: dict[str, str | None] = {}
+
+    def index(c: dict, parent: str | None) -> None:
+        components[c["id"]] = c
+        parents[c["id"]] = parent
+        for child in c["components"]:
+            index(child, c["id"])
+
+    for top in [design["root"], *design["packages"]]:
+        index(top, None)
+    ids = all_ids(design)
+
+    def fresh(id: str) -> str:
+        found, n = id, 2
+        while found in ids:
+            found, n = f"{id}-{n}", n + 1
+        ids.add(found)
+        return found
+
+    def lineage(id: str | None) -> list[str]:
+        found = []
+        while id is not None:
+            found.append(id)
+            id = parents[id]
+        return found
+
+    def new_deployment(id: str, name: str, box: str) -> dict:
+        return {"id": fresh(id), "name": name, "of": box, "instances": [], "connections": [], "imports": [], "exposes": []}
+
+    for c in components.values():
+        for d in c.get("deployments", []):
+            d.setdefault("of", c["id"])
+            d.setdefault("imports", [])
+            d.setdefault("exposes", [])
+            for instance in d["instances"]:
+                instance.setdefault("runs", None)
+            for connection in d["connections"]:
+                connection.setdefault("toIdentity", None)
+
+    # Implementations become Deployments of what they implement.
+    made: dict[tuple[str, str], str] = {}
+    moved_from: dict[str, str] = {}  # a Deployment of X now of I: its id -> I
+    for c in components.values():
+        for n, interface in enumerate(c.get("implements", [])):
+            own = [d for d in c.get("deployments", []) if d["of"] == c["id"]]
+            if n == 0 and own:
+                for d in own:
+                    d["of"] = interface
+                    moved_from[d["id"]] = interface
+                made[(c["id"], interface)] = own[0]["id"]
+                continue
+            d = new_deployment(f"{c['id']}.{slug(components[interface]['name'] if interface in components else interface)}", c["name"], interface)
+            c.setdefault("deployments", []).append(d)
+            made[(c["id"], interface)] = d["id"]
+        c.pop("implements", None)
+
+    exporter = {e["id"]: comp["id"] for comp in components.values() for e in comp.get("exports", [])}
+    by_id = {e["id"]: e for comp in components.values() for e in comp.get("exports", [])}
+
+    # Realizations are the Connection's Deployment's (added below): the ends' imports of them go.
+    realizations = {m.get(end) for comp in components.values() for d in comp.get("deployments", [])
+                    for connection in d["connections"] for m in connection.get("mediations", []) for end in ("down", "up")} - {None}
+
+    # A Component imports only vocabulary; the rest of what it imports is its Deployments' needs.
+    for c in components.values():
+        kept, needs = [], []
+        for m in c.get("imports", []):
+            languages = [e for e in m["exports"] if by_id.get(e, {}).get("language")]
+            others = [e for e in m["exports"] if e not in languages and by_id.get(e, {}).get("transformation") not in realizations]
+            if not languages and not others and m["exports"]:
+                continue
+            if languages:
+                kept.append({**m, "exports": languages})
+            if others or not m["exports"]:
+                needs.append({**m, "id": m["id"] if not languages else f"{m['id']}#needs", "exports": others})
+        c["imports"] = kept
+        holders = c.setdefault("deployments", [])
+        if not holders:
+            # A box with no layout places nothing and mediates nothing: only what it calls, or is
+            # built on, is a need of its implementation, redacted.
+            needs = [{**m, "exports": [e for e in m["exports"] if by_id.get(e, {}).get("interaction") or by_id.get(e, {}).get("deployment")]} for m in needs]
+            needs = [m for m in needs if m["exports"]]
+        if not needs:
+            continue
+        if not holders:
+            holders.append(new_deployment(f"{c['id']}.implementation", c["name"], c["id"]))
+        for n, holder in enumerate(holders):
+            for m in needs:
+                copy = {**m, "id": m["id"] if n == 0 else fresh(f"{m['id']}#{n + 1}")}
+                ids.add(copy["id"])
+                holder["imports"].append(copy)
+
+    # An Instance of an implementation becomes an Instance of what it implements, running it.
+    implemented = {}
+    for (x, i), d in made.items():
+        implemented.setdefault(x, []).append((i, d))
+    for c in components.values():
+        for d in c.get("deployments", []):
+            for instance in d["instances"]:
+                options = implemented.get(instance["of"], [])
+                if len(options) == 1:
+                    instance["of"], instance["runs"] = options[0]
+
+    # A Deployment imports a top-level Component it places, and a box it is kept outside of.
+    for keeper in components.values():
+        for d in keeper.get("deployments", []):
+            wanted = [i["of"] for i in d["instances"] if i["of"] in parents and parents[i["of"]] is None]
+            if d["of"] != keeper["id"]:
+                wanted.append(d["of"])
+            for needed in dict.fromkeys(wanted):
+                if not any(m.get("from") == needed for m in d["imports"]):
+                    d["imports"].append({"id": fresh(f"{d['id']}<{needed}"), "from": needed, "exports": []})
+
+    # Realizations and Mediums are the Deployment's: import those it has no access to.
+    def export_of(owner: str, key: str, item: str) -> str:
+        comp = components[owner]
+        for e in comp.setdefault("exports", []):
+            if e.get(key) == item:
+                return e["id"]
+        e = {"id": fresh(f"{owner}:{item}"), key: item}
+        comp["exports"].append(e)
+        by_id[e["id"]] = e
+        exporter[e["id"]] = owner
+        return e["id"]
+
+    owner_of: dict[str, str] = {}
+    for comp in components.values():
+        for t in comp.get("transformations", []):
+            owner_of[t["id"]] = comp["id"]
+        for m in comp.get("mediums", []):
+            owner_of[m["id"]] = comp["id"]
+
+    for keeper in components.values():
+        for d in keeper.get("deployments", []):
+            reach = set(lineage(d["of"])) | set(lineage(keeper["id"]))
+            for connection in d["connections"]:
+                for mediation in connection.get("mediations", []):
+                    for key, item in (("medium", mediation.get("how")), ("transformation", mediation.get("down")), ("transformation", mediation.get("up"))):
+                        if not item or item not in owner_of or owner_of[item] in reach:
+                            continue
+                        taken = {by_id[e].get(key) for m in d["imports"] for e in m.get("exports", []) if e in by_id}
+                        if item in taken:
+                            continue
+                        owner = owner_of[item]
+                        e = export_of(owner, key, item)
+                        m = next((m for m in d["imports"] if m.get("from") == owner), None)
+                        if m is None:
+                            m = {"id": fresh(f"{d['id']}<{owner}"), "from": owner, "exports": []}
+                            d["imports"].append(m)
+                        m["exports"].append(e)
+
+    # A Choice names only a Deployment of its occupant's box.
+    instance_box = {i["id"]: i["of"] for comp in components.values() for d in comp.get("deployments", []) for i in d["instances"]}
+
+    def choose(choice: dict) -> dict:
+        deployment = choice.get("deployment")
+        component = choice.get("component")
+        box = instance_box.get(choice["instance"]) if choice.get("instance") else component
+        if component is not None and component != box:
+            if deployment is None or deployment not in moved_from:
+                deployment = made.get((component, box), deployment)
+        return {"id": choice["id"], "instance": choice.get("instance"), "deployment": deployment,
+                "choices": [choose(child) for child in choice.get("choices", [])]}
+
+    for attachment in file.get("attachments", []):
+        if attachment.get("owner") == "configurations":
+            for configuration in attachment["data"].get("configurations", []):
+                configuration["root"] = choose(configuration["root"])
+    file["format"] = "systemathic/4"
+    return file
+
+
 def migrate(file: dict) -> dict:
+    if file.get("format") == "systemathic/4":
+        return file
     if file.get("format") == "systemathic/3":
         exports(file["design"])
-        return global_exports(file)
+        return boxes(global_exports(file))
     if file.get("format") != "systemathic/2":
         raise SystemExit(f"not a systemathic/2 file: {file.get('format')!r}")
     design = file["design"]
@@ -297,11 +495,11 @@ def migrate(file: dict) -> dict:
         attachments.append({"owner": "configurations", "data": {"configurations": [
             {"id": c["id"], "name": c["name"], "rules": [], "root": choice(c["root"], components_of)} for c in configurations
         ]}})
-    return global_exports({
+    return boxes(global_exports({
         "format": "systemathic/3",
         "design": exports({"id": design["id"], "name": design["name"], "root": root, "packages": [c for c in components if c is not root]}),
         "attachments": attachments,
-    })
+    }))
 
 
 def main(paths: list[str]) -> int:

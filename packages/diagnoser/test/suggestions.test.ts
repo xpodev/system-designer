@@ -58,7 +58,8 @@ describe("metrics", () => {
     expect(of("combat", "extends")).toBe(2);
     expect(of("game.client.input", "nesting depth")).toBe(2);
     expect(of("game.physics", "fan-in")).toBe(2);
-    expect(of("game.client", "fan-out")).toBe(5);
+    // The Client imports In-process for its vocabulary; its Desktop needs Physics, In-process and the Server.
+    expect(of("game.client", "fan-out")).toBe(3);
     expect(of("game.online.client-1-attacks", "mediations")).toBe(2);
     expect(of("game.combat-over-network.down", "parameters")).toBe(1);
     expect(of("game.server.attack", "parameters")).toBe(2);

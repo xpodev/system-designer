@@ -1,5 +1,5 @@
 {
-  "format": "systemathic/3",
+  "format": "systemathic/4",
   "design": {
     "id": "game.system",
     "name": "Game",
@@ -13,28 +13,24 @@
           "id": "game<pkg.netstack",
           "from": "pkg.netstack",
           "exports": [
-            "pkg.netstack:lib.network",
-            "pkg.netstack:pkg.netstack.medium"
+            "pkg.netstack:lib.network"
           ]
         },
         {
           "id": "game<pkg.link",
           "from": "pkg.link",
           "exports": [
-            "pkg.link:lib.transport",
-            "pkg.link:pkg.link.medium"
+            "pkg.link:lib.transport"
           ]
         },
         {
           "id": "game<pkg.in-process",
           "from": "pkg.in-process",
           "exports": [
-            "pkg.in-process:lib.in-process",
-            "pkg.in-process:pkg.in-process.medium"
+            "pkg.in-process:lib.in-process"
           ]
         }
       ],
-      "implements": [],
       "languages": [
         {
           "id": "core",
@@ -206,21 +202,24 @@
               "name": "server",
               "of": "game.server",
               "min": 1,
-              "max": 1
+              "max": 1,
+              "runs": null
             },
             {
               "id": "game.online.client-1",
               "name": "client-1",
               "of": "game.client",
               "min": 1,
-              "max": 1
+              "max": 1,
+              "runs": null
             },
             {
               "id": "game.online.client-2",
               "name": "client-2",
               "of": "game.client",
               "min": 1,
-              "max": 1
+              "max": 1,
+              "runs": null
             }
           ],
           "connections": [
@@ -245,7 +244,8 @@
                   "down": "game.network-over-wire.down",
                   "up": "game.network-over-wire.up"
                 }
-              ]
+              ],
+              "toIdentity": null
             },
             {
               "id": "game.online.client-2-attacks",
@@ -268,9 +268,51 @@
                   "down": "game.network-over-wire.down",
                   "up": "game.network-over-wire.up"
                 }
+              ],
+              "toIdentity": null
+            }
+          ],
+          "of": "game",
+          "imports": [
+            {
+              "id": "game<pkg.netstack#needs",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:pkg.netstack.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.link#needs",
+              "from": "pkg.link",
+              "exports": [
+                "pkg.link:pkg.link.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.in-process#needs",
+              "from": "pkg.in-process",
+              "exports": [
+                "pkg.in-process:pkg.in-process.medium"
+              ]
+            },
+            {
+              "id": "game.online<game.combat-over-network",
+              "from": "game.combat-over-network",
+              "exports": [
+                "game.combat-over-network:game.combat-over-network.down",
+                "game.combat-over-network:game.combat-over-network.up"
+              ]
+            },
+            {
+              "id": "game.online<game.network-over-wire",
+              "from": "game.network-over-wire",
+              "exports": [
+                "game.network-over-wire:game.network-over-wire.down",
+                "game.network-over-wire:game.network-over-wire.up"
               ]
             }
-          ]
+          ],
+          "exposes": []
         },
         {
           "id": "game.local",
@@ -281,14 +323,16 @@
               "name": "server",
               "of": "game.server",
               "min": 1,
-              "max": 1
+              "max": 1,
+              "runs": null
             },
             {
               "id": "game.local.client",
               "name": "client",
               "of": "game.client",
               "min": 1,
-              "max": 1
+              "max": 1,
+              "runs": null
             }
           ],
           "connections": [
@@ -307,9 +351,35 @@
                   "down": null,
                   "up": null
                 }
+              ],
+              "toIdentity": null
+            }
+          ],
+          "of": "game",
+          "imports": [
+            {
+              "id": "game<pkg.netstack#needs#2",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:pkg.netstack.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.link#needs#2",
+              "from": "pkg.link",
+              "exports": [
+                "pkg.link:pkg.link.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.in-process#needs#2",
+              "from": "pkg.in-process",
+              "exports": [
+                "pkg.in-process:pkg.in-process.medium"
               ]
             }
-          ]
+          ],
+          "exposes": []
         }
       ],
       "components": [
@@ -329,7 +399,6 @@
               ]
             }
           ],
-          "implements": [],
           "languages": [],
           "interactions": [
             {
@@ -373,12 +442,10 @@
               "id": "game.combat-over-network<pkg.netstack",
               "from": "pkg.netstack",
               "exports": [
-                "pkg.netstack:lib.network",
-                "pkg.netstack:pkg.netstack.medium"
+                "pkg.netstack:lib.network"
               ]
             }
           ],
-          "implements": [],
           "languages": [],
           "interactions": [],
           "transformations": [
@@ -433,20 +500,17 @@
               "id": "game.network-over-wire<pkg.netstack",
               "from": "pkg.netstack",
               "exports": [
-                "pkg.netstack:lib.network",
-                "pkg.netstack:pkg.netstack.medium"
+                "pkg.netstack:lib.network"
               ]
             },
             {
               "id": "game.network-over-wire<pkg.link",
               "from": "pkg.link",
               "exports": [
-                "pkg.link:lib.transport",
-                "pkg.link:pkg.link.medium"
+                "pkg.link:lib.transport"
               ]
             }
           ],
-          "implements": [],
           "languages": [],
           "interactions": [],
           "transformations": [
@@ -491,30 +555,7 @@
               "interaction": "game.server.attack"
             }
           ],
-          "imports": [
-            {
-              "id": "game.server<game.physics",
-              "from": "game.physics",
-              "exports": []
-            },
-            {
-              "id": "game.server<game.combat-over-network",
-              "from": "game.combat-over-network",
-              "exports": [
-                "game.combat-over-network:game.combat-over-network.down",
-                "game.combat-over-network:game.combat-over-network.up"
-              ]
-            },
-            {
-              "id": "game.server<game.network-over-wire",
-              "from": "game.network-over-wire",
-              "exports": [
-                "game.network-over-wire:game.network-over-wire.down",
-                "game.network-over-wire:game.network-over-wire.up"
-              ]
-            }
-          ],
-          "implements": [],
+          "imports": [],
           "languages": [],
           "interactions": [
             {
@@ -548,10 +589,20 @@
                   "name": "physics",
                   "of": "game.physics",
                   "min": 1,
-                  "max": 1
+                  "max": 1,
+                  "runs": null
                 }
               ],
-              "connections": []
+              "connections": [],
+              "of": "game.server",
+              "imports": [
+                {
+                  "id": "game.server<game.physics",
+                  "from": "game.physics",
+                  "exports": []
+                }
+              ],
+              "exposes": []
             }
           ],
           "components": []
@@ -565,43 +616,13 @@
           "exports": [],
           "imports": [
             {
-              "id": "game.client<game.physics",
-              "from": "game.physics",
-              "exports": []
-            },
-            {
-              "id": "game.client<game.combat-over-network",
-              "from": "game.combat-over-network",
-              "exports": [
-                "game.combat-over-network:game.combat-over-network.down",
-                "game.combat-over-network:game.combat-over-network.up"
-              ]
-            },
-            {
-              "id": "game.client<game.network-over-wire",
-              "from": "game.network-over-wire",
-              "exports": [
-                "game.network-over-wire:game.network-over-wire.down",
-                "game.network-over-wire:game.network-over-wire.up"
-              ]
-            },
-            {
               "id": "game.client<pkg.in-process",
               "from": "pkg.in-process",
               "exports": [
-                "pkg.in-process:lib.in-process",
-                "pkg.in-process:pkg.in-process.medium"
-              ]
-            },
-            {
-              "id": "game.client<game.server",
-              "from": "game.server",
-              "exports": [
-                "game.server:game.server.attack"
+                "pkg.in-process:lib.in-process"
               ]
             }
           ],
-          "implements": [],
           "languages": [],
           "interactions": [],
           "transformations": [],
@@ -616,14 +637,16 @@
                   "name": "physics",
                   "of": "game.physics",
                   "min": 1,
-                  "max": 1
+                  "max": 1,
+                  "runs": null
                 },
                 {
                   "id": "game.client.desktop.input",
                   "name": "input",
                   "of": "game.client.input",
                   "min": 1,
-                  "max": 1
+                  "max": 1,
+                  "runs": null
                 }
               ],
               "connections": [
@@ -642,9 +665,33 @@
                       "down": null,
                       "up": null
                     }
+                  ],
+                  "toIdentity": null
+                }
+              ],
+              "of": "game.client",
+              "imports": [
+                {
+                  "id": "game.client<game.physics",
+                  "from": "game.physics",
+                  "exports": []
+                },
+                {
+                  "id": "game.client<pkg.in-process#needs",
+                  "from": "pkg.in-process",
+                  "exports": [
+                    "pkg.in-process:pkg.in-process.medium"
+                  ]
+                },
+                {
+                  "id": "game.client<game.server",
+                  "from": "game.server",
+                  "exports": [
+                    "game.server:game.server.attack"
                   ]
                 }
-              ]
+              ],
+              "exposes": []
             }
           ],
           "components": [
@@ -655,21 +702,30 @@
                 "combat"
               ],
               "exports": [],
-              "imports": [
-                {
-                  "id": "game.client.input<game.server",
-                  "from": "game.server",
-                  "exports": [
-                    "game.server:game.server.attack"
-                  ]
-                }
-              ],
-              "implements": [],
+              "imports": [],
               "languages": [],
               "interactions": [],
               "transformations": [],
               "mediums": [],
-              "deployments": [],
+              "deployments": [
+                {
+                  "id": "game.client.input.implementation",
+                  "name": "Input",
+                  "of": "game.client.input",
+                  "instances": [],
+                  "connections": [],
+                  "imports": [
+                    {
+                      "id": "game.client.input<game.server",
+                      "from": "game.server",
+                      "exports": [
+                        "game.server:game.server.attack"
+                      ]
+                    }
+                  ],
+                  "exposes": []
+                }
+              ],
               "components": []
             }
           ]
@@ -694,7 +750,6 @@
           }
         ],
         "imports": [],
-        "implements": [],
         "languages": [
           {
             "id": "lib.network",
@@ -780,7 +835,6 @@
           }
         ],
         "imports": [],
-        "implements": [],
         "languages": [
           {
             "id": "lib.transport",
@@ -866,7 +920,6 @@
           }
         ],
         "imports": [],
-        "implements": [],
         "languages": [
           {
             "id": "lib.in-process",

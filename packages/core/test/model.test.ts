@@ -7,15 +7,20 @@ import {
   counterexamples,
   analyzeFormula,
   boundInstance,
+  identityPath,
+  identityTarget,
   importable,
-  placeable,
   imported,
+  isInterface,
+  placeable,
+  placeableIn,
   mediationStack,
   parse,
   remove,
   scope,
   setMediationStack,
   setName,
+  setIdentitySteps,
   setParameters,
 } from "../src/index.js";
 
@@ -79,7 +84,10 @@ group("extension", () => {
   });
 });
 
-/** A System: a root with two children, a Language at the root, and an Interaction of one child imported by the other. */
+/**
+ * A System: a root with two boxes, Server and Client, a Language at the root, and the root's
+ * Deployment, `d`, placing `c1` and `s1` and connecting them over Server's `attack`.
+ */
 function system(): Graph {
   const graph = coreGraph();
   const component = (id: string, parent?: string) => {
@@ -106,18 +114,41 @@ function system(): Graph {
   graph.connect("attack", "language", "combat");
   graph.connect("attack", "output", "target");
   exportOf(graph, "server:attack", "server", "interaction", "attack");
-  importFrom(graph, "client<server", "client", "server", ["server:attack"]);
+  deployment(graph, "d", "root");
+  instance(graph, "c1", "d", "client");
+  instance(graph, "s1", "d", "server");
+  graph.add("Connection", "wire");
+  graph.connect("d", "connections", "wire");
+  graph.connect("wire", "from", "c1");
+  graph.connect("wire", "to", "s1");
+  graph.connect("wire", "what", "attack");
   return graph;
 }
 
-/** `exporter` exports `target` through `end` (an own thing, or a child). */
+/** A Deployment of `box`, kept in `keeper` (the box itself, unless given). */
+function deployment(graph: Graph, id: string, box: string, keeper = box): void {
+  graph.add("Deployment", id);
+  setName(graph, id, id);
+  graph.connect(id, "component", box);
+  graph.connect(id, "keeper", keeper);
+}
+
+function instance(graph: Graph, id: string, deployment: string, of: string): void {
+  graph.add("Instance", id);
+  setName(graph, id, id);
+  graph.connect(id, "of", of);
+  graph.connect(deployment, "instances", id);
+  graph.connect(id, "min", boundInstance(graph, 1));
+}
+
+/** `exporter` — a Component, or a Deployment exposing a placement — exports `target` through `end`. */
 function exportOf(graph: Graph, id: string, exporter: string, end: string, target: string): void {
   graph.add("Export", id);
-  graph.connect(exporter, "exports", id);
+  graph.connect(exporter, graph.get(exporter).entity === "Deployment" ? "exposes" : "exports", id);
   graph.connect(id, end, target);
 }
 
-/** `importer` imports from `from`, taking `exports`. */
+/** `importer` — a Component or a Deployment — imports from `from`, taking `exports`. */
 function importFrom(graph: Graph, id: string, importer: string, from: string, exports: readonly string[]): void {
   graph.add("Import", id);
   graph.connect(importer, "imports", id);
@@ -134,11 +165,13 @@ group("components", () => {
     expect(violated(system())).toEqual([]);
   });
 
-  it("see their own and their parents' Languages, may import from any other Component, and reach what they import", () => {
+  it("see their own and their parents' Languages, may import from any other Component, and lay out boxes in scope", () => {
     const graph = system();
     expect(scope(graph, "server")).toEqual(["combat"]);
     expect(importable(graph, "client")).toEqual(["root", "server"]);
-    expect(imported(graph, "client")).toEqual(["attack"]);
+    expect(placeableIn(graph, "d").sort()).toEqual(["client", "server"]);
+    expect(isInterface(graph, "server")).toBe(true);
+    expect(isInterface(graph, "root")).toBe(false);
   });
 
   it("cannot use a Language another Component does not export (W5), nor export what is not their own (W15)", () => {
@@ -151,50 +184,97 @@ group("components", () => {
     exportOf(graph, "client:private", "client", "language", "private");
     expect(violated(graph)).toContain("A Component exports only its own Languages");
     exportOf(graph, "server:private", "server", "language", "private");
-    graph.connect("client<server", "exports", "server:private");
+    importFrom(graph, "client<server", "client", "server", ["server:private"]);
     expect(violated(graph)).toEqual(["A Component exports only its own Languages"]);
   });
 
-  it("import what is exported from anywhere, and place a Component its parent exports (W9, W10, W15)", () => {
+  it("import only vocabulary; what calls is a Deployment, and imports what it needs (W9)", () => {
+    const graph = system();
+    importFrom(graph, "client<server", "client", "server", ["server:attack"]);
+    expect(violated(graph)).toEqual(["A Component imports only vocabulary: its Imports take only Languages"]);
+    graph.disconnect("client", "imports", "client<server");
+    deployment(graph, "desktop", "client");
+    graph.connect("desktop", "imports", "client<server");
+    expect(violated(graph)).toEqual([]);
+    expect(imported(graph, "desktop")).toEqual(["attack"]);
+  });
+});
+
+group("deployments", () => {
+  it("place only boxes in their scope (W10), and run only a Deployment of their own box", () => {
     const graph = system();
     graph.add("Component", "inner");
     setName(graph, "inner", "inner");
     graph.connect("inner", "parent", "server");
-    graph.connect("inner", "uses", "combat");
-    graph.disconnect("attack", "component");
-    graph.connect("attack", "component", "inner");
-    expect(violated(graph)).toEqual(["A Component exports only its own Interactions"]);
-
-    // The Export is inner's, and the Client imports it from inner, inside the Server: nesting does not scope it.
-    graph.disconnect("server", "exports", "server:attack");
-    graph.connect("inner", "exports", "server:attack");
-    expect(violated(graph)).toContain("An Import takes only Exports of the Component it is from");
-    graph.disconnect("client<server", "exports", "server:attack");
-    importFrom(graph, "client<inner", "client", "inner", ["server:attack"]);
+    deployment(graph, "solo", "client");
+    instance(graph, "one", "solo", "inner");
+    expect(violated(graph)).toContain(
+      "An Instance is of a box in its Deployment's scope: a child of its box or of the box's ancestors, a child of its keeper or of the keeper's ancestors, or a top-level Component the Deployment imports",
+    );
+    expect(placeable(graph, "solo", "inner")).toBe(false);
+    expect(placeable(graph, "solo", "server")).toBe(true);
+    graph.disconnect("one", "of");
+    graph.connect("one", "of", "server");
     expect(violated(graph)).toEqual([]);
-    expect(imported(graph, "client")).toEqual(["attack"]);
+    graph.connect("one", "runs", "solo");
+    expect(violated(graph)).toEqual(["An Instance runs only a Deployment of its own box"]);
+  });
 
-    // Placing inner beyond the Server needs the Server to export it.
-    graph.add("Deployment", "solo");
-    setName(graph, "solo", "Solo");
-    graph.connect("solo", "component", "client");
-    graph.add("Instance", "one");
-    setName(graph, "one", "one");
-    graph.connect("one", "deployment", "solo");
-    graph.connect("one", "of", "inner");
-    expect(violated(graph)).toEqual(["An Instance of a Component from beyond what the deployed Component's ancestors hold is of one its parent exports"]);
-    expect(placeable(graph, "client", "inner")).toBe(false);
-    exportOf(graph, "server:inner", "server", "component", "inner");
+  it("may be kept outside their box, by a plug-in that imports the box", () => {
+    const graph = system();
+    graph.add("Component", "plugin");
+    setName(graph, "plugin", "plugin");
+    graph.connect("s", "packages", "plugin");
+    graph.add("Component", "helper");
+    setName(graph, "helper", "helper");
+    graph.connect("helper", "parent", "plugin");
+    deployment(graph, "fast", "server", "plugin");
+    instance(graph, "h", "fast", "helper");
+    expect(violated(graph)).toEqual(["A Deployment kept outside its box imports the box"]);
+    exportOf(graph, "root:server", "root", "component", "server");
+    importFrom(graph, "fast<root", "fast", "root", ["root:server"]);
     expect(violated(graph)).toEqual([]);
-    expect(placeable(graph, "client", "inner")).toBe(true);
-    expect(placeable(graph, "client", "server")).toBe(true);
+    expect(placeableIn(graph, "fast")).toContain("helper");
+    // The box goes, and its Deployments with it, wherever they are kept.
+    expect(remove(graph, "server")).toEqual(expect.arrayContaining(["fast", "h"]));
+  });
+
+  it("reach a real object through an identity: a path of exposed placements from the root (W16)", () => {
+    const graph = system();
+    graph.add("Component", "plugin");
+    setName(graph, "plugin", "plugin");
+    graph.connect("s", "packages", "plugin");
+    graph.add("Component", "caller");
+    setName(graph, "caller", "caller");
+    graph.connect("caller", "parent", "plugin");
+    deployment(graph, "layout", "plugin");
+    instance(graph, "k", "layout", "caller");
+    graph.add("Import", "to-server");
+    graph.connect("layout", "imports", "to-server");
+    graph.add("Step", "step");
+    graph.connect("step", "instance", "s1");
+    setIdentitySteps(graph, "to-server", ["step"]);
+    graph.add("Connection", "call");
+    graph.connect("layout", "connections", "call");
+    graph.connect("call", "from", "k");
+    graph.connect("call", "toIdentity", "to-server");
+    graph.connect("call", "what", "attack");
+    expect(violated(graph)).toEqual(["Each Step is a placement its Deployment exposes"]);
+    exportOf(graph, "d:s1", "d", "instance", "s1");
+    expect(violated(graph)).toEqual([]);
+    expect(identityPath(graph, "to-server")).toEqual(["s1"]);
+    expect(identityTarget(graph, "to-server")).toBe("s1");
+    // The placement goes: its Step, the identity, and the Connection to it with it.
+    expect(remove(graph, "s1")).toEqual(expect.arrayContaining(["s1", "step", "to-server", "call", "d:s1"]));
   });
 });
 
 group("deletion", () => {
   it("removes an Export with what it exports; an Import keeps the rest, and goes with what it is from", () => {
     const graph = system();
-    expect(remove(graph, "attack")).toEqual(expect.arrayContaining(["attack", "server:attack"]));
+    deployment(graph, "desktop", "client");
+    importFrom(graph, "client<server", "desktop", "server", ["server:attack"]);
+    expect(remove(graph, "attack")).toEqual(expect.arrayContaining(["attack", "server:attack", "wire"]));
     expect(graph.has("client<server")).toBe(true);
     expect(graph.navigate("client<server", "exports")).toEqual([]);
     expect(remove(graph, "server")).toContain("client<server");
@@ -221,43 +301,16 @@ group("deletion", () => {
     expect(graph.navigate("down", "parameters")).toEqual([]);
   });
 
-  it("finds an implementation that does not import what it implements (W14)", () => {
-    const graph = system();
-    graph.connect("client", "implements", "server");
-    graph.disconnect("client", "imports", "client<server");
-    expect(violated(graph)).toContain("A Component imports what it implements");
-    graph.connect("client", "imports", "client<server");
-    expect(violated(graph)).not.toContain("A Component imports what it implements");
-  });
-
   it("finds an Instance whose range is out of order (W2)", () => {
     const graph = system();
-    graph.add("Deployment", "d");
-    graph.connect("d", "component", "root");
-    graph.add("Instance", "i");
-    setName(graph, "i", "i");
-    graph.connect("i", "of", "server");
-    graph.connect("d", "instances", "i");
-    graph.connect("i", "min", boundInstance(graph, 2));
-    graph.connect("i", "max", boundInstance(graph, 1));
+    graph.disconnect("s1", "min");
+    graph.connect("s1", "min", boundInstance(graph, 2));
+    graph.connect("s1", "max", boundInstance(graph, 1));
     expect(violated(graph)).toContain("An Instance's min <= max, where max is present");
   });
 
   it("removes a Connection with its last Interaction, and keeps a Mediation whose Medium goes", () => {
     const graph = system();
-    graph.add("Deployment", "d");
-    graph.connect("d", "component", "root");
-    for (const [id, of] of [["c1", "client"], ["s1", "server"]] as const) {
-      graph.add("Instance", id);
-      setName(graph, id, id);
-      graph.connect(id, "of", of);
-      graph.connect("d", "instances", id);
-    }
-    graph.add("Connection", "wire");
-    graph.connect("d", "connections", "wire");
-    graph.connect("wire", "from", "c1");
-    graph.connect("wire", "to", "s1");
-    graph.connect("wire", "what", "attack");
     graph.add("Medium", "http");
     graph.connect("http", "component", "root");
     graph.add("Mediation", "m");

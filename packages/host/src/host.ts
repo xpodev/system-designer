@@ -13,7 +13,7 @@ import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
-import { configurationEditor } from "@systemathic/configurations";
+import { configurationEditor, problems as configurationProblems } from "@systemathic/configurations";
 import { documentationEditor, saved } from "@systemathic/documentation";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
@@ -205,7 +205,10 @@ export class Host implements HostApi {
 
   async diagnostics(context: string): Promise<Diagnostic[]> {
     const hosted = this.get(context);
-    return diagnose(hosted.target.context, hosted.run?.run);
+    const configured = configurationProblems(hosted.target.context).map(
+      (problem): Diagnostic => ({ severity: "error", check: problem.check, kind: "configuration", message: problem.message, subjects: problem.subjects, suggestions: [] }),
+    );
+    return [...diagnose(hosted.target.context, hosted.run?.run), ...configured];
   }
 
   async view(context: string, perspective: string, subject?: string): Promise<View> {

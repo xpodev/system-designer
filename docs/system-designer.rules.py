@@ -4,7 +4,8 @@
 
 Every standard rule, plus the design's own: what the descriptions of the System say about its
 shape, stated so that a change that breaks it is found. Names of Components are this design's;
-the rules are its, not the tool's. What implements each seam is read from the design.
+the rules are its, not the tool's. What implements each seam is read from the design: a
+Deployment of the seam, kept in the Component whose code it is.
 """
 
 from systemathic.core import *
@@ -18,6 +19,8 @@ LAYERS = ["Kernel", "Functions", "Contexts", "Deployment", "Mediation", "Systems
 VOCABULARIES = [
     "Systemathic", "Systemathic Subjects", "Systemathic Metadata", "Systemathic Verification",
     "Systemathic StdLib", "Documentation", "By Value", "Configurations", "Editing", "Views",
+    "Kernel Edits", "Functions Edits", "Contexts Edits", "Deployment Edits", "Mediation Edits", "Systems Edits",
+    "Documentation Edits", "By Value Edits", "Configuration Edits",
 ]
 
 #: Every seam that could be done more than one way: the interfaces the design implements.
@@ -26,10 +29,11 @@ INTERFACES = [
     "Specification Format", "Systemathic Verifier",
 ]
 
-#: The concept editors, bottom up, each with the Systemathic Language it edits.
+#: The concept editors, bottom up, each with the vocabulary of its kinds of Edit and the Systemathic Language it edits.
 EDITORS = [
-    ("Kernel Editor", "Kernel"), ("Functions Editor", "Functions"), ("Contexts Editor", "Contexts"),
-    ("Deployment Editor", "Deployment"), ("Mediation Editor", "Mediation"), ("Systems Editor", "Systems"),
+    ("Kernel Editor", "Kernel Edits", "Kernel"), ("Functions Editor", "Functions Edits", "Functions"),
+    ("Contexts Editor", "Contexts Edits", "Contexts"), ("Deployment Editor", "Deployment Edits", "Deployment"),
+    ("Mediation Editor", "Mediation Edits", "Mediation"), ("Systems Editor", "Systems Edits", "Systems"),
 ]
 
 #: The parts that read a System, and what reading must never reach — each with its implementations.
@@ -46,15 +50,35 @@ METADATA = ["Systemathic Metadata", "Metadata Provider", "Documentation", "By Va
 CLIENTS = ["UI", "MCP Server", "CLI", "API"]
 
 
+def implementers(component: Element) -> list[Element]:
+    """The Components that keep a Deployment of it: where each of its implementations is kept, other than itself."""
+    return list(dict.fromkeys(d.keeper for d in implementations(component) if d.keeper is not None and d.keeper is not component))
+
+
 def with_implementations(system: System, names: list[str]) -> list[Element]:
-    """The named Components, and every Component implementing any of them."""
+    """The named Components, and every Component keeping an implementation of any of them."""
     found: list[Element] = []
     for name in names:
         component = system.component(name)
-        for each in [component, *implementations(component)]:
+        for each in [component, *implementers(component)]:
             if each not in found:
                 found.append(each)
     return found
+
+
+def implemented(component: Element) -> list[Element]:
+    """The boxes a Component keeps Deployments of, other than itself: what it implements."""
+    return [d.component for d in component.kept if d.component is not None and d.component is not component]
+
+
+def importers(system: System) -> list[Element]:
+    """Everything that imports: every Component, for its vocabulary, and every Deployment, for its needs."""
+    return [*system.all("Component"), *system.all("Deployment")]
+
+
+def owner(importer: Element) -> Element:
+    """The Component an importer's code is in: itself, or the keeper of a Deployment."""
+    return importer.keeper if importer.kind == "Deployment" else importer
 
 
 def reach(component: Element) -> list[Element]:
@@ -155,9 +179,9 @@ def workspace_joins_storage(system: System):
     Workspace's whole job, and no other part may do it on the side.
     """
     repository, provider = system.component("Repository"), system.component("Metadata Provider")
-    for component in system.all("Component"):
-        if component.name != "Workspace" and {repository, provider} <= set(imported_components(component)):
-            yield Violation(component, f"{component.name} imports both the Repository and the Metadata Provider")
+    for importer in importers(system):
+        if owner(importer).name != "Workspace" and {repository, provider} <= set(imported_components(importer)):
+            yield Violation(importer, f"{importer.name} imports both the Repository and the Metadata Provider")
 
 
 @rule(severity=ERROR)
@@ -168,16 +192,41 @@ def clients_are_hows(system: System):
     Listeners, an interface they implement; nothing calls a client by name.
     """
     clients = [system.component(name) for name in CLIENTS]
-    for component in system.all("Component"):
-        for client in set(imported_components(component)) & set(clients):
-            yield Violation([component, client], f"{component.name} imports the client {client.name}")
+    for importer in importers(system):
+        for client in set(imported_components(importer)) & set(clients):
+            if owner(importer) is not client:
+                yield Violation([importer, client], f"{importer.name} imports the client {client.name}")
     for client in clients:
         if client.interactions:
             yield Violation([client, *client.interactions], f"{client.name} is a client, but offers Interactions")
     for connection in system.all("Connection"):
-        target = connection.to.of if connection.to is not None else connection.toComponent
+        if connection.to is not None:
+            target = connection.to.of
+        elif connection.toIdentity is not None and connection.toIdentity.steps:
+            target = connection.toIdentity.steps[-1].instance.of
+        else:
+            target = connection.toComponent
         if target in clients:
             yield Violation(connection, f"a Connection goes to the client {target.name}")
+
+
+@rule(severity=ERROR)
+def clients_import_interfaces(system: System):
+    """Clients import no implementation: nothing a client, or a Deployment of one, imports from keeps an implementation of something else.
+
+    Importing an interface is to implement it or to consume it; importing an implementation is to
+    take part in it. A client takes part in no implementation: it speaks the tool's Languages and
+    calls its seams, and whatever a Language of Edits is, it is a vocabulary it imports, not a
+    Store or an Editor.
+    """
+    clients = [system.component(name) for name in CLIENTS]
+    for importer in importers(system):
+        if owner(importer) not in clients:
+            continue
+        for source in imported_components(importer):
+            implemented = [d.component for d in source.kept if d.component is not None and d.component is not source]
+            if implemented:
+                yield Violation([importer, source], f"{importer.name} imports from {source.name}, an implementation of {', '.join(sorted(str(c.name) for c in implemented))}")
 
 
 @rule(severity=ERROR)
@@ -193,7 +242,7 @@ def every_interface_implemented(system: System):
     for interface in seams:
         if not interface.interactions:
             yield Violation(interface, f"{interface.name} is an interface, but offers no Interaction")
-        found = interface.implementations
+        found = implementers(interface)
         if not found:
             yield Violation(interface, f"{interface.name} is an interface nobody implements")
         languages = {i.language for i in interface.interactions if i.language is not None}
@@ -204,26 +253,29 @@ def every_interface_implemented(system: System):
             if implementation in reach(interface):
                 yield Violation([interface, implementation], f"{interface.name} depends on its implementation {implementation.name}")
     for component in system.all("Component"):
-        if component.implementations and component not in seams:
+        if implementers(component) and component not in seams:
             yield Violation(component, f"{component.name} is implemented, but is not one of the design's seams")
 
 
 @rule(severity=ERROR)
 def editors_follow_layers(system: System):
-    """Each concept editor implements Edit Kind, and its Language extends the editor's below it and speaks its own Systemathic layer.
+    """Each concept editor implements Edit Kind and uses its kinds of Edit, a vocabulary of their own, whose Language extends the editor's below it and speaks its own Systemathic layer.
 
     So an editor covers a whole Language with its extensions, and the editors stack exactly as the
-    Languages they edit do.
+    Languages they edit do. The kinds of Edit are a vocabulary, not the editor's, so that clients
+    speak them without taking part in the editor.
     """
     below = system.language("Editing")
-    for editor_name, layer_name in EDITORS:
+    for editor_name, edits_name, layer_name in EDITORS:
         editor = system.component(editor_name)
-        own = editor.languages
+        own = system.component(edits_name).languages
         if len(own) != 1:
-            yield Violation(editor, f"{editor_name} must hold exactly one Language, its kinds of Edit")
+            yield Violation(editor, f"{edits_name} must hold exactly one Language, {editor_name}'s kinds of Edit")
             continue
         language = own[0]
-        if system.component("Edit Kind") not in editor.implements:
+        if language not in editor.uses:
+            yield Violation([editor, language], f"{editor_name} must use {language.name}, its kinds of Edit")
+        if system.component("Edit Kind") not in implemented(editor):
             yield Violation(editor, f"{editor_name} must implement Edit Kind")
         if below not in language.extends:
             yield Violation([language, below], f"{language.name} must extend {below.name}")
@@ -234,6 +286,11 @@ def editors_follow_layers(system: System):
 
 profile = Profile(
     *standard_rules,
+    # The tool routes each call to the one occupant of a fan-out for its kind — the Edit Kind for an
+    # Edit, the Format for a rendering, the Source for a path — and the model has no way yet to say
+    # so: a dispatch, not a broadcast. Until it does, a reply from a fan-out is a warning here
+    # (docs/roadmap.md, *Open in the design*).
+    fan_out_silent.at(WARNING),
     core_is_pure,
     vocabulary_only,
     editing_knows_no_core,
@@ -241,6 +298,7 @@ profile = Profile(
     repository_knows_no_metadata,
     workspace_joins_storage,
     clients_are_hows,
+    clients_import_interfaces,
     every_interface_implemented,
     editors_follow_layers,
 )

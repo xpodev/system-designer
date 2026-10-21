@@ -1,5 +1,5 @@
 {
-  "format": "systemathic/3",
+  "format": "systemathic/4",
   "design": {
     "id": "lib.http-over-tcp.system",
     "name": "HTTP over TCP",
@@ -24,7 +24,6 @@
         }
       ],
       "imports": [],
-      "implements": [],
       "languages": [
         {
           "id": "lib.http",
@@ -262,7 +261,6 @@
           }
         ],
         "imports": [],
-        "implements": [],
         "languages": [
           {
             "id": "lib.tcp",
@@ -486,7 +484,6 @@
             ]
           }
         ],
-        "implements": [],
         "languages": [],
         "interactions": [],
         "transformations": [

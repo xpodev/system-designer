@@ -38,7 +38,7 @@ export function Problems({ ids }: { ids: string[] }) {
           <Icon name={d.severity === "error" ? "error" : "warning"} size={15} />
           <div>
             <span className="problem-message">{d.message}</span>
-            <span className="problem-check">{d.kind === "rule" ? `rule ${d.check}` : d.check}</span>
+            <span className="problem-check">{d.kind === "rule" ? `rule ${d.check}` : d.kind === "configuration" ? `${d.check} · configuration` : d.check}</span>
             {d.suggestions.map((s, j) => (
               <span key={j} className="problem-fix">
                 {s.message}

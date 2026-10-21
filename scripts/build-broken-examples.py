@@ -99,8 +99,8 @@ def w12(f):
     mediation["down"], mediation["up"] = mediation["up"], mediation["down"]
 
 
-def w14(f):
-    find(f, "game.physics")["implements"].append("game.server")
+def w16(f):
+    find(f, "game.client.desktop")["imports"].append({"id": "desktop<server", "path": ["game.online.server"]})
 
 
 def w15(f):
@@ -123,7 +123,7 @@ for name, note, change in [
     ("w10", "W10: a Connection to an Instance that does not offer its What.", w10),
     ("w11", "W11: a Medium whose call is another Component's Interaction.", w11),
     ("w12", "W12: a Mediation realized upside down.", w12),
-    ("w14", "W14: Physics implements Server without importing it.", w14),
+    ("w16", "W16: Desktop imports the identity /server, a placement Online does not expose.", w16),
     ("w15", "W15: Server exports a Transformation of NetworkOverWire.", w15),
 ]:
     mutate(name, note, change)

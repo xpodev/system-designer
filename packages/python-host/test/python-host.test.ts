@@ -16,10 +16,11 @@ describe("RuleHost", () => {
   it("verifies the tool's design against its own profile", async () => {
     const profile = await verifier.profile({ path: "docs/system-designer.rules.py" });
     expect(profile.rules.map((rule) => rule.name)).toContain("readers_dont_edit");
-    expect(profile.rules).toHaveLength(19);
+    expect(profile.rules).toHaveLength(21);
     const run = await verifier.verify(snapshot(context("docs/system-designer.systemathic.json")), profile);
     expect(run.failures).toEqual([]);
-    expect(run.violations).toEqual([]);
+    // Only warnings: replies from fan-outs, which the tool's design routes by kind (docs/roadmap.md).
+    expect(new Set(run.violations.map((v) => `${v.rule.name} ${v.rule.severity}`))).toEqual(new Set(["fan_out_silent warning"]));
   }, 30_000);
 
   it("runs the standard rules, and names the Elements a Violation is about", async () => {

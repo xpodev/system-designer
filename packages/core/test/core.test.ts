@@ -28,9 +28,9 @@ group("generated schema", () => {
   });
 
   it("holds the union of every core layer", () => {
-    expect(coreSpec.entities).toHaveLength(20);
-    expect(coreSpec.relationships).toHaveLength(59);
-    expect(coreSpec.axioms).toHaveLength(68);
+    expect(coreSpec.entities).toHaveLength(21);
+    expect(coreSpec.relationships).toHaveLength(68);
+    expect(coreSpec.axioms).toHaveLength(79);
     expect(coreSpec.extends).toEqual({ Interaction: ["Function"], Transformation: ["Function"] });
   });
 });

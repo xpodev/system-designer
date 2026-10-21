@@ -15,12 +15,12 @@ export type { Suggestion } from "./suggestions.js";
 
 export type Severity = "error" | "warning";
 
-/** What found a Diagnostic: a well-formedness Condition of the core, or a Rule of a verification script. */
-export type CheckKind = "condition" | "rule";
+/** What found a Diagnostic: a well-formedness Condition of the core, a Rule of a verification script, or a check of a Configuration. */
+export type CheckKind = "condition" | "rule" | "configuration";
 
 export interface Diagnostic {
   readonly severity: Severity;
-  /** What found it: `range`, `formula`, the id of a core axiom (`W1`–`W14`, `order`, …), or a rule's name. */
+  /** What found it: `range`, `formula`, the id of a core axiom (`W1`–`W16`, `order`, …), a rule's name, or a Configuration check (`C1`–`C4`). */
   readonly check: string;
   readonly kind: CheckKind;
   readonly message: string;

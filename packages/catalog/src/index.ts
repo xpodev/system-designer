@@ -159,7 +159,7 @@ const UP: Readonly<Record<string, string>> = {
   Transformation: "component",
   Parameter: "function",
   Medium: "component",
-  Deployment: "component",
+  Deployment: "keeper",
   Instance: "deployment",
   Connection: "deployment",
   Mediation: "connection",
@@ -177,8 +177,9 @@ function owner(graph: Graph, id: string): string | undefined {
 
 /**
  * The smallest set of Components containing the selection's that is closed under what each
- * depends on: the Components it imports from, those owning what it imports, those owning the Languages it uses or its Languages extend, and those whose
- * Instances its Deployments place. Anything inside a Component selects it; a Component nested
+ * depends on: the Components it, and the Deployments it keeps, import from, those owning what
+ * they import, the boxes of those Deployments, those owning the Languages it uses or its
+ * Languages extend, and those whose Instances its Deployments place. Anything inside a Component selects it; a Component nested
  * in a chosen one comes with it.
  */
 export function closure(graph: Graph, selection: readonly string[]): Set<string> {
@@ -192,10 +193,16 @@ export function closure(graph: Graph, selection: readonly string[]): Set<string>
     const inside = owned(graph, component);
     const languages = inside.filter((id) => graph.get(id).entity === "Language");
     const users = inside.filter((id) => graph.get(id).entity === "Component");
+    const deployments = inside.filter((id) => graph.get(id).entity === "Deployment");
+    const importers = [...users, ...deployments];
+    const whose = (item: string) => {
+      const entity = graph.get(item).entity;
+      return graph.navigate(item, entity === "Component" ? "parent" : entity === "Deployment" ? "keeper" : "component");
+    };
     pending.push(
-      ...users.flatMap((user) => importedComponents(graph, user)),
-      ...users.flatMap((user) => imported(graph, user)).flatMap((item) => graph.navigate(item, graph.get(item).entity === "Component" ? "parent" : "component")),
-      ...owners(users, "implements"),
+      ...importers.flatMap((user) => importedComponents(graph, user)),
+      ...importers.flatMap((user) => imported(graph, user)).flatMap(whose),
+      ...owners(deployments, "component"),
       ...owners(owners(users, "uses"), "component"),
       ...owners(owners(languages, "extends"), "component"),
       ...owners(inside.filter((id) => graph.get(id).entity === "Instance"), "of"),

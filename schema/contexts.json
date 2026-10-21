@@ -1,6 +1,6 @@
 {
   "language": "Contexts",
-  "description": "Components: units of the design, nested, each defining Languages, using Languages in its scope, offering Interactions over them and holding Transformations between them, exporting what others may reach, and importing what it depends on. A Component's Exports are its API: an Export makes one of its own Languages, Interactions, Transformations or children, or something a child exports, reachable from outside; an Import is of one Component — to place it, and to import from it — and takes some of its Exports. From outside, a Component is what it exports: an interface. Its children, Transformations and Deployments are its own implementation, and other Components may implement it. Extends Functions.",
+  "description": "Components: boxes with an interface, nested, each defining Languages, using Languages in its scope, offering Interactions over them and holding Transformations between them, exporting what others may reach, and importing the vocabulary its interface is written in. A Component's Exports are its API: an Export makes one of its own Languages, Interactions, Transformations or children reachable from anywhere; an Import is from one Component, and takes some of its Exports. How a box does what it does is its Deployments' business (Deployment). Extends Functions.",
   "extends": ["Functions"],
   "entities": ["Component", {"name": "Interaction", "extends": ["Function"]}, {"name": "Transformation", "extends": ["Function"]}, "Export", "Import"],
   "relationships": [
@@ -11,15 +11,14 @@
     {"ends": [{"name": "component", "entity": "Component", "range": "1..1"}, {"name": "interactions", "entity": "Interaction", "range": "0..N"}]},
     {"ends": [{"name": "component", "entity": "Component", "range": "1..1"}, {"name": "transformations", "entity": "Transformation", "range": "0..N"}]},
     {"ends": [{"name": "language", "entity": "Language", "range": "1..1"}, {"name": null, "entity": "Interaction", "range": "0..N"}]},
-    {"ends": [{"name": "exporter", "entity": "Component", "range": "1..1"}, {"name": "exports", "entity": "Export", "range": "0..N"}]},
+    {"ends": [{"name": "exporter", "entity": "Component", "range": "0..1"}, {"name": "exports", "entity": "Export", "range": "0..N"}]},
     {"ends": [{"name": "component", "entity": "Component", "range": "0..1"}, {"name": null, "entity": "Export", "range": "0..N"}]},
     {"ends": [{"name": "interaction", "entity": "Interaction", "range": "0..1"}, {"name": null, "entity": "Export", "range": "0..N"}]},
     {"ends": [{"name": "transformation", "entity": "Transformation", "range": "0..1"}, {"name": null, "entity": "Export", "range": "0..N"}]},
     {"ends": [{"name": "language", "entity": "Language", "range": "0..1"}, {"name": null, "entity": "Export", "range": "0..N"}]},
-    {"ends": [{"name": "importer", "entity": "Component", "range": "1..1"}, {"name": "imports", "entity": "Import", "range": "0..N"}]},
-    {"ends": [{"name": "from", "entity": "Component", "range": "1..1"}, {"name": null, "entity": "Import", "range": "0..N"}]},
-    {"ends": [{"name": "exports", "entity": "Export", "range": "0..N"}, {"name": "imports", "entity": "Import", "range": "0..N"}]},
-    {"ends": [{"name": "implements", "entity": "Component", "range": "0..N"}, {"name": "implementations", "entity": "Component", "range": "0..N"}]}
+    {"ends": [{"name": "importer", "entity": "Component", "range": "0..1"}, {"name": "imports", "entity": "Import", "range": "0..N"}]},
+    {"ends": [{"name": "from", "entity": "Component", "range": "0..1"}, {"name": null, "entity": "Import", "range": "0..N"}]},
+    {"ends": [{"name": "exports", "entity": "Export", "range": "0..N"}, {"name": "imports", "entity": "Import", "range": "0..N"}]}
   ],
   "axioms": [
     {"id": "nesting", "about": "No Component is nested in itself, eventually", "formula": "all c in Component. not c in c.^parent"},
@@ -41,9 +40,6 @@
     {"id": "W15", "about": "A Component exports only its own Transformations", "formula": "all e in Export, t in e.transformation. t.component == e.exporter"},
     {"id": "W15", "about": "A Component exports only its own Languages", "formula": "all e in Export, l in e.language. l.component == e.exporter"},
     {"id": "W9", "about": "An Import takes only Exports of the Component it is from", "formula": "all m in Import, e in m.exports. e.exporter == m.from"},
-    {"id": "W9", "about": "An imported Interaction is over a Language the importer uses", "formula": "all c in Component, i in c.imports.exports.interaction. some u in c.uses. i.language in u.*extends"},
-    {"id": "W14", "about": "No Component implements itself, eventually", "formula": "all c in Component. not c in c.^implements"},
-    {"id": "W14", "about": "A Component imports what it implements", "formula": "all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.component"},
-    {"id": "W14", "about": "A Component uses the Language of every Interaction that what it implements exports", "formula": "all c in Component, x in c.implements, i in x.exports.interaction. i.language in c.uses"}
+    {"id": "W9", "about": "A Component imports only vocabulary: its Imports take only Languages", "formula": "all c in Component, e in c.imports.exports. some e.language"}
   ]
 }

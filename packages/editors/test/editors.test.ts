@@ -75,20 +75,27 @@ describe("concept editors", () => {
     expect(target.history.edits.every((edit) => edit.elements.length > 0)).toBe(true);
   });
 
-  it("connect, and bring the import and the use the Connection needs only when asked", () => {
-    const { target, s, online, clientInstance, serverInstance, attack, client, combat, server } = game();
-    ComponentEditor.unuse(s, client, combat);
-    ComponentEditor.unimportItem(s, client, server);
-    expect(DeploymentEditor.needs(target.graph, clientInstance, [attack])).toEqual({ imports: [attack], uses: [combat] });
-    DeploymentEditor.connect(s, online, clientInstance, serverInstance, [attack]);
+  it("connect through interfaces; only a call out through the box brings an import, and only when asked", () => {
+    const { target, s, online, clientInstance, serverInstance, attack, client, combat } = game();
+    // Between Instances, a Connection is structure: it needs nothing of the caller.
+    expect(DeploymentEditor.needs(target.graph, online, serverInstance, [attack])).toEqual({ imports: [] });
+    // Inside the Client, Input calls attack out through the Client: its Deployment needs it.
+    const input = created(ComponentEditor.addComponent(s, client, "Input"));
+    ComponentEditor.use(s, input, combat);
+    const desktop = created(DeploymentEditor.addDeployment(s, client, "Desktop"));
+    const typing = created(DeploymentEditor.addInstance(s, desktop, input, "input"));
+    expect(DeploymentEditor.needs(target.graph, desktop, client, [attack])).toEqual({ imports: [attack] });
+    DeploymentEditor.connect(s, desktop, typing, client, [attack]);
     expect(wrong(target)).toContain("W10");
     undo(s);
-    DeploymentEditor.connect(s, online, clientInstance, serverInstance, [attack], { addImports: true, addUses: true });
+    DeploymentEditor.connect(s, desktop, typing, client, [attack], { addImports: true });
     expect(wrong(target)).toEqual([]);
+    expect(imported(target.graph, desktop, "Interaction")).toEqual([attack]);
+    expect(clientInstance).toBeDefined();
   });
 
-  it("realize a Mediation in a Component of its own, imported by both ends", () => {
-    const { target, mediation, client, server, root } = game();
+  it("realize a Mediation in a Component of its own, imported by the Connection's Deployment", () => {
+    const { target, mediation, client, server, root, online } = game();
     const [down] = target.graph.navigate(mediation, "down");
     const [up] = target.graph.navigate(mediation, "up");
     const [holder] = target.graph.navigate(down!, "component");
@@ -99,29 +106,31 @@ describe("concept editors", () => {
     expect([typeOf(down!), outputOf(down!)]).toEqual([["Attacker"], "Message"]);
     expect([typeOf(up!), outputOf(up!)]).toEqual([["Message"], "Damage"]);
     expect(target.graph.navigate(holder!, "parent")).toEqual([root]);
-    for (const end of [client, server]) expect(imported(target.graph, end, "Transformation")).toEqual(target.graph.navigate(mediation, "down").concat(target.graph.navigate(mediation, "up")));
+    expect(imported(target.graph, online, "Transformation")).toEqual([down, up]);
+    // The ends know nothing of it.
+    for (const end of [client, server]) expect(imported(target.graph, end, "Transformation")).toEqual([]);
   });
 
-  it("export and reach: a Component reaches inside another, wherever it is, through what that one exports", () => {
+  it("export and reach: a Deployment reaches inside a box, wherever it is, through what that box exports", () => {
     const { target, s, server, client, combat, damage } = game();
     const inner = created(ComponentEditor.addComponent(s, server, "Inner"));
     ComponentEditor.use(s, inner, combat);
     const parry = created(InteractionEditor.addInteraction(s, inner, combat, "parry", damage));
-    ComponentEditor.reachItem(s, client, parry);
-    expect(imported(target.graph, client, "Interaction")).toContain(parry);
-    // Inner exports it, and the Client imports it from Inner: the Server exports nothing for it.
+    const desktop = created(DeploymentEditor.addDeployment(s, client, "Desktop"));
+    ComponentEditor.reachItem(s, desktop, parry);
+    expect(imported(target.graph, desktop, "Interaction")).toContain(parry);
+    // Inner exports it, and the Deployment imports it from Inner: the Server exports nothing for it.
     const [own] = target.graph.navigate(inner, "exports");
-    expect(target.graph.navigate(server, "exports").flatMap((e) => target.graph.navigate(e, "component"))).not.toContain(inner);
-    expect(target.graph.navigate(client, "imports").flatMap((m) => target.graph.navigate(m, "from"))).toContain(inner);
+    expect(target.graph.navigate(server, "exports")).toEqual([]);
+    expect(target.graph.navigate(desktop, "imports").flatMap((m) => target.graph.navigate(m, "from"))).toContain(inner);
     expect(wrong(target)).toEqual([]);
-    // Reaching Inner as a whole, to place it beyond the Server, makes the Server export it.
-    ComponentEditor.reachItem(s, client, inner);
-    expect(target.graph.navigate(server, "exports").flatMap((e) => target.graph.navigate(e, "component"))).toContain(inner);
-    expect(wrong(target)).toEqual([]);
-    // Removing Inner's Export of parry: the Client's Import keeps the rest.
+    // A box imports only vocabulary: an Interaction it takes is ill-formed.
+    ComponentEditor.importItem(s, client, own!);
+    expect(wrong(target)).toEqual(["W9"]);
+    undo(s);
+    // Removing Inner's Export of parry: the Deployment's Import keeps the rest.
     ComponentEditor.unexport(s, own!);
-    expect(imported(target.graph, client, "Interaction")).not.toContain(parry);
-    expect(imported(target.graph, client, "Interaction")).not.toEqual([]);
+    expect(imported(target.graph, desktop, "Interaction")).not.toContain(parry);
   });
 
   it("leave a Mediation broken in its stack when its Medium goes, and undo it exactly", () => {
@@ -209,20 +218,39 @@ describe("concept editors", () => {
     expect(wrong(target)).toEqual([]);
   });
 
-  it("implement a Component, and place Instances with a range", () => {
+  it("implement a box with a Deployment kept elsewhere, fix what an Instance runs, and place Instances with a range", () => {
     const { target, s, root, server, online, serverInstance } = game();
-    const backup = created(ComponentEditor.addComponent(s, root, "Backup"));
-    ComponentEditor.implement(s, backup, server);
-    expect(target.graph.navigate(backup, "implements")).toEqual([server]);
+    const plugin = created(ComponentEditor.addComponent(s, root, "Plugin"));
+    const backup = created(DeploymentEditor.addDeployment(s, server, "Backup", plugin));
+    expect(target.graph.navigate(backup, "component")).toEqual([server]);
+    expect(target.graph.navigate(backup, "keeper")).toEqual([plugin]);
     expect(importedComponents(target.graph, backup)).toEqual([server]);
-    expect(wrong(target)).toEqual(["W14"]);
-    ComponentEditor.use(s, backup, target.graph.navigate(server, "uses")[0]!);
     expect(wrong(target)).toEqual([]);
+    DeploymentEditor.setRuns(s, serverInstance, backup);
+    expect(target.graph.navigate(serverInstance, "runs")).toEqual([backup]);
+    DeploymentEditor.setRuns(s, serverInstance, online);
+    expect(wrong(target)).toEqual(["W10"]);
+    DeploymentEditor.setRuns(s, serverInstance, undefined);
     DeploymentEditor.setRange(s, serverInstance, "1..N");
     expect(target.graph.navigate(serverInstance, "max")).toEqual([]);
     DeploymentEditor.setRange(s, serverInstance, "2..1");
     expect(wrong(target)).toEqual(["W2"]);
     expect(created(DeploymentEditor.addInstance(s, online, server, "spare", "0..1"))).toBe(`${online}.spare`);
+  });
+
+  it("expose a placement, and reach it from a plug-in through an identity", () => {
+    const { target, s, root, online, serverInstance, attack, combat } = game();
+    const plugin = created(ComponentEditor.addComponent(s, root, "Plugin"));
+    const caller = created(ComponentEditor.addComponent(s, plugin, "Caller"));
+    ComponentEditor.use(s, caller, combat);
+    const layout = created(DeploymentEditor.addDeployment(s, plugin, "Layout"));
+    const k = created(DeploymentEditor.addInstance(s, layout, caller, "k"));
+    const identity = created(DeploymentEditor.importIdentity(s, layout, [serverInstance]));
+    DeploymentEditor.connect(s, layout, k, identity, [attack]);
+    expect(wrong(target)).toEqual(["W16"]);
+    DeploymentEditor.expose(s, online, serverInstance);
+    expect(wrong(target)).toEqual([]);
+    expect(DeploymentEditor.identities(target.graph, layout)).toEqual([{ id: identity, path: [serverInstance] }]);
   });
 
   it("are described as data, and run from arguments by name", () => {

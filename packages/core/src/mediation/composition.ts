@@ -12,5 +12,5 @@ export const mediationComposition = composition(
     Connection: ["mediations"],
   },
   [],
-  { Export: [["component", "interaction", "transformation", "language", "medium"]] },
+  { Export: [["component", "interaction", "transformation", "language", "medium", "deployment", "instance"]] },
 );

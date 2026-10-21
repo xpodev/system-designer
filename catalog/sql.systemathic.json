@@ -1,5 +1,5 @@
 {
-  "format": "systemathic/3",
+  "format": "systemathic/4",
   "design": {
     "id": "lib.sql.system",
     "name": "SQL",
@@ -24,7 +24,6 @@
         }
       ],
       "imports": [],
-      "implements": [],
       "languages": [
         {
           "id": "lib.sql",

@@ -40,19 +40,22 @@ The model follows the order in which a system is thought through:
    at one level of abstraction. Moving between levels is a Transformation.
 2. **Extensions** give them depth and refine them: Languages that build on others and add
    vocabulary.
-3. **Components** give them implementation: each speaks some of those Languages, offers
-   Interactions, exports what others may reach — its API — imports what it depends on,
-   and is built, recursively, the same
-   way — its own core Languages, extensions and Components, private to it. A Component
-   may **implement** another: it is then an alternative to it, wherever it is placed.
-4. **Deployments** say how a Component may be put together — it may have several
-   options: which of its children exist side by side, how many of each, which of them
-   each one's imports reach, and over which Mediations.
+3. **Components** are boxes: each an interface — the Languages it speaks, the Interactions
+   it offers, what it exports (its API), and the vocabulary it imports — built,
+   recursively, the same way: its own core Languages, extensions and Components, private
+   to it.
+4. **Deployments** say how a box may be built: its internal layouts. A box may have
+   several — the ways to build it — kept in the box itself or elsewhere, such as in a
+   plug-in package: which boxes each places, how many of each, how they call each other,
+   through their interfaces, and over which Mediations. A box with no Deployment is an
+   **interface**: its implementation is undefined, and nothing relies on more than its
+   interface.
 
-Which implementation fills each place, and which of its Deployments it runs as, is not the
-design's: it is chosen when a System is put together to run, outside the core (the tool's
+The root is the solution to the highest-level problem, and its Deployments are the ways to
+solve it. Which Deployment each real Instance runs is not the design's, unless the design
+fixes it: it is chosen when a System is put together to run, outside the core (the tool's
 Configurations do it). What the system is for — the client's requirements — is not
-modelled either. It is what the design as a whole realizes.
+modelled either. It is what the root, as a whole, realizes.
 
 ## Levels
 
@@ -206,16 +209,16 @@ Language holds more than one concern.
 |---|---|---|
 | **Kernel** | Language, Entity, Relationship, End, Name, Bound, Formula | — |
 | **Functions** | Function, Parameter | Kernel |
-| **Contexts** | Component, Interaction, Transformation, Export, Import; uses, implements | Functions |
-| **Deployment** | Deployment, Instance, Connection | Contexts |
+| **Contexts** | Component, Interaction, Transformation, Export, Import; uses | Functions |
+| **Deployment** | Deployment, Instance, Connection, Step; a Deployment's box and keeper, its Imports and exposures; what an Instance runs | Contexts |
 | **Mediation** | Medium, Mediation | Deployment |
 | **Systems** | System | Mediation |
 
 Systems is the top Language: a System is a model of it, and through it, of all the others.
-Deployment and Mediation are optional in a design: a Component with no Deployment is
-complete without one, and so is a Connection with no Mediation. A layer adds its
-Relationships to the Entities below it without changing them: a Component does not know
-how it is deployed, nor a Connection how it is mediated.
+Deployment and Mediation are optional in a design: a Component with no Deployment is an
+interface, complete without one, and a Connection with no Mediation is complete too. A
+layer adds its Relationships to the Entities below it without changing them: a Component
+does not know how it is built, nor a Connection how it is mediated.
 
 Their full definitions, as data, are in [`schema/`](../schema/README.md).
 
@@ -230,19 +233,23 @@ Component ─┬─ languages ─────▶ Language ─┬─ extends ─�
            │                             └─ formulas ──────▶ Formula
            ├─ uses ──────────▶ Language
            ├─ components ────▶ Component
-           ├─ implements ────▶ Component
            ├─ interactions ──▶ Interaction : Function ── language ──▶ Language
            ├─ transformations ▶ Transformation : Function
            ├─ exports ───────▶ Export ─── component, interaction, transformation,
-           │                              language, medium ─▶ what it exports
+           │                              language, medium, deployment ─▶ what it exports
            ├─ imports ───────▶ Import ─┬─ from ────▶ Component
-           │                           └─ exports ─▶ Export
+           │                           ├─ exports ─▶ Export
+           │                           └─ steps ───▶ Step ── instance ─▶ Instance   (an identity)
            ├─ mediums ───────▶ Medium ─┬─ language ─▶ Language
            │                           └─ call ─────▶ Interaction
-           └─ deployments ───▶ Deployment ─┬─ instances ───▶ Instance ─┬─ of ────────▶ Component
+           └─ kept ──────────▶ Deployment ─┬─ component ───▶ Component   (its box)
+                                           ├─ imports ─────▶ Import      (its needs)
+                                           ├─ exposes ─────▶ Export ── instance ─▶ Instance
+                                           ├─ instances ───▶ Instance ─┬─ of ────────▶ Component
+                                           │                           ├─ runs ──────▶ Deployment
                                            │                           └─ min, max ──▶ Bound
                                            └─ connections ─▶ Connection ─┬─ from ───────▶ Instance
-                                                                         ├─ to ─────────▶ Instance, or the Component
+                                                                         ├─ to ─────────▶ Instance, an identity, or the box
                                                                          ├─ what ───────▶ Interaction
                                                                          └─ mediations ─▶ Mediation ─┬─ how ──▶ Medium
                                                                                                      ├─ down ─▶ Transformation
@@ -339,17 +346,19 @@ that depends on the root is a plug-in. Which is which is read off their Imports.
 
 ### Component *(Contexts)*
 
-A **Component** is a unit of the design that gives Languages an implementation. It owns:
+A **Component** is a box with an interface. It owns:
 
 - **Languages**: its core Languages and extensions;
-- **Components**: its children, each an implementation detail of it;
+- **Components**: its children, boxes its Deployments may place;
 - **Transformations** between Languages it uses;
 - **Interactions**: what it offers;
 - **Exports**: what of it others may reach — its API (see *Export*);
-- **Imports**: what it depends on of others (see *Import*).
+- **Imports**: the vocabulary its interface is written in (see *Import*);
+- the **Deployments it keeps**: of itself, or of another box it implements (see
+  *Deployment*).
 
-How a Component is put together is not part of it: that is its Deployments
-(*Deployment*).
+How a box does what it does is not part of it: that is its Deployments, each one of its
+internal layouts, wherever it is kept.
 
 It **uses** some Languages: the vocabulary it works in. Using a Language includes its
 vocabulary, extensions and all.
@@ -373,14 +382,13 @@ Languages; and a child is built, recursively, the same way as the System. The ro
 special: it is the Component every other is nested in.
 
 **Interfaces and implementations.** From outside, a Component is only what it exports: an
-**interface**. Its children, Transformations and Deployments are its own implementation
-of that interface — the default one. Another Component may **implement** it: it is then
-an alternative implementation, with children of its own, that may stand wherever the
-implemented Component is placed. An implementer imports what it implements, and uses the
-Language of each Interaction it exports, so that it can offer them. A Component
-may implement several, and be implemented by any number; nothing implements itself,
-eventually. Which implementation fills a place is not the design's choice (see *How a
-System is designed*).
+**interface**. How it is built is a Deployment of it, and it may have any number: each an
+alternative implementation, kept wherever its code is — a plug-in supplies one by keeping
+a Deployment of the box it implements. A box with no Deployment is an interface whose
+implementation is undefined; an **empty** Deployment is one whose insides are redacted —
+as far as relying on it goes, the same as the interface, but still a distinct option to
+choose, by name. Which Deployment a real Instance runs is not the design's choice, unless
+it fixes it (see *Deployment*).
 
 ### Interaction *(Contexts)*
 
@@ -401,8 +409,10 @@ A Component **exports** what others may reach: an **Export** refers to exactly o
 
 - one of the Component's own Languages, Interactions, Transformations or Mediums (see
   *Mediation*);
-- one of its children, so that others may place it — and, when the child is an interface,
-  as an **API** of the Component's.
+- one of its children: its interface, as an **API** of the Component's;
+- one of the Deployments it keeps.
+
+A Deployment exports too: it **exposes** some of its placements (see *Deployment*).
 
 Its Exports are a Component's **API**. What a Component does not export, nothing outside
 it reaches. Its own children reach it anyway: being nested in a Component is not being
@@ -415,10 +425,10 @@ plug-in depends on exactly the part it extends — the Simulator's API, or the C
 that defines Force and Momentum — and on nothing around it.
 
 ```
-resolve(e) = the target of e     — a Component, Language, Interaction, Transformation or Medium
+resolve(e) = the target of e     — a Component, Language, Interaction, Transformation, Medium or Deployment
 ```
 
-Every reference elsewhere — a Connection's What, a Medium's call, an `implements` — is to
+Every reference elsewhere — a Connection's What, a Medium's call, a Deployment's box — is to
 the thing itself, never to an Export: an Export only decides who may reach it.
 
 **APIs.** A Component offers its own Interactions, and those of each child it exports: an
@@ -427,10 +437,12 @@ whose Interactions are `open` and `close`; a Connection to an `editor` Instance 
 `open`, and whoever calls it imports `open` from `Editing API`, depending on the interface
 and not on the `Editor` that implements it.
 
-A Component with children of its own is an implementation; exporting one hands that
-implementation out as API. That is allowed — whether it is is a rule (`exports_interfaces`):
-the usual answer is to export an interface, implemented by the Component that has the
-children.
+Exporting a child exports its interface, and nothing more: a child is part of its parent's
+implementation, placed only inside the parent. Others may consume it, through an Instance of
+the parent, or implement it — keep a Deployment of it, for a Configuration to choose where
+the parent places it. Depending on a child is depending on its parent: it does not exist
+without it. A Component may also export a **Deployment** it keeps, for others to rely on
+what it exposes.
 
 ### Import *(Contexts)*
 
@@ -438,45 +450,56 @@ A Component has direct access to its own Languages, Interactions, Transformation
 Mediums, and to those of every Component it is nested in: a plug-in uses what the
 Component it plugs into offers, as code uses its SDK.
 
-Anything else, a Component **imports**. An **Import** is of one Component, the one it is
-`from`, and takes some of that Component's Exports. Interactions and Transformations stay
-apart — an Interaction is at one level of abstraction, a Transformation is between two,
-and nothing treats them as one kind of thing, so levels never mix. Imports are what show a
-design's dependencies: not who calls what, which is code, but which Component needs what
+Anything else is **imported**. An **Import** is of one Component, the one it is `from`,
+and takes some of that Component's Exports. Interactions and Transformations stay apart —
+an Interaction is at one level of abstraction, a Transformation is between two, and
+nothing treats them as one kind of thing, so levels never mix. Imports are what show a
+design's dependencies: not who calls what, which is code, but which part needs what
 another exports. Each Import is one dependency, and gives it its direction, from what
 imports to what it imports from.
 
-A Component may import from **any other Component**; what it takes is limited to that
+**What imports.** A box imports only **vocabulary**: the Languages its interface is
+written in — an interface needs nothing more. What calls is a Deployment: its Imports are
+its **needs** — the Interactions it calls, the Transformations and Mediums its
+Mediations use, the Deployments it is built on, the top-level Components it places, and
+the identities it relies on — and importing it brings what it needs in turn. A Deployment
+makes sense only where its needs are present (see *What is verified*).
+
+An Import may be from **any other Component**; what it takes is limited to that
 Component's Exports:
 
 ```
 importable(C) = Component − C
-imported(C)   = C.imports.exports                — what its Imports take
+imported(X)   = X.imports.exports        — what the Imports of a Component or a Deployment take
 access(C)     = (C.*parent).interactions ∪ imported(C).interactions
 ```
 
 and the same for Languages, Transformations and Mediums.
 
-An imported Interaction must be over a Language the importer uses; an imported
-Transformation need not be, so a Component can use a realization (see *Mediation*)
-without speaking the Language it reaches.
+**What an Import relies on**, by what it takes:
 
-**Importing a Component** — an Import from it, or one taking an Export of it — lets the
-importer implement it, or place Instances of it in its own Deployments (see
-*Deployment*). An Import may take no Exports at all: it is then of the Component as a
-whole. This is how one Component is shared without being one shared thing: `Server` and
-`Client` both import `Physics`, and each runs a `physics` of its own. A library Component,
-brought into a System from outside, is imported the same way, and its Mediums with it.
+| Takes | Relies on | Valid where |
+|---|---|---|
+| a **Language** | a vocabulary | wherever it is in the System |
+| a box's **Interactions**, or an exported child box | an **interface**: any implementation will do | everywhere |
+| a **Deployment** | what it **exposes**: its APIs, and those of the boxes it exposes | wherever what keeps it is loaded: an ordinary dependency |
+| an **identity** | that object: its interface, and its Deployment if it runs one | where it exists (see *Deployment*) |
 
-**Placing.** A Component may be placed where its parent's parts are reachable anyway —
-by the parent, or by anything nested in it — and beyond that, only if its parent exports
-it. Exporting a Component is saying that others may place it, as exporting an Interaction
-is saying that others may call it.
+Importing a Deployment is not about identity: it relies on what the Deployment exposes,
+and requires no Instance to run it. A plug-in importing another plug-in's Deployment of a
+box needs that plug-in loaded; it plugs in through a box the Deployment exposes, which
+exists only inside Instances running it, so it can be chosen only there, by construction.
 
-**Interfaces and implementations, imported.** Importing an interface is to implement it,
-or to consume it — call its Interactions, or place it and let a Configuration fill it — or
-both, as a wrapper does. Importing an implementation is to take part in that particular
-implementation: what does so makes sense only where that implementation is chosen.
+An Import may take no Exports at all: it is then of the Component as a whole — for a
+Deployment, to place it, if it is top-level, or because it is kept outside the box it
+lays out. `Server` and `Client` each place a `physics` of their own, in their own
+Deployments: one Component, not one shared thing. A library Component, brought into a
+System from outside, is imported the same way, and its Mediums with it.
+
+**Interfaces and implementations, imported.** Importing an interface is to implement it —
+keep a Deployment of it — or to consume it: call its Interactions, or place it and let a
+Configuration fill it. Importing an implementation is to take part in it: a Deployment of
+it, relied on for what it exposes.
 
 ### Axioms *(Kernel)*
 
@@ -554,26 +577,37 @@ an extended Language into an extension (see *Contracts and projections*).
 
 ### Deployment *(Deployment)*
 
-A **Deployment** of a Component is one way to put it together: which of its children
-exist side by side, how many of each, which of them each one's imports reach, and over
-what. A Component may have any number of Deployments — options, such as `Online` and
-`Local` for the game — or none, if how it is put together is left open. A Deployment
-places only its Component's own children and what it imports, because anything deeper is
-an implementation detail of one of them; and it never refers to another Deployment, so
-each is a choice local to its Component.
+A **Deployment** is one way to build a box: its internal layout. It is **of** one box, its
+Component, and **kept** in one Component, its keeper: the box itself, or another, such as a
+plug-in package, which then imports the box. A box may have any number — options, such as
+`Online` and `Local` for the game — or none, and is then an interface.
 
-- An **Instance** is a place for a child Component, or for a Component the deployed
-  Component imports and may place (see *Import*). It is **named**, uniquely within its Deployment, since a Deployment
-  may hold several Instances of the same Component: `server` and `backup` may both be of
-  `Server`. It has a **range**, as an end has: how many occupy it — `1..1` one, `0..1`
-  optional, `1..N` one or more, `0..N` any number. An imported Component's Instance
-  belongs to the Deployment that places it: two parts that each place one have one each.
-  What occupies an Instance is the Component it is of, or one implementing it.
-- A **Connection** goes from an Instance to what provides some of the Interactions its
-  Component has access to: another Instance, whose Component offers or exports them, or the
-  deployed Component itself, which offers or imports them. Those Interactions are the
-  Connection's **What**; they are all over one Language. Its direction is always the
-  same: from what uses the What to what offers it.
+A Deployment is **abstract**. Its Instances are **placements**: what a real Instance
+running it will contain, real only there. A real Instance running a Deployment has one
+real Instance inside it per placement, so **identity has structure**: an identity is a
+**path** of placements from the root — the System is the one real Instance of its root —
+each a placement in the Deployment the one before it runs. A single placement names a
+structure; only a path names an object. Where two real Instances run one Deployment, each
+of its placements stands for two objects.
+
+- An **Instance** is a placement of a box in the Deployment's **scope**: a child of its box
+  or of the box's ancestors, a child of its keeper or of the keeper's ancestors, or a
+  top-level Component the Deployment imports. Another Component's child is placed only
+  inside that Component: it is part of its implementation. An Instance is **named**,
+  uniquely within its Deployment, since a Deployment may hold several of one box: `server`
+  and `backup` may both be of `Server`. It has a **range**, as an end has: how many occupy
+  it — `1..1` one, `0..1` optional, `1..N` one or more, `0..N` any number. It may **run** a
+  Deployment of its box, fixed by the design; otherwise a Configuration chooses, per
+  occupant, or leaves it an interface.
+- A **Connection** is the layout's structure, through interfaces: from an Instance to what
+  offers some Interactions — another Instance, whose box offers them or exports an API that
+  does; an **identity** the Deployment imports; or the Deployment's box, to call out
+  through it, for what the box offers or the Deployment imports. Those Interactions are the
+  Connection's **What**; they are all over one Language. Its direction is always the same:
+  from what uses the What to what offers it. A Connection never supplies a Deployment's
+  needs: those are met by presence (see *What is verified*).
+- A Deployment **imports** what it needs (see *Import*), and **exposes** some of its
+  placements: as APIs, to what imports it, and as the steps an identity may go through.
 
 A Connection to an Instance with more than one occupant reaches every occupant. That is
 how one caller informs many without knowing them — an **event**: an Interaction without
@@ -583,6 +617,14 @@ An Interaction may be reached by any number of Connections (a central service wi
 users), and an Instance may reach the same Interaction on several Instances (a load
 balancer, connected to each runner). There is no two-way Connection: `a → b` and `b → a`
 are two Connections, each its own dependency.
+
+**Calls and construction.** Two kinds of dependency follow. A **call** is a Connection: it
+binds late, once everything is built, and calls may loop — `A` calls `B`, and `B` notifies
+`A`. **Construction** is a Deployment's Import of a Deployment, or of an identity running
+one: building it waits for one realized. Construction performs no Interactions, so an
+Import of an interface never takes part in it, and interfaces import no Deployments. A
+construction loop — `A'` built on `B'`, built on `A'` — never resolves; whether one exists is
+a rule (`construction_acyclic`), not structure.
 
 ### Mediation *(Mediation)*
 
@@ -604,16 +646,15 @@ the medium itself — `HTTP` defines the HTTP Medium — and names
   travels, and to which further Mediations can be applied, such as
   `send(Request): Response`.
 
-Mediums are exported and imported like Interactions and Transformations, and by the same
-rule: a Component has access to its own Mediums and those of every Component it is nested
-in, and imports the rest from Components that export them. To mediate a Connection over a
-Medium, the deployed Component must have access to it: for `A₁` and `A₂` to talk over HTTP,
-`A` imports the HTTP Medium from the Component that exports it.
+Mediums are exported and imported like Interactions and Transformations. To mediate a
+Connection over a Medium, the Connection's Deployment must have access to it: its box's or
+its keeper's, or theirs, or one it imports — for `A₁` and `A₂` to talk over HTTP, `A`'s
+Deployment imports the HTTP Medium from the Component that exports it.
 
 A **Mediation** of a Connection has
 
 1. a **What**: the Interactions it mediates, and so their Language `L`;
-2. a **How**: a Medium the deployed Component has access to;
+2. a **How**: a Medium the Connection's Deployment has access to;
 3. optionally, a **realization**: Transformations `down: L → H` and `up: H → L`, forming a
    round trip.
 
@@ -622,10 +663,12 @@ Medium a What passes over is already part of the design; realizing it says more:
 and `up` say that each use of the What goes into the Medium and comes back out, its
 Parameters on the way in and its output on the way back. A design may realize a
 Mediation or not; the model requires nothing more, and a verification script may (see
-*Standard rules*). A realization that is given must be right: both ends of the Connection
-take part, so it must be accessible to both — owned, imported, or offered by a Component
-they are nested in. Neither end needs to use `H`: typically the realization is a
-Component of its own, beside them, which exports it and which both import from.
+*Standard rules*). A realization that is given must be right, and it is the Deployment's:
+it belongs to the Deployment whose layout has the Connection, which must have access to it
+— its box's or keeper's, or theirs, or imported. It is never placed: the Mediation itself
+is its Instance. The ends never know it; they do not know how they are connected.
+Typically the realization is a Component of its own, beside them, which exports it and
+which the Deployment imports from.
 
 **Stacks.** Mediations stack, from the top down, as far as the design cares to fix the
 how. The top one's What is the Connection's; each one **below** mediates the call of the
@@ -662,15 +705,15 @@ belongs to the layer whose vocabulary it is about.
 | W5 | **Scope.** Every Language a Component uses, and every Language a Language defined in it extends, is in its scope. | Contexts |
 | W6 | **Transformations.** A Transformation has an output; its inputs are all of one Language and its output of another, each in the vocabulary of a Language its Component uses. | Contexts |
 | W8 | **Purity.** Every Interaction is over a Language its Component uses, and its Parameters and output belong to that Language's vocabulary. | Contexts |
-| W9 | **Imports.** Every Import takes only Exports of the Component it is from, which may be any other Component; every imported Interaction is over a Language the importer uses. | Contexts |
-| W10 | **Placement.** Every Instance of a Deployment is of a child of the deployed Component, or of a Component it imports — one whose parent is the deployed Component or one it is nested in, or whose parent exports it — and no two Instances of a Deployment share a name; every Connection goes from an Instance of the same Deployment, for Interactions over one Language that its Component has access to, to an Instance of the same Deployment whose Component offers them, its own or an exported API's, or to the deployed Component, which offers or imports them. | Deployment |
+| W9 | **Imports.** Every Import belongs to one Component or one Deployment, and is from a Component, taking only its Exports, or is an identity, taking none, imported only by a Deployment; a Component's Imports take only Languages. | Contexts; Deployment for Deployments and identities |
+| W10 | **Placement.** Every Instance is of a box in its Deployment's scope, and runs only a Deployment of its own box; no two Instances of a Deployment share a name; a Deployment kept outside its box imports it; every Connection goes from an Instance of its Deployment, for Interactions over one Language, to exactly one of an Instance of the same Deployment whose box offers them (its own or an exported API's), an identity the Deployment imports whose box offers them, or the Deployment's box, which offers them or whose Deployment imports them. | Deployment |
 | W11 | **Mediums.** Every Medium's call is an Interaction of the Component that defines the Medium, over the Medium's Language. | Mediation |
-| W12 | **Mediations.** Every Mediation has a Medium the deployed Component has access to. A realization, if given, is `down: L → H` and `up: H → L`, where `L` is the What's Language and `H` the Medium's — read as their vocabularies — both accessible to the Components at both ends. A Connection's top Mediation mediates its What; each one below, the call of the Medium above it. | Mediation |
-| W14 | **Implementations.** No Component implements itself, eventually; a Component imports what it implements, and uses the Language of each Interaction it exports. | Contexts |
-| W15 | **Exports.** Every Export has exactly one target: one of its Component's own Languages, Interactions, Transformations or Mediums, or one of its children. | Contexts; Mediation for Mediums, and so for having a target at all |
+| W12 | **Mediations.** Every Mediation has a Medium its Connection's Deployment has access to. A realization, if given, is `down: L → H` and `up: H → L`, where `L` is the What's Language and `H` the Medium's — read as their vocabularies — accessible to the Connection's Deployment. A Connection's top Mediation mediates its What; each one below, the call of the Medium above it. | Mediation |
+| W15 | **Exports.** Every Export belongs to one Component or one Deployment, and has exactly one target: one of its Component's own Languages, Interactions, Transformations or Mediums, one of its children, or a Deployment it keeps; or, for a Deployment, one of its own placements. | Contexts; Deployment for Deployments and placements; Mediation for Mediums |
+| W16 | **Identities.** An identity's Steps are one chain; the first is a placement in a Deployment of the System's root, each after it a placement in a Deployment of the box the step before it is of, and each is a placement its Deployment exposes. | Deployment; Systems for the root |
 
-W7 (mappings) and W13 (Configurations) belonged to earlier versions of the core, and their
-numbers are not reused.
+W7 (mappings), W13 (Configurations) and W14 (`implements`) belonged to earlier versions of
+the core, and their numbers are not reused.
 
 ## Obligations
 
@@ -684,7 +727,7 @@ specifications for an implementer (human or LLM) to satisfy.
 | O2 | **Round trip.** Every Mediation's realization satisfies the round-trip law. |
 | O3 | **Preservation.** Every Transformation preserves the axioms of `L_src`: what holds of its inputs holds of its output, read in `L_tgt`. |
 | O4 | **Identity.** An instance of a projection is the same instance as each Entity it extends. |
-| O5 | **Substitution.** An implementation offers every Interaction of what it implements, as it is specified, wherever it is placed instead. |
+| O5 | **Substitution.** A Deployment of a box, kept outside it, offers every Interaction of the box, as it is specified, wherever an Instance runs it. |
 
 ## Deletion
 
@@ -703,14 +746,15 @@ referencing what was deleted.
   part of from every Mediation; the Mediation stays, unrealized.
 - **Deleting a Medium** removes every Export of it, and leaves every Mediation over it
   broken.
-- **Deleting a Component** removes everything it owns, recursively; its Deployments;
-  every Medium of it; its Exports and Imports; every Export of it, and every Import from it;
-  every `implements` of it; every Instance of it, and every Connection from or to those
-  Instances.
+- **Deleting a Component** removes everything it owns, recursively; the Deployments it
+  keeps, and every Deployment of it, wherever kept; every Medium of it; its Exports and
+  Imports; every Export of it, and every Import from it; every Instance of it, and every
+  Connection from or to those Instances.
 - **Deleting an Export** takes it out of every Import that
   took it; an Import left taking nothing stays, of the Component as a whole.
-- **Deleting a Deployment** removes its Instances and Connections.
-- **Deleting an Instance** removes every Connection from or to it.
+- **Deleting a Deployment** removes its Instances, Connections, Imports and exposures.
+- **Deleting an Instance** removes every Connection from or to it, every exposure of it,
+  and every identity through it, with the Connections to it.
 
 What lies outside the core — documentation, Configurations, layouts — is about the things
 of a System, and goes with them; how is the tool's concern.
@@ -785,16 +829,17 @@ Composite Entities are built from Relationships and extension.
 - **Self-contained:** a Component that uses only Languages it owns.
 - **Pure:** a Component that imports nothing — it depends only on Languages.
 - **Standalone:** a Component with an Instance in a Deployment of its parent.
-- **Shared:** a Component that siblings import from, to run Instances of their own. A
-  Component may be both, or neither.
-- **Interface:** a Component that something implements. Its own children are its
-  default implementation; it may have none, and leave every implementation to others.
+- **Shared:** a Component that its siblings' Deployments place, each an Instance of its
+  own. A Component may be both, or neither.
+- **Interface:** a Component with no Deployment: its implementation is undefined.
+- **Implementations:** a Component's Deployments, wherever they are kept.
 - **API:** what a Component exports, resolved: `resolve(C.exports)`.
 
-A Component's dependencies are its Imports, and its children's that reach outside it.
-The **dependency graph** of a Component's children has an edge from each to every
-sibling it imports from. Two Components importing from each other are two dependencies,
-not one two-way link; whether that is allowed is a rule (`imports_acyclic`).
+A Component's dependencies are its Imports, those of the Deployments it keeps, and its
+children's that reach outside it. Depending on a Component nested in another is depending
+on what it is nested in, up to the first Component both share: a child does not exist
+without its parent. Two Components importing from each other are two dependencies, not
+one two-way link; whether that is allowed is a rule (`imports_acyclic`).
 
 ## Abstractness
 
@@ -931,9 +976,36 @@ failing predicate is reported as the formula it came from, in design terms.
 Verification scripts, profiles and formulas are all exported with the model, so a
 System's design rules reach an implementer as precisely as the System itself.
 
+## What is verified
+
+Two things, by two parts of the tool:
+
+- **Structure, everywhere, by the diagnoser.** The conditions of *Well-formedness* hold for
+  everything in a System, chosen or not: a Connection to a missing Instance is a broken
+  reference wherever it is.
+- **Meaning, for the current Configuration, by the verifier.** A Configuration chooses the
+  Deployment of the System's root, and, for each occupant below, the Deployment of its box
+  it runs, or none. The verifier runs on that alone. A Deployment is meaningless out of
+  context: one no Configuration in use chooses is not verified, for fit or by rules. A
+  System with no Configuration has every Deployment read.
+
+A Configuration fits the design (the tool's checks of it):
+
+- **C1.** Every Choice is of a Deployment of its occupant's box — the root's for the root
+  Choice — for a placement of the Deployment chosen above, and agrees with what the
+  placement runs, if fixed.
+- **C2.** No Instance has more occupants chosen than its range.
+- **C3.** Every identity a chosen Deployment imports exists: its path is the path of an
+  occupant.
+- **C4.** Every need of a chosen Deployment is present: some occupant runs each Deployment
+  it imports, and some occupant offers each Interaction it imports — anywhere in the
+  Configuration; which one is not asked. This is what it means for a Deployment to *fit its
+  environment*; Connections take no part in it.
+
 ## Standard rules
 
-`systemathic.std` provides common rules to include in a profile:
+`systemathic.std` provides common rules to include in a profile. Rules over Deployments,
+Connections and Mediations read only those the current Configuration uses:
 
 | Rule | Checks | Default severity |
 |------|--------|------------------|
@@ -944,9 +1016,10 @@ System's design rules reach an implementer as precisely as the System itself.
 | `projection_acyclic` | No Language is projected, eventually, into itself. | Error |
 | `generic_level` | All arguments of a generic instantiation belong to one Language. | Error |
 | `imports_acyclic` | No Component depends, eventually, on itself — no two Components import from each other, wherever they are. | Warning |
-| `deployments_complete` | In every Deployment, every Interaction an Instance's Component imports is reached by a Connection. | Error |
-| `interactions_abstract` | Every imported Interaction is abstract: no Component is reached through an implementation vocabulary. | Warning |
-| `exports_interfaces` | Only interfaces are exported: no Export makes reachable a Component that has children. | Warning |
+| `interactions_abstract` | Every Interaction a Deployment imports is abstract: nothing is reached through an implementation vocabulary. | Warning |
+| `fan_out_silent` | An Interaction carried to a ranged Instance gives nothing back. | Error |
+| `construction_acyclic` | The current Configuration can be built: no occupant waits, eventually, on itself. | Error |
+| `apis_placed` | A Deployment places every API its box exports: an extension point an interface declares is there in every implementation. | Warning |
 
 **How much mediation a design states** is never required by the tool: a Connection
 without Mediations is always well-formed. These rules are offered for a script that wants
@@ -982,10 +1055,10 @@ back.
   together, or that an implementation satisfies them.
 - **Behaviour over time.** There are no pre/postconditions, states or transitions.
   Axioms say what is always true; lifecycles that matter are modelled as vocabulary.
-- **Wiring mechanics.** A Deployment says which Instances exist, which one's imports reach
-  which, and over what. How they are constructed and connected (dependency injection, containers,
-  lifetimes) is coupling mechanics, not design. Which implementation fills each Instance is
-  chosen outside the core.
+- **Wiring mechanics.** A Deployment says which Instances exist, who calls whom through
+  their interfaces, and over what. How they are constructed and connected (dependency
+  injection, containers, lifetimes) is coupling mechanics, not design: a Deployment's needs
+  are met by presence. Which Deployment each Instance runs is chosen outside the core.
 - **Infrastructure.** Machines, networks and reachability are not special. A machine
   boundary is a Mediation a Connection is carried over; where an Instance physically runs,
   when it matters, is vocabulary of a deployment Language, carried like any other.

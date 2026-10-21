@@ -59,8 +59,10 @@ pnpm serve examples/game.systemathic.json
 
 The Explorer on the left holds the whole System; a click opens what it is in its editor — a
 Language's Entities, Relationships, Interactions and Axioms (or its diagram: drag between
-Entities to relate them), a Domain's scope and Transformations, a Transformation's mappings,
-a Mediation and its witness. Everything is edited in place, including each thing's description;
+Entities to relate them); a Component — a box — with its interface, its Deployments and what it
+implements; a Deployment's layout, its needs and identities, and each Connection's stack of
+Mediations; a Transformation's signature; a Configuration, choosing what each Instance runs.
+Everything is edited in place, including each thing's description;
 the Documentation view reads the whole System as one document, and downloads it as Markdown. `Ctrl K` goes anywhere or runs
 any command; `Ctrl Z` / `Ctrl Shift Z` undo and redo your own edits; `Ctrl S` saves;
 `Ctrl J` shows the Problems, History and Verification. The verification script is edited in

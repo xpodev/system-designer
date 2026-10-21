@@ -1,5 +1,5 @@
 {
-  "format": "systemathic/3",
+  "format": "systemathic/4",
   "design": {
     "id": "lib.tcp.system",
     "name": "TCP",
@@ -32,7 +32,6 @@
         }
       ],
       "imports": [],
-      "implements": [],
       "languages": [
         {
           "id": "lib.tcp",

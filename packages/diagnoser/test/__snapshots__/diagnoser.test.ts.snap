@@ -223,18 +223,18 @@ exports[`diagnoser > diagnoses broken/w9.systemathic.json 1`] = `
   "found": [
     {
       "check": "W9",
-      "message": "An Import takes only Exports of the Component it is from",
+      "message": "A Component imports only vocabulary: its Imports take only Languages",
       "subjects": [
-        "game.physics<game.client",
+        "game.physics",
         "game.server:game.server.attack",
       ],
     },
     {
       "check": "W9",
-      "message": "An imported Interaction is over a Language the importer uses",
+      "message": "An Import takes only Exports of the Component it is from",
       "subjects": [
-        "game.physics",
-        "game.server.attack",
+        "game.physics<game.client",
+        "game.server:game.server.attack",
       ],
     },
   ],
@@ -327,31 +327,6 @@ exports[`diagnoser > diagnoses broken/w12.systemathic.json 1`] = `
 }
 `;
 
-exports[`diagnoser > diagnoses broken/w14.systemathic.json 1`] = `
-{
-  "found": [
-    {
-      "check": "W14",
-      "message": "A Component imports what it implements",
-      "subjects": [
-        "game.physics",
-        "game.server",
-      ],
-    },
-    {
-      "check": "W14",
-      "message": "A Component uses the Language of every Interaction that what it implements exports",
-      "subjects": [
-        "game.physics",
-        "game.server",
-        "game.server.attack",
-      ],
-    },
-  ],
-  "problems": [],
-}
-`;
-
 exports[`diagnoser > diagnoses broken/w15.systemathic.json 1`] = `
 {
   "found": [
@@ -361,6 +336,21 @@ exports[`diagnoser > diagnoses broken/w15.systemathic.json 1`] = `
       "subjects": [
         "game.server:game.network-over-wire.down",
         "game.network-over-wire.down",
+      ],
+    },
+  ],
+  "problems": [],
+}
+`;
+
+exports[`diagnoser > diagnoses broken/w16.systemathic.json 1`] = `
+{
+  "found": [
+    {
+      "check": "W16",
+      "message": "Each Step is a placement its Deployment exposes",
+      "subjects": [
+        "desktop<server#0",
       ],
     },
   ],

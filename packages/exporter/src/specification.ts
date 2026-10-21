@@ -6,7 +6,7 @@
  * design check can (foundation.md, O1–O5), for specific Subjects. Every part has an id that
  * stays the same as long as the Elements it is about do, so a validator can refer to it.
  */
-import { describe as describeElement, mediationStack, nameOf, parameters, resolve, scope, type Graph } from "@systemathic/core";
+import { describe as describeElement, identityPath, identityTarget, mediationStack, nameOf, parameters, resolve, scope, type Graph } from "@systemathic/core";
 import type { SystemContext } from "@systemathic/tool";
 import type { Profile } from "@systemathic/verifier";
 
@@ -135,10 +135,26 @@ function deploymentStatements(graph: Graph, deployment: string): Statement[] {
         return `${name(graph, i)} (${name(graph, first(graph, i, "of"))}${occupants === "1..1" ? "" : `, ${occupants} of them`})`;
       })
       .join(", ") || "nothing";
-  const statements = [statement(`deployment:${deployment}`, `Deployment ${name(graph, deployment)} places ${placed}.`, deployment, ...instances)];
+  const box = first(graph, deployment, "component");
+  const keeper = first(graph, deployment, "keeper");
+  const of = box !== undefined && box !== keeper ? `, of ${name(graph, box)},` : "";
+  const statements = [statement(`deployment:${deployment}`, `Deployment ${name(graph, deployment)}${of} places ${placed}.`, deployment, ...instances)];
+  const needs = graph.navigate(deployment, "imports");
+  if (needs.length > 0) {
+    const text = needs
+      .map((m) => {
+        const path = identityPath(graph, m);
+        if (path.length > 0) return `the identity /${path.map((p) => name(graph, p)).join("/")}`;
+        const takes = graph.navigate(m, "exports");
+        return `from ${name(graph, first(graph, m, "from"))}${takes.length > 0 ? ` ${exportNames(graph, takes)}` : ""}`;
+      })
+      .join("; ");
+    statements.push(statement(`needs:${deployment}`, `${name(graph, deployment)} needs ${text}: it makes sense only where they are present.`, deployment, ...needs));
+  }
   for (const connection of graph.navigate(deployment, "connections")) {
     const from = first(graph, connection, "from");
-    const to = first(graph, connection, "to") ?? first(graph, connection, "toComponent");
+    const identity = first(graph, connection, "toIdentity");
+    const to = first(graph, connection, "to") ?? first(graph, connection, "toComponent") ?? (identity === undefined ? undefined : identityTarget(graph, identity));
     const what = graph.navigate(connection, "what");
     const stack = mediationStack(graph, connection);
     statements.push(
@@ -181,15 +197,12 @@ function component(graph: Graph, id: string): Section {
     statement(`scope:${id}`, `May use exactly the Languages ${names(graph, visible)}, and nothing else.`, id, ...visible),
     statement(`exports:${id}`, `Exports ${exportNames(graph, exports)}; nothing else of it is reachable from outside.`, id, ...exports),
     statement(`imports:${id}`, `Imports ${importText}; it reaches nothing else of any other Component.`, id, ...from, ...taken),
-    ...graph.navigate(id, "implements").map((x) =>
-      statement(`implements:${id}:${x}`, `Implements ${name(graph, x)}: it may stand wherever ${name(graph, x)} is placed.`, id, x),
-    ),
     ...graph.navigate(id, "interactions").map((i) => interactionStatement(graph, i)),
     ...graph.navigate(id, "transformations").map((t) => transformationStatement(graph, t)),
     ...graph.navigate(id, "mediums").map((m) =>
       statement(`medium:${m}`, `Medium ${name(graph, m)}: a What passes over ${name(graph, first(graph, m, "language"))}, through ${name(graph, first(graph, m, "call"))}.`, m),
     ),
-    ...graph.navigate(id, "deployments").flatMap((d) => deploymentStatements(graph, d)),
+    ...graph.navigate(id, "kept").flatMap((d) => deploymentStatements(graph, d)),
   ];
   const sections = [...graph.navigate(id, "languages").map((l) => language(graph, l)), ...graph.navigate(id, "components").map((c) => component(graph, c))];
   return { id: `component:${id}`, title: `Component ${name(graph, id)}`, statements, sections };
@@ -225,15 +238,15 @@ function obligations(graph: Graph): Obligation[] {
       found.push({ id: `O4:${entity}`, kind: "O4", text: `An instance of ${name(graph, entity)} is the same instance as each of ${names(graph, extended)}.`, subjects: [entity, ...extended] });
     }
   }
-  for (const component of graph.ofEntity("Component")) {
-    for (const implemented of graph.navigate(component, "implements")) {
-      found.push({
-        id: `O5:${component}:${implemented}`,
-        kind: "O5",
-        text: `${name(graph, component)} offers every Interaction of ${name(graph, implemented)}, as it is specified, wherever it stands in for it.`,
-        subjects: [component, implemented],
-      });
-    }
+  for (const deployment of graph.ofEntity("Deployment")) {
+    const box = first(graph, deployment, "component");
+    if (box === undefined || box === first(graph, deployment, "keeper")) continue;
+    found.push({
+      id: `O5:${deployment}`,
+      kind: "O5",
+      text: `${name(graph, deployment)} offers every Interaction of ${name(graph, box)}, as it is specified, wherever an Instance runs it.`,
+      subjects: [deployment, box],
+    });
   }
   return found;
 }

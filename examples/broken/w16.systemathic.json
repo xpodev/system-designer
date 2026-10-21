@@ -1,0 +1,974 @@
+{
+  "format": "systemathic/4",
+  "design": {
+    "id": "game.system",
+    "name": "Game",
+    "root": {
+      "id": "game",
+      "name": "Game",
+      "uses": [],
+      "exports": [],
+      "imports": [
+        {
+          "id": "game<pkg.netstack",
+          "from": "pkg.netstack",
+          "exports": [
+            "pkg.netstack:lib.network"
+          ]
+        },
+        {
+          "id": "game<pkg.link",
+          "from": "pkg.link",
+          "exports": [
+            "pkg.link:lib.transport"
+          ]
+        },
+        {
+          "id": "game<pkg.in-process",
+          "from": "pkg.in-process",
+          "exports": [
+            "pkg.in-process:lib.in-process"
+          ]
+        }
+      ],
+      "languages": [
+        {
+          "id": "core",
+          "name": "Core",
+          "extends": [],
+          "entities": [
+            {
+              "id": "core.monster",
+              "name": "Monster",
+              "extends": []
+            },
+            {
+              "id": "core.player",
+              "name": "Player",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "core.hunts",
+              "ends": [
+                {
+                  "id": "core.hunts.hunters",
+                  "name": "hunters",
+                  "entity": "core.player",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "core.hunts.prey",
+                  "name": "prey",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            },
+            {
+              "id": "core.pack",
+              "ends": [
+                {
+                  "id": "core.pack.leader",
+                  "name": "leader",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": 1
+                },
+                {
+                  "id": "core.pack.followers",
+                  "name": "followers",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            }
+          ],
+          "formulas": [
+            {
+              "id": "core.no-leadership-cycles",
+              "text": "all m in Monster. not m in m.^leader"
+            }
+          ]
+        },
+        {
+          "id": "fighting",
+          "name": "Fighting",
+          "extends": [],
+          "entities": [
+            {
+              "id": "fighting.targetable",
+              "name": "Targetable",
+              "extends": []
+            },
+            {
+              "id": "fighting.attacker",
+              "name": "Attacker",
+              "extends": []
+            },
+            {
+              "id": "fighting.damage",
+              "name": "Damage",
+              "extends": []
+            }
+          ],
+          "relationships": [
+            {
+              "id": "fighting.engages",
+              "ends": [
+                {
+                  "id": "fighting.engages.attackers",
+                  "name": "attackers",
+                  "entity": "fighting.attacker",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "fighting.engages.targets",
+                  "name": "targets",
+                  "entity": "fighting.targetable",
+                  "min": 0,
+                  "max": "N"
+                }
+              ]
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "id": "combat",
+          "name": "Combat",
+          "extends": [
+            "core",
+            "fighting"
+          ],
+          "entities": [
+            {
+              "id": "combat.combat-monster",
+              "name": "CombatMonster",
+              "extends": [
+                "core.monster",
+                "fighting.targetable",
+                "fighting.attacker"
+              ]
+            },
+            {
+              "id": "combat.combat-player",
+              "name": "CombatPlayer",
+              "extends": [
+                "core.player",
+                "fighting.attacker"
+              ]
+            }
+          ],
+          "relationships": [
+            {
+              "id": "combat.chasing",
+              "ends": [
+                {
+                  "id": "combat.chasing.chasers",
+                  "name": "chasers",
+                  "entity": "core.monster",
+                  "min": 0,
+                  "max": "N"
+                },
+                {
+                  "id": "combat.chasing.chasing",
+                  "name": "chasing",
+                  "entity": "core.player",
+                  "min": 0,
+                  "max": 1
+                }
+              ]
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "interactions": [],
+      "transformations": [],
+      "mediums": [],
+      "deployments": [
+        {
+          "id": "game.online",
+          "name": "Online",
+          "instances": [
+            {
+              "id": "game.online.server",
+              "name": "server",
+              "of": "game.server",
+              "min": 1,
+              "max": 1,
+              "runs": null
+            },
+            {
+              "id": "game.online.client-1",
+              "name": "client-1",
+              "of": "game.client",
+              "min": 1,
+              "max": 1,
+              "runs": null
+            },
+            {
+              "id": "game.online.client-2",
+              "name": "client-2",
+              "of": "game.client",
+              "min": 1,
+              "max": 1,
+              "runs": null
+            }
+          ],
+          "connections": [
+            {
+              "id": "game.online.client-1-attacks",
+              "from": "game.online.client-1",
+              "to": "game.online.server",
+              "toComponent": null,
+              "what": [
+                "game.server.attack"
+              ],
+              "mediations": [
+                {
+                  "id": "game.online.client-1-attacks#m0",
+                  "how": "pkg.netstack.medium",
+                  "down": "game.combat-over-network.down",
+                  "up": "game.combat-over-network.up"
+                },
+                {
+                  "id": "game.online.client-1-attacks#m1",
+                  "how": "pkg.link.medium",
+                  "down": "game.network-over-wire.down",
+                  "up": "game.network-over-wire.up"
+                }
+              ],
+              "toIdentity": null
+            },
+            {
+              "id": "game.online.client-2-attacks",
+              "from": "game.online.client-2",
+              "to": "game.online.server",
+              "toComponent": null,
+              "what": [
+                "game.server.attack"
+              ],
+              "mediations": [
+                {
+                  "id": "game.online.client-2-attacks#m0",
+                  "how": "pkg.netstack.medium",
+                  "down": "game.combat-over-network.down",
+                  "up": "game.combat-over-network.up"
+                },
+                {
+                  "id": "game.online.client-2-attacks#m1",
+                  "how": "pkg.link.medium",
+                  "down": "game.network-over-wire.down",
+                  "up": "game.network-over-wire.up"
+                }
+              ],
+              "toIdentity": null
+            }
+          ],
+          "of": "game",
+          "imports": [
+            {
+              "id": "game<pkg.netstack#needs",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:pkg.netstack.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.link#needs",
+              "from": "pkg.link",
+              "exports": [
+                "pkg.link:pkg.link.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.in-process#needs",
+              "from": "pkg.in-process",
+              "exports": [
+                "pkg.in-process:pkg.in-process.medium"
+              ]
+            },
+            {
+              "id": "game.online<game.combat-over-network",
+              "from": "game.combat-over-network",
+              "exports": [
+                "game.combat-over-network:game.combat-over-network.down",
+                "game.combat-over-network:game.combat-over-network.up"
+              ]
+            },
+            {
+              "id": "game.online<game.network-over-wire",
+              "from": "game.network-over-wire",
+              "exports": [
+                "game.network-over-wire:game.network-over-wire.down",
+                "game.network-over-wire:game.network-over-wire.up"
+              ]
+            }
+          ],
+          "exposes": []
+        },
+        {
+          "id": "game.local",
+          "name": "Local",
+          "instances": [
+            {
+              "id": "game.local.server",
+              "name": "server",
+              "of": "game.server",
+              "min": 1,
+              "max": 1,
+              "runs": null
+            },
+            {
+              "id": "game.local.client",
+              "name": "client",
+              "of": "game.client",
+              "min": 1,
+              "max": 1,
+              "runs": null
+            }
+          ],
+          "connections": [
+            {
+              "id": "game.local.client-attacks",
+              "from": "game.local.client",
+              "to": "game.local.server",
+              "toComponent": null,
+              "what": [
+                "game.server.attack"
+              ],
+              "mediations": [
+                {
+                  "id": "game.local.client-attacks#m0",
+                  "how": "pkg.in-process.medium",
+                  "down": null,
+                  "up": null
+                }
+              ],
+              "toIdentity": null
+            }
+          ],
+          "of": "game",
+          "imports": [
+            {
+              "id": "game<pkg.netstack#needs#2",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:pkg.netstack.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.link#needs#2",
+              "from": "pkg.link",
+              "exports": [
+                "pkg.link:pkg.link.medium"
+              ]
+            },
+            {
+              "id": "game<pkg.in-process#needs#2",
+              "from": "pkg.in-process",
+              "exports": [
+                "pkg.in-process:pkg.in-process.medium"
+              ]
+            }
+          ],
+          "exposes": []
+        }
+      ],
+      "components": [
+        {
+          "id": "game.physics",
+          "name": "Physics",
+          "uses": [
+            "core"
+          ],
+          "exports": [],
+          "imports": [],
+          "languages": [],
+          "interactions": [
+            {
+              "id": "game.physics.step",
+              "name": "step",
+              "language": "core",
+              "parameters": [
+                {
+                  "id": "game.physics.step.monster",
+                  "name": "monster",
+                  "type": "core.monster"
+                }
+              ],
+              "output": "core.monster"
+            }
+          ],
+          "transformations": [],
+          "mediums": [],
+          "deployments": [],
+          "components": []
+        },
+        {
+          "id": "game.combat-over-network",
+          "name": "CombatOverNetwork",
+          "uses": [
+            "combat",
+            "lib.network"
+          ],
+          "exports": [
+            {
+              "id": "game.combat-over-network:game.combat-over-network.down",
+              "transformation": "game.combat-over-network.down"
+            },
+            {
+              "id": "game.combat-over-network:game.combat-over-network.up",
+              "transformation": "game.combat-over-network.up"
+            }
+          ],
+          "imports": [
+            {
+              "id": "game.combat-over-network<pkg.netstack",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:lib.network"
+              ]
+            }
+          ],
+          "languages": [],
+          "interactions": [],
+          "transformations": [
+            {
+              "id": "game.combat-over-network.down",
+              "name": "Combat down to Network",
+              "parameters": [
+                {
+                  "id": "game.combat-over-network.down.monster",
+                  "name": "monster",
+                  "type": "combat.combat-monster"
+                }
+              ],
+              "output": "lib.network.entity-id"
+            },
+            {
+              "id": "game.combat-over-network.up",
+              "name": "Network up to Combat",
+              "parameters": [
+                {
+                  "id": "game.combat-over-network.up.id",
+                  "name": "id",
+                  "type": "lib.network.entity-id"
+                }
+              ],
+              "output": "combat.combat-monster"
+            }
+          ],
+          "mediums": [],
+          "deployments": [],
+          "components": []
+        },
+        {
+          "id": "game.network-over-wire",
+          "name": "NetworkOverWire",
+          "uses": [
+            "lib.network",
+            "lib.transport"
+          ],
+          "exports": [
+            {
+              "id": "game.network-over-wire:game.network-over-wire.down",
+              "transformation": "game.network-over-wire.down"
+            },
+            {
+              "id": "game.network-over-wire:game.network-over-wire.up",
+              "transformation": "game.network-over-wire.up"
+            }
+          ],
+          "imports": [
+            {
+              "id": "game.network-over-wire<pkg.netstack",
+              "from": "pkg.netstack",
+              "exports": [
+                "pkg.netstack:lib.network"
+              ]
+            },
+            {
+              "id": "game.network-over-wire<pkg.link",
+              "from": "pkg.link",
+              "exports": [
+                "pkg.link:lib.transport"
+              ]
+            }
+          ],
+          "languages": [],
+          "interactions": [],
+          "transformations": [
+            {
+              "id": "game.network-over-wire.down",
+              "name": "Network down to Transport",
+              "parameters": [
+                {
+                  "id": "game.network-over-wire.down.message",
+                  "name": "message",
+                  "type": "lib.network.message"
+                }
+              ],
+              "output": "lib.transport.packet"
+            },
+            {
+              "id": "game.network-over-wire.up",
+              "name": "Transport up to Network",
+              "parameters": [
+                {
+                  "id": "game.network-over-wire.up.packet",
+                  "name": "packet",
+                  "type": "lib.transport.packet"
+                }
+              ],
+              "output": "lib.network.message"
+            }
+          ],
+          "mediums": [],
+          "deployments": [],
+          "components": []
+        },
+        {
+          "id": "game.server",
+          "name": "Server",
+          "uses": [
+            "combat"
+          ],
+          "exports": [
+            {
+              "id": "game.server:game.server.attack",
+              "interaction": "game.server.attack"
+            }
+          ],
+          "imports": [],
+          "languages": [],
+          "interactions": [
+            {
+              "id": "game.server.attack",
+              "name": "attack",
+              "language": "combat",
+              "parameters": [
+                {
+                  "id": "game.server.attack.attacker",
+                  "name": "attacker",
+                  "type": "fighting.attacker"
+                },
+                {
+                  "id": "game.server.attack.target",
+                  "name": "target",
+                  "type": "fighting.targetable"
+                }
+              ],
+              "output": "fighting.damage"
+            }
+          ],
+          "transformations": [],
+          "mediums": [],
+          "deployments": [
+            {
+              "id": "game.server.single",
+              "name": "Single",
+              "instances": [
+                {
+                  "id": "game.server.single.physics",
+                  "name": "physics",
+                  "of": "game.physics",
+                  "min": 1,
+                  "max": 1,
+                  "runs": null
+                }
+              ],
+              "connections": [],
+              "of": "game.server",
+              "imports": [
+                {
+                  "id": "game.server<game.physics",
+                  "from": "game.physics",
+                  "exports": []
+                }
+              ],
+              "exposes": []
+            }
+          ],
+          "components": []
+        },
+        {
+          "id": "game.client",
+          "name": "Client",
+          "uses": [
+            "combat"
+          ],
+          "exports": [],
+          "imports": [
+            {
+              "id": "game.client<pkg.in-process",
+              "from": "pkg.in-process",
+              "exports": [
+                "pkg.in-process:lib.in-process"
+              ]
+            }
+          ],
+          "languages": [],
+          "interactions": [],
+          "transformations": [],
+          "mediums": [],
+          "deployments": [
+            {
+              "id": "game.client.desktop",
+              "name": "Desktop",
+              "instances": [
+                {
+                  "id": "game.client.desktop.physics",
+                  "name": "physics",
+                  "of": "game.physics",
+                  "min": 1,
+                  "max": 1,
+                  "runs": null
+                },
+                {
+                  "id": "game.client.desktop.input",
+                  "name": "input",
+                  "of": "game.client.input",
+                  "min": 1,
+                  "max": 1,
+                  "runs": null
+                }
+              ],
+              "connections": [
+                {
+                  "id": "game.client.desktop.input-attacks",
+                  "from": "game.client.desktop.input",
+                  "to": null,
+                  "toComponent": "game.client",
+                  "what": [
+                    "game.server.attack"
+                  ],
+                  "mediations": [
+                    {
+                      "id": "game.client.desktop.input-attacks#m0",
+                      "how": "pkg.in-process.medium",
+                      "down": null,
+                      "up": null
+                    }
+                  ],
+                  "toIdentity": null
+                }
+              ],
+              "of": "game.client",
+              "imports": [
+                {
+                  "id": "game.client<game.physics",
+                  "from": "game.physics",
+                  "exports": []
+                },
+                {
+                  "id": "game.client<pkg.in-process#needs",
+                  "from": "pkg.in-process",
+                  "exports": [
+                    "pkg.in-process:pkg.in-process.medium"
+                  ]
+                },
+                {
+                  "id": "game.client<game.server",
+                  "from": "game.server",
+                  "exports": [
+                    "game.server:game.server.attack"
+                  ]
+                },
+                {
+                  "id": "desktop<server",
+                  "path": [
+                    "game.online.server"
+                  ]
+                }
+              ],
+              "exposes": []
+            }
+          ],
+          "components": [
+            {
+              "id": "game.client.input",
+              "name": "Input",
+              "uses": [
+                "combat"
+              ],
+              "exports": [],
+              "imports": [],
+              "languages": [],
+              "interactions": [],
+              "transformations": [],
+              "mediums": [],
+              "deployments": [
+                {
+                  "id": "game.client.input.implementation",
+                  "name": "Input",
+                  "of": "game.client.input",
+                  "instances": [],
+                  "connections": [],
+                  "imports": [
+                    {
+                      "id": "game.client.input<game.server",
+                      "from": "game.server",
+                      "exports": [
+                        "game.server:game.server.attack"
+                      ]
+                    }
+                  ],
+                  "exposes": []
+                }
+              ],
+              "components": []
+            }
+          ]
+        }
+      ]
+    },
+    "packages": [
+      {
+        "id": "pkg.netstack",
+        "name": "NetStack",
+        "uses": [
+          "lib.network"
+        ],
+        "exports": [
+          {
+            "id": "pkg.netstack:lib.network",
+            "language": "lib.network"
+          },
+          {
+            "id": "pkg.netstack:pkg.netstack.medium",
+            "medium": "pkg.netstack.medium"
+          }
+        ],
+        "imports": [],
+        "languages": [
+          {
+            "id": "lib.network",
+            "name": "Network",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.network.message",
+                "name": "Message",
+                "extends": []
+              },
+              {
+                "id": "lib.network.entity-id",
+                "name": "EntityId",
+                "extends": []
+              }
+            ],
+            "relationships": [
+              {
+                "id": "lib.network.carries",
+                "ends": [
+                  {
+                    "id": "lib.network.carries.messages",
+                    "name": "messages",
+                    "entity": "lib.network.message",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.network.carries.ids",
+                    "name": "ids",
+                    "entity": "lib.network.entity-id",
+                    "min": 0,
+                    "max": "N"
+                  }
+                ]
+              }
+            ],
+            "formulas": []
+          }
+        ],
+        "interactions": [
+          {
+            "id": "pkg.netstack.send",
+            "name": "send",
+            "language": "lib.network",
+            "parameters": [
+              {
+                "id": "pkg.netstack.send.message",
+                "name": "message",
+                "type": "lib.network.message"
+              }
+            ],
+            "output": "lib.network.message"
+          }
+        ],
+        "transformations": [],
+        "mediums": [
+          {
+            "id": "pkg.netstack.medium",
+            "name": "Network",
+            "language": "lib.network",
+            "call": "pkg.netstack.send"
+          }
+        ],
+        "deployments": [],
+        "components": []
+      },
+      {
+        "id": "pkg.link",
+        "name": "Link",
+        "uses": [
+          "lib.transport"
+        ],
+        "exports": [
+          {
+            "id": "pkg.link:lib.transport",
+            "language": "lib.transport"
+          },
+          {
+            "id": "pkg.link:pkg.link.medium",
+            "medium": "pkg.link.medium"
+          }
+        ],
+        "imports": [],
+        "languages": [
+          {
+            "id": "lib.transport",
+            "name": "Transport",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.transport.packet",
+                "name": "Packet",
+                "extends": []
+              },
+              {
+                "id": "lib.transport.bytes",
+                "name": "Bytes",
+                "extends": []
+              }
+            ],
+            "relationships": [
+              {
+                "id": "lib.transport.payload",
+                "ends": [
+                  {
+                    "id": "lib.transport.payload.packets",
+                    "name": "packets",
+                    "entity": "lib.transport.packet",
+                    "min": 0,
+                    "max": "N"
+                  },
+                  {
+                    "id": "lib.transport.payload.payload",
+                    "name": "payload",
+                    "entity": "lib.transport.bytes",
+                    "min": 1,
+                    "max": 1
+                  }
+                ]
+              }
+            ],
+            "formulas": []
+          }
+        ],
+        "interactions": [
+          {
+            "id": "pkg.link.transmit",
+            "name": "transmit",
+            "language": "lib.transport",
+            "parameters": [
+              {
+                "id": "pkg.link.transmit.packet",
+                "name": "packet",
+                "type": "lib.transport.packet"
+              }
+            ],
+            "output": "lib.transport.packet"
+          }
+        ],
+        "transformations": [],
+        "mediums": [
+          {
+            "id": "pkg.link.medium",
+            "name": "Wire",
+            "language": "lib.transport",
+            "call": "pkg.link.transmit"
+          }
+        ],
+        "deployments": [],
+        "components": []
+      },
+      {
+        "id": "pkg.in-process",
+        "name": "In-process",
+        "uses": [
+          "lib.in-process"
+        ],
+        "exports": [
+          {
+            "id": "pkg.in-process:lib.in-process",
+            "language": "lib.in-process"
+          },
+          {
+            "id": "pkg.in-process:pkg.in-process.medium",
+            "medium": "pkg.in-process.medium"
+          }
+        ],
+        "imports": [],
+        "languages": [
+          {
+            "id": "lib.in-process",
+            "name": "In-process",
+            "extends": [],
+            "entities": [
+              {
+                "id": "lib.in-process.reference",
+                "name": "Reference",
+                "extends": []
+              }
+            ],
+            "relationships": [],
+            "formulas": []
+          }
+        ],
+        "interactions": [
+          {
+            "id": "pkg.in-process.pass",
+            "name": "pass",
+            "language": "lib.in-process",
+            "parameters": [
+              {
+                "id": "pkg.in-process.pass.reference",
+                "name": "reference",
+                "type": "lib.in-process.reference"
+              }
+            ],
+            "output": "lib.in-process.reference"
+          }
+        ],
+        "transformations": [],
+        "mediums": [
+          {
+            "id": "pkg.in-process.medium",
+            "name": "In-process",
+            "language": "lib.in-process",
+            "call": "pkg.in-process.pass"
+          }
+        ],
+        "deployments": [],
+        "components": []
+      }
+    ]
+  },
+  "attachments": [
+    {
+      "owner": "example",
+      "data": {
+        "note": "W16: Desktop imports the identity /server, a placement Online does not expose."
+      }
+    }
+  ]
+}

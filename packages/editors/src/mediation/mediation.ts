@@ -65,9 +65,10 @@ function signature(graph: Graph, interaction: string | undefined): { input?: str
 
 /**
  * Creates a Mediation's realization: `down` and `up` between its What's Language and its
- * Medium's, in a Component of their own beside the Connection's ends — which both import them
- * — so the ends' own Components stay clean. A Connection to the deployed Component itself is
- * realized in that Component, which both ends reach directly.
+ * Medium's, in a Component of their own beside the Connection's ends, which the Connection's
+ * Deployment imports them from: a realization is the Deployment's, never the ends', which do not
+ * know how they are connected. A Connection out through the box is realized in the box itself,
+ * which its Deployment reaches directly.
  */
 export function createRealization(session: EditSession, mediation: string, name?: string): Edit {
   const graph = session.target.graph;
@@ -114,9 +115,8 @@ export function createRealization(session: EditSession, mediation: string, name?
     graph.disconnect(mediation, "up");
     graph.connect(mediation, "down", down);
     graph.connect(mediation, "up", up);
-    if (toComponent !== undefined) return;
-    const ends = [...graph.navigate(connection, "from"), ...graph.navigate(connection, "to")].flatMap((instance) => graph.navigate(instance, "of"));
-    for (const end of ends) for (const transformation of [down, up]) reach(graph, end, transformation);
+    if (toComponent !== undefined || deployment === undefined) return;
+    for (const transformation of [down, up]) reach(graph, deployment, transformation);
   });
 }
 

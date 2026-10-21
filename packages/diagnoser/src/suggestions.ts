@@ -17,7 +17,7 @@ const at = (env: Environment, ...names: string[]) => names.map((name) => env.get
 const fix = (message: string, ...names: string[]): Suggest => (env) => ({ message, subjects: at(env, ...names) });
 
 const REALIZE = "Realize the Mediation between its What's Language and its Medium's";
-const REALIZATION_ACCESS = "Import the realization into the Component at this end of the Connection, from a Component that exports it";
+const REALIZATION_ACCESS = "Import the realization into the Connection's Deployment, from the Component that exports it: it is the Deployment's, not the ends'";
 
 /** By the axiom's `about`, which is unique among the core's axioms. */
 const byAxiom: Readonly<Record<string, Suggest>> = {
@@ -62,22 +62,40 @@ const byAxiom: Readonly<Record<string, Suggest>> = {
   "A Component exports only its own Transformations": fix("Export the Transformation from its own Component", "e", "t"),
   "A Component exports only its own Languages": fix("Export the Language from its own Component", "e", "l"),
   "An Import takes only Exports of the Component it is from": fix("Take the Export in an Import from its own Component", "m", "e"),
-  "An imported Interaction is over a Language the importer uses": fix("Make the Component use the imported Interaction's Language", "c"),
-  "No Component implements itself, eventually": fix("Stop one of the Components in the cycle implementing the next", "c"),
-  "A Component imports what it implements": fix("Import the Component it implements", "c", "x"),
-  "A Component uses the Language of every Interaction that what it implements exports": fix("Use the Language of the implemented Component's Interaction", "c", "i"),
+  "A Component imports only vocabulary: its Imports take only Languages": fix(
+    "Move the Import to a Deployment of the Component: a box imports the Languages its interface is written in, and what calls is a Deployment, which imports what it needs",
+    "c",
+    "e",
+  ),
   // Deployment
   "An Instance's min <= max, where max is present": fix("Make the Instance's min at most its max", "i"),
-  "An Instance is of a child of the deployed Component, or of a Component it imports": fix("Place only children of the deployed Component, or Components it imports", "i"),
-  "An Instance of a Component from beyond what the deployed Component's ancestors hold is of one its parent exports": fix("Export the placed Component from its parent", "i"),
+  "An Instance is of a box in its Deployment's scope: a child of its box or of the box's ancestors, a child of its keeper or of the keeper's ancestors, or a top-level Component the Deployment imports": fix(
+    "Place a box in the Deployment's scope: a child of its box or keeper, or of theirs, or a top-level Component the Deployment imports",
+    "i",
+  ),
+  "An Instance runs only a Deployment of its own box": fix("Run a Deployment of the Instance's own box, or leave the choice to the Configuration", "i", "r"),
   "No two Instances of a Deployment share a name": fix("Rename one of the two Instances", "a", "b"),
+  "A Deployment kept outside its box imports the box": fix("Import the box into the Deployment", "d"),
   "A Connection goes from an Instance of its own Deployment": fix("Connect from an Instance of the Connection's own Deployment", "c"),
-  "A Connection goes to exactly one thing: an Instance, or the deployed Component": fix("Connect to exactly one thing: an Instance, or the deployed Component", "c"),
+  "A Connection goes to exactly one thing: an Instance, an identity, or the Deployment's box": fix("Connect to exactly one thing: an Instance, an identity, or the Deployment's box", "c"),
   "A Connection goes to an Instance of its own Deployment": fix("Connect to an Instance of the Connection's own Deployment", "c"),
-  "A Connection to a Component goes to the deployed Component": fix("Connect to the deployed Component, or to one of its Instances", "c"),
-  "The Instance a Connection goes to offers its What: its own, or one of an API it exports": fix("Connect to an Instance of a Component that offers or exports the Interaction", "c"),
-  "The deployed Component a Connection goes to offers or imports its What": fix("Make the deployed Component import the Interaction, or connect to an Instance that offers it", "c"),
-  "A Connection's What is accessible to the Component it goes from": fix("Import the Interaction into the Component the Connection goes from, from a Component that exports it", "c", "i"),
+  "A Connection to a Component goes to the Deployment's box": fix("Connect to the Deployment's box, to one of its Instances, or to an identity it imports", "c"),
+  "A Connection to an identity goes to one its Deployment imports": fix("Import the identity into the Connection's Deployment, or connect to one it imports", "c", "m"),
+  "The Instance a Connection goes to offers its What: its own, or one of an API it exports": fix("Connect to an Instance of a box that offers the Interaction, or exports an API that does", "c"),
+  "The box a Connection goes out through offers its What, or the Deployment imports it": fix("Make the Deployment import the Interaction, or connect to an Instance that offers it", "c", "i"),
+  "The identity a Connection goes to offers its What": fix("Connect to an identity whose box offers the Interaction", "c", "m"),
+  "An Import belongs to exactly one Component or Deployment": fix("Keep the Import in one Component or one Deployment", "m"),
+  "An Import is from a Component, or is an identity": fix("Make the Import either from a Component, or a path of placements, not both", "m"),
+  "An identity takes no Exports": fix("Take no Exports in an identity: it is an object, relied on as its interface", "m"),
+  "Only a Deployment imports an identity": fix("Move the identity to a Deployment: a box imports only vocabulary", "m"),
+  "Each Step after the first is placed in a Deployment of the box the Step before it is of": fix("Make each step a placement in a Deployment of the box the step before it is of", "s", "n"),
+  "Each Step is a placement its Deployment exposes": fix("Expose the placement in its Deployment, or take another path", "s"),
+  "An Export belongs to exactly one Component or Deployment": fix("Keep the Export in one Component or one Deployment", "e"),
+  "A Deployment exposes only placements, its own": fix("Expose only a placement of the Deployment itself", "e", "x"),
+  "Only a Deployment exposes a placement": fix("Move the Export of a placement to the Deployment that places it", "e"),
+  "An Export of a placement exports nothing else": fix("Make the Export export one thing: split it", "e"),
+  "An Export of a Deployment exports nothing else": fix("Make the Export export one thing: split it", "e"),
+  "A Component exports only Deployments it keeps": fix("Export the Deployment from the Component that keeps it", "e", "d"),
   "A Connection's What is over one Language": fix("Keep the Connection's What over one Language: split it", "c"),
   // Mediation
   "A Medium's call is an Interaction of the Component that defines it": fix("Choose a call among the Medium's own Component's Interactions", "m"),
@@ -85,23 +103,20 @@ const byAxiom: Readonly<Record<string, Suggest>> = {
   "An Export of a Medium exports nothing else": fix("Make the Export export one thing: split it", "e"),
   "An Export has a target": fix("Make the Export export something, or remove it", "e"),
   "A Component exports only its own Mediums": fix("Export the Medium from the Component that defines it", "e", "x"),
-  "A Mediation is over a Medium the deployed Component has access to": fix("Import the Medium into the deployed Component, from a Component that exports it", "m", "k"),
+  "A Mediation is over a Medium its Connection's Deployment has access to": fix("Import the Medium into the Connection's Deployment, from the Component that exports it", "m", "d"),
   "A realization goes down into the Medium's Language": fix(REALIZE, "m"),
   "A realization comes up from the Medium's Language": fix(REALIZE, "m"),
   "The top Mediation's realization goes down from its Connection's What": fix(REALIZE, "m"),
   "The top Mediation's realization comes up to its Connection's What": fix(REALIZE, "m"),
   "A lower Mediation's realization goes down from the Medium above it": fix(REALIZE, "m"),
   "A lower Mediation's realization comes up to the Medium above it": fix(REALIZE, "m"),
-  "A realization is accessible to the Component a Connection goes from": fix(REALIZATION_ACCESS, "k", "t"),
-  "A realization's way up is accessible to the Component a Connection goes from": fix(REALIZATION_ACCESS, "k", "t"),
-  "A realization is accessible to the Instance a Connection goes to": fix(REALIZATION_ACCESS, "k", "t"),
-  "A realization's way up is accessible to the Instance a Connection goes to": fix(REALIZATION_ACCESS, "k", "t"),
-  "A realization is accessible to the Component a Connection goes to": fix(REALIZATION_ACCESS, "k", "t"),
-  "A realization's way up is accessible to the Component a Connection goes to": fix(REALIZATION_ACCESS, "k", "t"),
+  "A realization's way down is accessible to its Connection's Deployment": fix(REALIZATION_ACCESS, "d", "t"),
+  "A realization's way up is accessible to its Connection's Deployment": fix(REALIZATION_ACCESS, "d", "t"),
   // Systems
   "A System's root and packages are not nested": fix("Take the package out of the Component it is nested in", "c"),
   "A System's root is not one of its packages": fix("Remove the root from the System's packages", "s"),
   "Every Component is nested, or is the root or a package of a System": fix("Nest the Component in another, or bring it in as a package", "c"),
+  "An identity starts at a placement in a Deployment of the System's root": fix("Start the identity at a placement in a Deployment of the System's root", "f"),
 };
 
 /** The axioms there are suggestions for. */

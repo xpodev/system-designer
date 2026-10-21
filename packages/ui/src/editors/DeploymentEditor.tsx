@@ -1,9 +1,11 @@
 /**
- * The Deployment editor: one way to put a Component together. Its Instances on a canvas,
- * connected by drawing from one to what it uses — another Instance, or the Component itself —
- * and, for each Connection, its What and the stack of Mediums it is passed over, each realized
- * or not, broken when its Medium is gone. Drawing a Connection that needs an import or a
- * Language the Instance's Component lacks asks first, and adds them when confirmed.
+ * The Deployment editor: one way to build a box — its internal layout. Its Instances on a
+ * canvas, connected by drawing from one to what it uses — another Instance, an identity the
+ * Deployment imports, or the box itself — and, for each Connection, its What and the stack of
+ * Mediums it is passed over, each realized or not, broken when its Medium is gone. Connections
+ * are structure, through interfaces: only a call out through the box needs an import, asked
+ * first. Its needs, the identities it imports, what each Instance runs if fixed, and which of
+ * its placements it exposes, are edited here too.
  */
 import { useEffect, useState } from "react";
 import { api, type View } from "../api";
@@ -13,6 +15,7 @@ import { Description } from "../prose";
 import { AddInline, Badge, Chips, Icon, IconButton, InlineText, Marks, Menu, Picker, Section } from "../widgets";
 import { useFocusRow, useModel, useWorkspace } from "../workspace";
 import { EditorHeader, Problems } from "./common";
+import { Imports } from "./ComponentEditor";
 
 /** A Connection being made: from an Instance, to an Instance or the deployed Component. */
 interface Draft {
@@ -27,9 +30,11 @@ export function DeploymentEditor({ id }: { id: string }) {
   const at = model.get(id);
   if (at?.kind !== "Deployment") return <p className="empty">This Deployment no longer exists.</p>;
   const deployment = at.deployment;
-  const deployed = at.component;
-  // What may be placed: the deployed Component's children, and the Components it imports.
-  const placeable = [...deployed.components, ...model.importedComponents(deployed.id)];
+  // The box it lays out, and the Component it is kept in: the box itself, or another.
+  const deployed = at.box ?? at.component;
+  const keeper = at.component;
+  // What may be placed: what its box's and keeper's scope hold, and top-level Components it imports.
+  const placeable = model.placeableIn(id);
 
   return (
     <div className="editor">
@@ -44,19 +49,28 @@ export function DeploymentEditor({ id }: { id: string }) {
             of{" "}
             <button className="link-chip" onClick={() => w.open({ kind: "component", id: deployed.id })}>
               {deployed.name}
-            </button>{" "}
+            </button>
+            {keeper.id !== deployed.id && (
+              <>
+                {" "}
+                · kept in{" "}
+                <button className="link-chip" onClick={() => w.open({ kind: "component", id: keeper.id })}>
+                  {keeper.name}
+                </button>
+              </>
+            )}{" "}
             · {deployment.instances.length} instance{deployment.instances.length === 1 ? "" : "s"} · {deployment.connections.length} connection{deployment.connections.length === 1 ? "" : "s"}
           </>
         }
         actions={<Menu items={[{ label: "Delete Deployment", icon: "trash", danger: true, onSelect: () => void w.act("DeploymentEditor", "remove", { item: id }, { message: `Deleted Deployment ${deployment.name}` }) }]} />}
       />
       <div className="editor-body">
-        <Description id={id} className="about" invite="Describe this Deployment: when it is the way to put the Component together" />
+        <Description id={id} className="about" invite="Describe this Deployment: when it is the way to build the box" />
         <Problems ids={[id]} />
         <DeploymentCanvas deployment={deployment} onConnect={(from, to) => setDraft({ from, to })} />
         {draft && <ConnectPanel deployment={deployment} deployed={deployed} draft={draft} close={() => setDraft(undefined)} />}
 
-        <Section title="Instances" icon="Instance" count={deployment.instances.length} hint="each a named occurrence of a child, or of a Component it imports">
+        <Section title="Instances" icon="Instance" count={deployment.instances.length} hint="placements: what a real Instance running it will contain">
           {deployment.instances.map((i) => (
             <InstanceRow key={i.id} id={i.id} deployment={deployment} deployed={deployed} onConnect={(to) => setDraft({ from: i.id, to })} />
           ))}
@@ -69,6 +83,11 @@ export function DeploymentEditor({ id }: { id: string }) {
           ))}
           {deployment.connections.length === 0 && <p className="muted">Draw from an Instance's handle onto what it uses, or use the menu of an Instance.</p>}
         </Section>
+
+        <div className="two-columns">
+          <Imports owner={id} imports={deployment.imports} needs />
+          <Identities deployment={deployment} />
+        </div>
       </div>
     </div>
   );
@@ -100,10 +119,11 @@ function DeploymentCanvas({ deployment, onConnect }: { deployment: DeploymentJso
 }
 
 /**
- * What a Connection to `to` can carry: the Interactions offered there — an Instance's Component's own
- * and those of the APIs it exports, or the deployed Component's, and those it imports.
+ * What a Connection to `to` can carry: the Interactions offered there — an Instance's box's own
+ * and those of the APIs it exports; an identity's box's; or the Deployment's box's, and what the
+ * Deployment imports, to call out through it.
  */
-function offeredAt(model: ReturnType<typeof useModel>, deployed: ComponentJson, to: string): string[] {
+function offeredAt(model: ReturnType<typeof useModel>, deployment: DeploymentJson, deployed: ComponentJson, to: string): string[] {
   const own = (c: ComponentJson) => [
     ...c.interactions.map((i) => i.id),
     ...c.exports.flatMap((e) => (e.component === undefined ? [] : (model.component(e.component)?.interactions ?? []).map((i) => i.id))),
@@ -113,36 +133,46 @@ function offeredAt(model: ReturnType<typeof useModel>, deployed: ComponentJson, 
     const of = model.component(at.instance.of);
     return of ? [...new Set(own(of))] : [];
   }
-  if (to === deployed.id) return [...new Set([...own(deployed), ...model.imported(deployed.id, "Interaction")])];
+  if (at?.kind === "Import") {
+    const last = model.get(at.import.path?.at(-1) ?? "");
+    const of = last?.kind === "Instance" ? model.component(last.instance.of) : undefined;
+    return of ? [...new Set(own(of))] : [];
+  }
+  if (to === deployed.id) {
+    // Out through the box: what it offers, what the Deployment imports, then what it could import.
+    const lineage = new Set(model.ancestry(deployed.id).map((c) => c.id));
+    const elsewhere = model.components.filter((c) => !lineage.has(c.id)).flatMap((c) => c.interactions.map((i) => i.id));
+    return [...new Set([...own(deployed), ...model.imported(deployment.id, "Interaction"), ...elsewhere])];
+  }
   return [];
 }
 
 /**
  * Making a Connection: which of the Interactions offered there it carries, all over one
- * Language; and, if the Instance's Component cannot reach them or does not speak their
- * Language, whether to add the import and the use — asked, since the Connection may be a mistake.
+ * Language. A Connection is structure, through interfaces, and needs nothing of the caller; only
+ * one out through the box needs the Deployment to import what the box does not offer — asked,
+ * since the Connection may be a mistake.
  */
 function ConnectPanel({ deployment, deployed, draft, close }: { deployment: DeploymentJson; deployed: ComponentJson; draft: Draft; close(): void }) {
   const w = useWorkspace();
   const model = useModel();
-  const offered = offeredAt(model, deployed, draft.to);
+  const offered = offeredAt(model, deployment, deployed, draft.to);
   const [what, setWhat] = useState<string[]>(offered.slice(0, 1));
   const [addImports, setAddImports] = useState(true);
-  const [addUses, setAddUses] = useState(true);
-  const from = model.get(draft.from);
-  const fromComponent = from?.kind === "Instance" ? model.component(from.instance.of) : undefined;
-  if (!fromComponent) return null;
+  if (model.get(draft.from)?.kind !== "Instance") return null;
   const language = model.interaction(what[0])?.language;
-  const reachable = new Set(model.access(fromComponent.id, "interactions"));
-  const spoken = new Set(fromComponent.uses.flatMap((l) => model.vocab(l).map((x) => x.id)));
-  const imports = what.filter((i) => !reachable.has(i));
-  const uses = [...new Set(what.flatMap((i) => model.interaction(i)?.language ?? []))].filter((l) => !spoken.has(l));
+  const boxOffers = new Set([
+    ...deployed.interactions.map((i) => i.id),
+    ...deployed.exports.flatMap((e) => (e.component === undefined ? [] : (model.component(e.component)?.interactions ?? []).map((i) => i.id))),
+    ...model.imported(deployment.id, "Interaction"),
+  ]);
+  const imports = draft.to === deployed.id ? what.filter((i) => !boxOffers.has(i)) : [];
   const mixed = what.some((i) => model.interaction(i)?.language !== language);
   const connect = async () => {
     const edit = await w.act(
       "DeploymentEditor",
       "connect",
-      { deployment: deployment.id, from: draft.from, to: draft.to, what, addImports: addImports && imports.length > 0, addUses: addUses && uses.length > 0 },
+      { deployment: deployment.id, from: draft.from, to: draft.to, what, addImports: addImports && imports.length > 0 },
       { message: `Connected ${model.name(draft.from)} to ${model.name(draft.to)}` },
     );
     if (edit) close();
@@ -170,13 +200,7 @@ function ConnectPanel({ deployment, deployed, draft, close }: { deployment: Depl
           {imports.length > 0 && (
             <label className="check confirm">
               <input type="checkbox" checked={addImports} onChange={(e) => setAddImports(e.target.checked)} />
-              {fromComponent.name} does not import {imports.map((i) => model.name(i)).join(", ")}: make it import {imports.length === 1 ? "it" : "them"}
-            </label>
-          )}
-          {uses.length > 0 && (
-            <label className="check confirm">
-              <input type="checkbox" checked={addUses} onChange={(e) => setAddUses(e.target.checked)} />
-              {fromComponent.name} does not use {uses.map((l) => model.name(l)).join(", ")}: make it use {uses.length === 1 ? "it" : "them"}
+              {deployment.name} does not import {imports.map((i) => model.name(i)).join(", ")}: make it import {imports.length === 1 ? "it" : "them"}, as its need
             </label>
           )}
           <div className="row-buttons start">
@@ -196,7 +220,14 @@ function InstanceRow({ id, deployment, deployed, onConnect }: { id: string; depl
   const model = useModel();
   const ref = useFocusRow(id);
   const instance = deployment.instances.find((i) => i.id === id)!;
-  const targets = [...deployment.instances.filter((i) => i.id !== id), { id: deployed.id, name: `${deployed.name} itself` }];
+  const identities = deployment.imports.filter((i) => i.path !== undefined);
+  const targets = [
+    ...deployment.instances.filter((i) => i.id !== id),
+    ...identities.map((i) => ({ id: i.id, name: model.name(i.id) })),
+    { id: deployed.id, name: `${deployed.name} itself` },
+  ];
+  const exposure = deployment.exposes.find((e) => e.instance === id);
+  const options = model.deploymentsOf(instance.of);
   return (
     <div ref={ref} className="instance-row row">
       <Icon name="Instance" />
@@ -205,11 +236,27 @@ function InstanceRow({ id, deployment, deployed, onConnect }: { id: string; depl
       <button className="link-chip" onClick={() => w.open({ kind: "component", id: instance.of })}>
         <Icon name="Component" size={13} /> {model.name(instance.of)}
       </button>
+      {options.length > 0 && (
+        <>
+          <span className="muted">runs</span>
+          <Picker
+            value={instance.runs ?? undefined}
+            allowNone
+            placeholder="the Configuration's choice"
+            choices={options.map((d) => ({ id: d.id, label: d.name }))}
+            onChange={(runs) => void w.act("DeploymentEditor", "setRuns", { instance: id, ...(runs ? { deployment: runs } : {}) })}
+          />
+        </>
+      )}
+      {exposure && <Badge severity="info">exposed</Badge>}
       <span className="row-tail">
         <Marks diagnostics={w.about(id)} />
         <Menu
           items={[
             ...targets.map((t) => ({ label: `Connect to ${t.name}`, icon: "Connection", onSelect: () => onConnect(t.id) })),
+            exposure
+              ? { label: "Stop exposing it", icon: "x", onSelect: () => void w.act("DeploymentEditor", "remove", { item: exposure.id }) }
+              : { label: "Expose it: identities may go through it", icon: "link", onSelect: () => void w.act("DeploymentEditor", "expose", { deployment: deployment.id, instance: id }) },
             { label: "Delete Instance", icon: "trash", danger: true, onSelect: () => void w.act("DeploymentEditor", "remove", { item: id }, { message: `Deleted Instance ${instance.name}` }) },
           ]}
         />
@@ -223,7 +270,7 @@ function NewInstance({ deployment, placeable }: { deployment: DeploymentJson; pl
   const w = useWorkspace();
   const model = useModel();
   const [of, setOf] = useState<string>();
-  if (placeable.length === 0) return <p className="muted">Nothing to place: give the Component a child, or make it import one.</p>;
+  if (placeable.length === 0) return <p className="muted">Nothing to place: give the box a child, or import a top-level Component.</p>;
   const taken = new Set(deployment.instances.map((i) => i.name));
   const suggested = (component: string) => {
     const base = model.name(component).replace(/^\w/, (c) => c.toLowerCase());
@@ -260,8 +307,8 @@ function ConnectionCard({ connection, deployment, deployed }: { connection: Conn
   const w = useWorkspace();
   const model = useModel();
   const ref = useFocusRow(connection.id);
-  const to = connection.to ?? connection.toComponent ?? undefined;
-  const mediums = model.access(deployed.id, "mediums");
+  const to = model.target(connection);
+  const mediums = model.deploymentAccess(deployment.id, "mediums");
   const problems = [...w.about(connection.id), ...connection.mediations.flatMap((m) => w.about(m.id))];
   return (
     <div ref={ref} className={`connection-card row ${problems.length ? "has-problems" : ""}`}>
@@ -272,7 +319,7 @@ function ConnectionCard({ connection, deployment, deployed }: { connection: Conn
           values={connection.what}
           label={(i) => `${model.name(i)}()`}
           icon="Interaction"
-          choices={offeredAt(model, deployed, to ?? "").map((i) => ({ id: i, label: `${model.name(i)}()` }))}
+          choices={offeredAt(model, deployment, deployed, connection.toIdentity ?? to ?? "").map((i) => ({ id: i, label: `${model.name(i)}()` }))}
           onAdd={(i) => void w.act("DeploymentEditor", "setWhat", { connection: connection.id, what: [...connection.what, i] })}
           onRemove={(i) => connection.what.length > 1 && void w.act("DeploymentEditor", "setWhat", { connection: connection.id, what: connection.what.filter((x) => x !== i) })}
           onOpen={(i) => w.reveal(i)}
@@ -343,10 +390,61 @@ function ConnectionCard({ connection, deployment, deployed }: { connection: Conn
             onChange={(medium) => medium && void w.act("MediationEditor", "addMediation", { connection: connection.id, medium })}
           />
         ) : (
-          <span className="muted">{deployed.name} has no Medium to mediate over: import one.</span>
+          <span className="muted">{deployment.name} has no Medium to mediate over: import one, as a need.</span>
         )}
       </div>
       <Description id={connection.id} className="row-description" />
     </div>
+  );
+}
+
+/** Every identity a Deployment could import: a path of exposed placements from the root down, a few levels deep. */
+function identityPaths(model: ReturnType<typeof useModel>, depth = 3): string[][] {
+  const found: string[][] = [];
+  const walk = (box: string, prefix: string[]) => {
+    if (prefix.length >= depth) return;
+    for (const d of model.deploymentsOf(box)) {
+      for (const exposed of d.exposes) {
+        const at = model.get(exposed.instance);
+        if (at?.kind !== "Instance") continue;
+        const path = [...prefix, exposed.instance];
+        found.push(path);
+        walk(at.instance.of, path);
+      }
+    }
+  };
+  walk(model.root.id, []);
+  return found;
+}
+
+/** The identities a Deployment imports: real objects, by their paths from the root. */
+function Identities({ deployment }: { deployment: DeploymentJson }) {
+  const w = useWorkspace();
+  const model = useModel();
+  const own = deployment.imports.filter((i) => i.path !== undefined);
+  const taken = new Set(own.map((i) => i.path!.join("/")));
+  const paths = identityPaths(model).filter((path) => !taken.has(path.join("/")));
+  const label = (path: string[]) => `/${path.map((p) => model.name(p)).join("/")}`;
+  return (
+    <Section title="Identities" icon="Instance" count={own.length} hint="real objects it relies on: paths of exposed placements from the root">
+      {own.map((i) => (
+        <div key={i.id} className="row">
+          <Icon name="Instance" />
+          <span className="cell-main">{label(i.path!)}</span>
+          <Marks diagnostics={w.about(i.id)} />
+          <IconButton icon="x" label={`Stop importing ${label(i.path!)}`} onClick={() => void w.act("DeploymentEditor", "remove", { item: i.id })} />
+        </div>
+      ))}
+      {paths.length > 0 ? (
+        <Picker
+          value={undefined}
+          placeholder="Import an identity…"
+          choices={paths.map((path) => ({ id: path.join(" "), label: label(path) }))}
+          onChange={(path) => path && void w.act("DeploymentEditor", "importIdentity", { deployment: deployment.id, path: path.split(" ") })}
+        />
+      ) : (
+        own.length === 0 && <span className="muted">No placement is exposed: expose one in a Deployment of the root to reach it.</span>
+      )}
+    </Section>
   );
 }

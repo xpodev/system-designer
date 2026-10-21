@@ -16,20 +16,41 @@ export interface InteractionJson extends FunctionJson { language: string }
 export type TransformationJson = FunctionJson;
 export interface MediumJson { id: string; name: string; language: string; call: string }
 export interface MediationJson { id: string; how: string; down: string | null; up: string | null }
-export interface ConnectionJson { id: string; from: string; to: string | null; toComponent: string | null; what: string[]; mediations: MediationJson[] }
-export interface InstanceJson { id: string; name: string; of: string; min: number; max: number | "N" }
-export interface DeploymentJson { id: string; name: string; instances: InstanceJson[]; connections: ConnectionJson[] }
+export interface ConnectionJson {
+  id: string;
+  from: string;
+  to: string | null;
+  toComponent: string | null;
+  /** An identity the Deployment imports, the Connection goes to. */
+  toIdentity: string | null;
+  what: string[];
+  mediations: MediationJson[];
+}
+/** A placement: of a box, with a range, and the Deployment it runs, if the design fixes it. */
+export interface InstanceJson { id: string; name: string; of: string; runs: string | null; min: number; max: number | "N" }
+/** A Deployment: the layout of a box, `of`, kept in the Component that holds it; its needs, and what it exposes. */
+export interface DeploymentJson {
+  id: string;
+  name: string;
+  of: string;
+  instances: InstanceJson[];
+  connections: ConnectionJson[];
+  imports: ImportJson[];
+  exposes: { id: string; instance: string }[];
+}
 /** An Export: what it exports, under one key — `interaction`, `component`, … */
 export type ExportJson = { id: string } & Partial<Record<ExportKey, string>>;
-/** An Import: the Component it is from, and the Exports it takes. */
-export interface ImportJson { id: string; from: string; exports: string[] }
+/**
+ * An Import: the Component it is from, and the Exports it takes; or, for a Deployment, an
+ * identity: a `path` of placements from the root, with no Component and nothing taken.
+ */
+export interface ImportJson { id: string; from: string; exports: string[]; path?: string[] }
 export interface ComponentJson {
   id: string;
   name: string;
   uses: string[];
   exports: ExportJson[];
   imports: ImportJson[];
-  implements: string[];
   languages: LanguageJson[];
   interactions: InteractionJson[];
   transformations: TransformationJson[];
@@ -37,8 +58,8 @@ export interface ComponentJson {
   deployments: DeploymentJson[];
   components: ComponentJson[];
 }
-/** One occupant's Choice in a Configuration: the Component that fills it, the Deployment it runs as, and the Choices below. */
-export interface ChoiceJson { id: string; instance: string | null; component: string; deployment: string | null; choices: ChoiceJson[] }
+/** One occupant's Choice in a Configuration: the Deployment of its box it runs, or none, and the Choices below. */
+export interface ChoiceJson { id: string; instance: string | null; deployment: string | null; choices: ChoiceJson[] }
 /** A Configuration, kept by the tool in the System's `configurations` attachment. */
 export interface ConfigurationJson { id: string; name: string; rules: string[]; root: ChoiceJson }
 export interface SystemFile {
@@ -48,7 +69,7 @@ export interface SystemFile {
 }
 
 /** The keys under which an Export names what it exports: each is the name of its Entity, lower-cased. */
-export const EXPORT_KEYS = ["component", "interaction", "transformation", "language", "medium"] as const;
+export const EXPORT_KEYS = ["component", "interaction", "transformation", "language", "medium", "deployment", "instance"] as const;
 export type ExportKey = (typeof EXPORT_KEYS)[number];
 
 /** What an id is, and where it sits: the Component it is in, and what holds it there. */
@@ -63,12 +84,15 @@ export type Located =
   | { kind: "Interaction"; interaction: InteractionJson; component: ComponentJson }
   | { kind: "Transformation"; transformation: TransformationJson; component: ComponentJson }
   | { kind: "Parameter"; parameter: ParameterJson; function: FunctionJson; component: ComponentJson }
-  | { kind: "Export"; export: ExportJson; component: ComponentJson }
-  | { kind: "Import"; import: ImportJson; component: ComponentJson }
+  /** An Export of a Component, or one by which a Deployment exposes a placement (`deployment`). */
+  | { kind: "Export"; export: ExportJson; component: ComponentJson; deployment?: DeploymentJson }
+  /** An Import of a Component (its vocabulary), or of a Deployment (its needs: `deployment`). */
+  | { kind: "Import"; import: ImportJson; component: ComponentJson; deployment?: DeploymentJson }
   | { kind: "Medium"; medium: MediumJson; component: ComponentJson }
-  | { kind: "Deployment"; deployment: DeploymentJson; component: ComponentJson }
-  | { kind: "Instance"; instance: InstanceJson; deployment: DeploymentJson; component: ComponentJson }
-  | { kind: "Connection"; connection: ConnectionJson; deployment: DeploymentJson; component: ComponentJson }
+  /** A Deployment: `component` keeps it; `box` is what it lays out. */
+  | { kind: "Deployment"; deployment: DeploymentJson; component: ComponentJson; box?: ComponentJson }
+  | { kind: "Instance"; instance: InstanceJson; deployment: DeploymentJson; component: ComponentJson; box?: ComponentJson }
+  | { kind: "Connection"; connection: ConnectionJson; deployment: DeploymentJson; component: ComponentJson; box?: ComponentJson }
   | { kind: "Configuration"; configuration: ConfigurationJson }
   | { kind: "Choice"; choice: ChoiceJson; configuration: ConfigurationJson };
 
@@ -82,6 +106,7 @@ export class Model {
   private readonly descriptions = new Map<string, string>();
   /** The Configurations, as the tool keeps them, in their attachment. */
   readonly configurations: ConfigurationJson[];
+  private readonly currentId: string | undefined;
 
   constructor(readonly file: SystemFile) {
     const d = file.design;
@@ -109,13 +134,35 @@ export class Model {
         this.byId.set(deployment.id, { kind: "Deployment", deployment, component });
         for (const instance of deployment.instances) this.byId.set(instance.id, { kind: "Instance", instance, deployment, component });
         for (const connection of deployment.connections) this.byId.set(connection.id, { kind: "Connection", connection, deployment, component });
+        for (const imported of deployment.imports) this.byId.set(imported.id, { kind: "Import", import: imported, component, deployment });
+        for (const exposed of deployment.exposes) this.byId.set(exposed.id, { kind: "Export", export: { id: exposed.id, instance: exposed.instance }, component, deployment });
       }
       for (const child of component.components) index(child, component);
     };
+    // An identity takes nothing from no Component: read it as such.
+    const normalize = (component: ComponentJson) => {
+      for (const owner of [component, ...component.deployments]) {
+        for (const i of owner.imports) {
+          i.from ??= "";
+          i.exports ??= [];
+        }
+      }
+      component.components.forEach(normalize);
+    };
+    normalize(d.root);
+    d.packages.forEach(normalize);
     index(d.root);
     for (const component of d.packages) index(component);
-    const stored = file.attachments.find((a) => a.owner === "configurations")?.data as { configurations?: ConfigurationJson[] } | undefined;
+    // Each Deployment's box, once every Component is known.
+    for (const at of this.byId.values()) {
+      if (at.kind === "Deployment" || at.kind === "Instance" || at.kind === "Connection") {
+        const found = this.byId.get(at.deployment.of);
+        if (found?.kind === "Component") at.box = found.component;
+      }
+    }
+    const stored = file.attachments.find((a) => a.owner === "configurations")?.data as { configurations?: ConfigurationJson[]; current?: string } | undefined;
     this.configurations = Array.isArray(stored?.configurations) ? stored.configurations : [];
+    this.currentId = stored?.current;
     for (const configuration of this.configurations) {
       this.byId.set(configuration.id, { kind: "Configuration", configuration });
       const choices = (choice: ChoiceJson) => {
@@ -154,6 +201,31 @@ export class Model {
 
   get(id: string): Located | undefined {
     return this.byId.get(id);
+  }
+
+  /** The current Configuration: the one the verifier verifies — the one named current, or the first. */
+  get current(): ConfigurationJson | undefined {
+    return this.configurations.find((c) => c.id === this.currentId) ?? this.configurations[0];
+  }
+
+  /** The Deployments of a box, wherever they are kept: the ways it may be built. */
+  deploymentsOf(box: string): DeploymentJson[] {
+    return [...this.byId.values()].flatMap((at) => (at.kind === "Deployment" && at.deployment.of === box ? [at.deployment] : []));
+  }
+
+  /** A Deployment, by id. */
+  deployment(id: string | null | undefined): DeploymentJson | undefined {
+    const at = id == null ? undefined : this.byId.get(id);
+    return at?.kind === "Deployment" ? at.deployment : undefined;
+  }
+
+  /** Where a Connection goes: an Instance, the box, or the placement an identity names. */
+  target(connection: ConnectionJson): string | undefined {
+    if (connection.to !== null) return connection.to;
+    if (connection.toComponent !== null) return connection.toComponent;
+    if (connection.toIdentity === null) return undefined;
+    const at = this.byId.get(connection.toIdentity);
+    return at?.kind === "Import" ? at.import.path?.at(-1) : undefined;
   }
 
   kind(id: string): Kind | undefined {
@@ -240,21 +312,21 @@ export class Model {
       case "Export":
         return this.name(this.resolve(id));
       case "Import":
-        return `from ${this.name(at.import.from)}`;
+        return at.import.path !== undefined ? `/${at.import.path.map((p) => this.name(p)).join("/")}` : `from ${this.name(at.import.from)}`;
       case "Medium":
         return at.medium.name;
       case "Deployment":
         return at.deployment.name;
       case "Instance":
         return at.instance.name;
-      case "Connection": {
-        const to = at.connection.to ?? at.connection.toComponent ?? undefined;
-        return `${this.name(at.connection.from)} → ${this.name(to)}`;
-      }
+      case "Connection":
+        return `${this.name(at.connection.from)} → ${this.name(this.target(at.connection))}`;
       case "Configuration":
         return at.configuration.name;
       case "Choice":
-        return at.choice.instance === null ? this.name(at.choice.component) : `${this.name(at.choice.instance)}: ${this.name(at.choice.component)}`;
+        return at.choice.instance === null
+          ? this.name(at.choice.deployment ?? this.root.id)
+          : `${this.name(at.choice.instance)}: ${at.choice.deployment === null ? "an interface" : this.name(at.choice.deployment)}`;
     }
   }
 
@@ -306,11 +378,16 @@ export class Model {
     return at?.kind === "Export" ? at.component : undefined;
   }
 
-  /** What a Component's Imports resolve to, of one kind of thing, or of all. */
+  /** The Imports of a Component (its vocabulary) or of a Deployment (its needs). */
+  importsOf(owner: string): ImportJson[] {
+    const at = this.byId.get(owner);
+    return at?.kind === "Component" ? at.component.imports : at?.kind === "Deployment" ? at.deployment.imports : [];
+  }
+
+  /** What the Imports of a Component or a Deployment take, of one kind of thing, or of all. */
   imported(component: string, kind?: Kind): string[] {
-    const c = this.component(component);
     const found = new Set<string>();
-    for (const i of c?.imports ?? []) {
+    for (const i of this.importsOf(component)) {
       for (const e of i.exports) {
         const target = this.resolve(e);
         if (target !== undefined && (kind === undefined || this.kind(target) === kind)) found.add(target);
@@ -319,10 +396,9 @@ export class Model {
     return [...found];
   }
 
-  /** The Components a Component imports, and so may place: those its Imports are from, and those they resolve to. */
+  /** The Components a Component or a Deployment imports from, and those its Imports take as wholes. */
   importedComponents(component: string): ComponentJson[] {
-    const c = this.component(component);
-    const ids = new Set([...(c?.imports ?? []).map((i) => i.from), ...this.imported(component, "Component")]);
+    const ids = new Set([...this.importsOf(component).map((i) => i.from), ...this.imported(component, "Component")]);
     return [...ids].flatMap((id) => this.component(id) ?? []);
   }
 
@@ -346,15 +422,26 @@ export class Model {
     return this.topLevel.flatMap(all).filter((c) => c.id !== component);
   }
 
-  /** Whether a Deployment of `deployed` may place `component`: one of no parent, one its ancestors hold, or one its parent exports. */
-  placeable(deployed: string, component: string): boolean {
-    const at = this.byId.get(component);
-    const parent = at?.kind === "Component" ? at.parent : undefined;
-    if (!parent || this.ancestry(deployed).some((c) => c.id === parent.id)) return true;
-    return parent.exports.some((e) => e.component === component);
+  /**
+   * What a Deployment may place (W10): a child of its box or of the box's ancestors, a child of
+   * its keeper or of the keeper's ancestors, or a top-level Component it imports.
+   */
+  placeableIn(deployment: string): ComponentJson[] {
+    const at = this.byId.get(deployment);
+    if (at?.kind !== "Deployment") return [];
+    const found = new Map<string, ComponentJson>();
+    for (const anchor of [at.box?.id, at.component.id]) {
+      if (anchor === undefined) continue;
+      for (const owner of this.ancestry(anchor)) for (const child of owner.components) found.set(child.id, child);
+    }
+    for (const i of at.deployment.imports) {
+      const from = this.byId.get(i.from);
+      if (from?.kind === "Component" && from.parent === undefined) found.set(from.component.id, from.component);
+    }
+    return [...found.values()];
   }
 
-  /** What a Component may export: its own Languages, Interactions, Transformations and Mediums, and its children. */
+  /** What a Component may export: its own Languages, Interactions, Transformations and Mediums, its children, and the Deployments it keeps. */
   exportable(component: string): string[] {
     const c = this.component(component);
     if (!c) return [];
@@ -364,7 +451,25 @@ export class Model {
       ...c.transformations.map((t) => t.id),
       ...c.mediums.map((m) => m.id),
       ...c.components.map((k) => k.id),
+      ...c.deployments.map((d) => d.id),
     ];
+  }
+
+  /**
+   * What a Deployment has access to of a kind: what its box and keeper, and their ancestors, own,
+   * and what its own Imports take — the Mediums and realizations its Mediations may use.
+   */
+  deploymentAccess(deployment: string, kind: Exclude<OwnedKind, "languages">): string[] {
+    const at = this.byId.get(deployment);
+    if (at?.kind !== "Deployment") return [];
+    const found = new Set<string>();
+    for (const anchor of [at.box?.id, at.component.id]) {
+      if (anchor === undefined) continue;
+      for (const owner of this.ancestry(anchor)) for (const item of owner[kind]) found.add(item.id);
+    }
+    const entity: Kind = kind === "interactions" ? "Interaction" : kind === "transformations" ? "Transformation" : "Medium";
+    for (const id of this.imported(deployment, entity)) found.add(id);
+    return [...found].filter((id) => this.byId.has(id));
   }
 
   /** What a Component has access to of a kind: its own and its parents', and what its Imports resolve to. */

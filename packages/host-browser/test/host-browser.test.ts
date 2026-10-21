@@ -44,7 +44,7 @@ describe("a browser tab's host", () => {
     const host = await fresh();
     const { id } = await host.open("docs/system-designer.systemathic.json");
     const run = await host.verify(id);
-    expect(run).toMatchObject({ profile: "profile", script: "docs/system-designer.rules.py", rules: 19, errors: 0, warnings: 0, failures: [] });
+    expect(run).toMatchObject({ profile: "profile", script: "docs/system-designer.rules.py", rules: 21, errors: 0, warnings: 10, failures: [] });
   }, 120_000);
 
   it("edits a System's script, and checks it as it is written", async () => {
@@ -53,7 +53,7 @@ describe("a browser tab's host", () => {
     const script = await host.script(id);
     expect(script).toMatchObject({ path: "examples/game.rules.py", exists: false });
     await host.saveScript(id, script.path, script.source);
-    expect((await host.verify(id)).rules).toBe(11);
+    expect((await host.verify(id)).rules).toBe(12);
     expect((await host.checkScript("profile = Profile(\n")).problems[0]!.message).toMatch(/^SyntaxError/);
   }, 120_000);
 

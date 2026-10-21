@@ -23,7 +23,7 @@ export type Measure =
   | "connections"
   | "mediations"
   | "transformations"
-  | "implements"
+  | "kept"
   | "parameters";
 
 export interface Metric {
@@ -43,9 +43,10 @@ export function metrics(graph: Graph): Metric[] {
   }
   const importedFrom = new Map<string, Set<string>>();
   for (const component of graph.ofEntity("Component")) {
-    const from = new Set(importedComponents(graph, component));
+    const from = new Set([component, ...graph.navigate(component, "kept")].flatMap((owner) => importedComponents(graph, owner)));
+    from.delete(component);
     importedFrom.set(component, from);
-    for (const measure of ["languages", "components", "interactions", "deployments", "transformations", "implements"] as const) {
+    for (const measure of ["languages", "components", "interactions", "deployments", "transformations", "kept"] as const) {
       count(component, measure, graph.navigate(component, measure).length);
     }
     count(component, "imports", graph.navigate(component, "imports").length);

@@ -54,7 +54,6 @@ function vocabulary(spec: VocabularySpec) {
       ["medium", `${component}.medium`],
     ]),
     imports: [] as unknown[],
-    implements: [] as string[],
     languages: [
       {
         id: language,
@@ -253,7 +252,6 @@ const httpOverTcp = {
     { id: "pkg.http-over-tcp<pkg.http", from: "pkg.http", exports: ["pkg.http:lib.http"] },
     { id: "pkg.http-over-tcp<pkg.tcp", from: "pkg.tcp", exports: ["pkg.tcp:lib.tcp"] },
   ],
-  implements: [],
   languages: [],
   interactions: [],
   // A request goes down as a stream; a stream comes back up as the response. How a message's
@@ -311,7 +309,7 @@ export function files(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const p of packages) {
     const file = {
-      format: "systemathic/3",
+      format: "systemathic/4",
       design: { id: `lib.${p.key}.system`, name: p.name, root: p.components[0], packages: p.components.slice(1) },
       attachments: [{ owner: "catalog", data: { package: p.key, about: p.about, tags: p.tags } }],
     };

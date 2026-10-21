@@ -1,8 +1,9 @@
 /**
- * The Component editor: a Component in the order a design is thought through — the Languages
- * it defines (core ones, then extensions), the Languages it uses and what it implements, what
- * it exports (its API) and what it imports, the Interactions it offers, the Components nested
- * in it, the Transformations and Mediums it holds, and the Deployments that put it together.
+ * The Component editor: a box, in the order a design is thought through — the Languages it
+ * defines (core ones, then extensions), the Languages it uses, what it exports (its API) and the
+ * vocabulary it imports, the Interactions it offers, the Components nested in it, the
+ * Transformations and Mediums it holds, its Deployments — the ways it may be built, wherever
+ * they are kept — and the Deployments it keeps of other boxes: what it implements.
  */
 import { useState } from "react";
 import { uniqueName } from "../Explorer";
@@ -64,7 +65,7 @@ export function ComponentEditor({ id }: { id: string }) {
         }
       />
       <div className="editor-body">
-        <Description id={id} className="about" invite="Describe this Component: what it is for, and what it implements" />
+        <Description id={id} className="about" invite="Describe this Component: what it is for, and the problem it solves" />
         <Problems ids={[id]} />
 
         <Section title="Languages" icon="Language" count={c.languages.length} hint="the vocabularies it defines: core Languages, then extensions">
@@ -104,24 +105,24 @@ export function ComponentEditor({ id }: { id: string }) {
               empty="No Language yet."
             />
           </Section>
-          <Section title="Implements" icon="Component" hint="the interfaces it may stand in for, wherever they are placed">
+          <Section title="Implements" icon="Component" hint="other boxes it keeps a Deployment of: ways to build them, kept here">
             <Chips
-              values={c.implements}
-              label={(x) => model.name(x)}
-              icon="Component"
+              values={c.deployments.filter((d) => d.of !== id).map((d) => d.id)}
+              label={(d) => `${model.name(model.deployment(d)?.of)}, as ${model.name(d)}`}
+              icon="Deployment"
               choices={model.components.filter((k) => k.id !== id && !model.ancestry(id).includes(k)).map((k) => ({ id: k.id, label: k.name }))}
-              onAdd={(implemented) => void w.act("ComponentEditor", "implement", { component: id, implemented })}
-              onRemove={(implemented) => void w.act("ComponentEditor", "unimplement", { component: id, implemented })}
-              onOpen={(x) => w.open({ kind: "component", id: x })}
-              addLabel="Component"
-              empty="Nothing: it is its own."
+              onAdd={(box) => void add("DeploymentEditor", "addDeployment", { component: box, name: c.name, keeper: id })}
+              onRemove={(d) => void w.act("DeploymentEditor", "remove", { item: d })}
+              onOpen={(d) => w.open({ kind: "deployment", id: d })}
+              addLabel="box"
+              empty="Nothing: it keeps no Deployment of another box."
             />
           </Section>
         </div>
 
         <div className="two-columns">
           <Exports component={c} />
-          <Imports component={c} />
+          <Imports owner={c.id} imports={c.imports} />
         </div>
 
         <Section title="Interactions" icon="Interaction" count={c.interactions.length} hint="what it offers, each over one Language it uses; what it exports of them is its API">
@@ -172,15 +173,17 @@ export function ComponentEditor({ id }: { id: string }) {
           )}
         </Section>
 
-        <Section title="Deployments" icon="Deployment" count={c.deployments.length} hint="ways to put it together: its parts, and how they reach each other">
+        <Section title="Deployments" icon="Deployment" count={model.deploymentsOf(id).length} hint="the ways it may be built: its internal layouts, wherever they are kept">
+          {model.deploymentsOf(id).length === 0 && <p className="muted">None: an interface, its implementation undefined.</p>}
           <ul className="card-list">
-            {c.deployments.map((d) => (
+            {model.deploymentsOf(id).map((d) => (
               <li key={d.id}>
                 <button onClick={() => w.open({ kind: "deployment", id: d.id })}>
                   <Icon name="Deployment" size={14} />
                   <span className="card-title">{d.name}</span>
                   <span className="muted">
-                    {d.instances.map((i) => i.name).join(", ") || "nothing placed yet"} · {d.connections.length} connection{d.connections.length === 1 ? "" : "s"}
+                    {d.instances.map((i) => i.name).join(", ") || "its insides redacted"} · {d.connections.length} connection{d.connections.length === 1 ? "" : "s"}
+                    {model.componentOf(d.id)?.id !== id ? ` · kept in ${model.componentOf(d.id)?.name ?? "?"}` : ""}
                   </span>
                   <Marks diagnostics={[...w.about(d.id), ...d.connections.flatMap((x) => w.about(x.id))]} />
                 </button>
@@ -230,51 +233,64 @@ function exportLabel(model: ReturnType<typeof useModel>, exported: string): stri
   return model.name(exported);
 }
 
-/** What a Component imports: from which Components, and which of their Exports it takes. */
-function Imports({ component: c }: { component: ComponentJson }) {
+/**
+ * What a box or a Deployment imports. A box imports only vocabulary: the Languages its interface
+ * is written in. A Deployment imports what it needs — Interactions it calls, Transformations and
+ * Mediums its Mediations use, Deployments it is built on, top-level Components it places — and
+ * identities, shown apart.
+ */
+export function Imports({ owner, imports, needs = false }: { owner: string; imports: ImportJson[]; needs?: boolean }) {
   const w = useWorkspace();
   const model = useModel();
-  const importable = model.importable(c.id);
-  const from = new Set(c.imports.map((i) => i.from));
+  const importable = model.importable(owner).filter((k) => !needs || k.id !== model.get(owner)?.kind);
+  const from = new Set(imports.map((i) => i.from));
   const fresh = importable.filter((k) => !from.has(k.id));
-  // Everything of another Component that it does not reach yet: to reach it, its owner exports it.
-  const reached = new Set(model.imported(c.id));
-  const lineage = new Set(model.ancestry(c.id).map((k) => k.id));
+  // Everything of another Component not reached yet: to reach it, its owner exports it.
+  const reached = new Set(model.imported(owner));
+  const at = model.get(owner);
+  const anchors = at?.kind === "Deployment" ? [at.box?.id, at.component.id].filter((x): x is string => x !== undefined) : [owner];
+  const lineage = new Set(anchors.flatMap((a) => model.ancestry(a).map((k) => k.id)));
   const reachable: Choice[] = importable
     .filter((k) => !lineage.has(k.id))
-    .flatMap((k) => [...k.languages, ...k.interactions, ...k.transformations, ...k.mediums].map((x) => ({ x, k })))
+    .flatMap((k) => (needs ? [...k.interactions, ...k.transformations, ...k.mediums, ...k.deployments] : k.languages).map((x) => ({ x, k })))
     .filter(({ x }) => !reached.has(x.id))
     .map(({ x, k }) => ({ id: x.id, label: x.name, hint: `${model.kind(x.id)} of ${k.name}` }));
+  const shown = imports.filter((i) => i.path === undefined);
   return (
-    <Section title="Imports" icon="link" count={c.imports.length} hint="what it depends on: other Components' Exports, wherever they are">
-      {c.imports.map((i) => (
-        <ImportRow key={i.id} component={c} imported={i} />
+    <Section
+      title={needs ? "Needs" : "Imports"}
+      icon="link"
+      count={shown.length}
+      hint={needs ? "what it needs, imported: it makes sense only where they are present" : "its vocabulary: the Languages its interface is written in, from wherever they are"}
+    >
+      {shown.map((i) => (
+        <ImportRow key={i.id} owner={owner} imported={i} />
       ))}
       <div className="new-row">
-        {fresh.length > 0 && (
+        {needs && fresh.length > 0 && (
           <Picker
             value={undefined}
             placeholder="Import from…"
             choices={fresh.map((k) => ({ id: k.id, label: k.name }))}
-            onChange={(item) => item && void w.act("ComponentEditor", "import", { component: c.id, item })}
+            onChange={(item) => item && void w.act("ComponentEditor", "import", { component: owner, item })}
           />
         )}
         {reachable.length > 0 && (
           <Picker
             value={undefined}
-            placeholder="Reach…"
+            placeholder={needs ? "Reach…" : "Import a Language…"}
             choices={reachable}
-            onChange={(item) => item && void w.act("ComponentEditor", "reach", { component: c.id, item }, { message: `Reached ${model.name(item)}: exported by its owner, and imported` })}
+            onChange={(item) => item && void w.act("ComponentEditor", "reach", { component: owner, item }, { message: `Reached ${model.name(item)}: exported by its owner, and imported` })}
           />
         )}
       </div>
-      {c.imports.length === 0 && importable.length === 0 && <span className="muted">Nothing to import: there is no other Component.</span>}
+      {shown.length === 0 && reachable.length === 0 && <span className="muted">Nothing to import.</span>}
     </Section>
   );
 }
 
 /** One Import: the Component it is from, and the Exports it takes — none, for the Component as a whole. */
-function ImportRow({ component: c, imported: i }: { component: ComponentJson; imported: ImportJson }) {
+function ImportRow({ owner, imported: i }: { owner: string; imported: ImportJson }) {
   const w = useWorkspace();
   const model = useModel();
   const from = model.component(i.from);
@@ -291,8 +307,8 @@ function ImportRow({ component: c, imported: i }: { component: ComponentJson; im
         label={(e) => exportLabel(model, e)}
         icon="link"
         choices={offered}
-        onAdd={(item) => void w.act("ComponentEditor", "import", { component: c.id, item })}
-        onRemove={(item) => void w.act("ComponentEditor", "unimport", { component: c.id, item })}
+        onAdd={(item) => void w.act("ComponentEditor", "import", { component: owner, item })}
+        onRemove={(item) => void w.act("ComponentEditor", "unimport", { component: owner, item })}
         onOpen={(e) => {
           const target = model.resolve(e);
           if (target) w.reveal(target);
@@ -301,7 +317,7 @@ function ImportRow({ component: c, imported: i }: { component: ComponentJson; im
         empty="the Component as a whole"
       />
       <Marks diagnostics={w.about(i.id)} />
-      <IconButton icon="x" label={`Stop importing from ${model.name(i.from)}`} onClick={() => void w.act("ComponentEditor", "unimport", { component: c.id, item: i.from })} />
+      <IconButton icon="x" label={`Stop importing from ${model.name(i.from)}`} onClick={() => void w.act("ComponentEditor", "unimport", { component: owner, item: i.from })} />
     </div>
   );
 }

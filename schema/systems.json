@@ -1,6 +1,6 @@
 {
   "language": "Systems",
-  "description": "Systems: what is opened and saved. A System is a root Component, with the packages beside it that the root and its children may import (catalog content, for instance). The top Language: it ties the layers together. Extends Mediation.",
+  "description": "Systems: what is opened and saved. A System is a root Component — the solution to the highest-level problem, whose Deployments are the ways to solve it — with the packages beside it: dependencies, such as catalog content, and plug-ins. Where a Component is kept says nothing of who may import it. The System is the one real Instance of its root: every identity starts there. The top Language: it ties the layers together. Extends Mediation.",
   "extends": ["Mediation"],
   "entities": ["System"],
   "relationships": [
@@ -11,6 +11,7 @@
   "axioms": [
     {"id": "system", "about": "A System's root and packages are not nested", "formula": "all s in System, c in s.packages. no c.parent and no s.root.parent"},
     {"id": "system", "about": "A System's root is not one of its packages", "formula": "all s in System. not s.root in s.packages"},
-    {"id": "system", "about": "Every Component is nested, or is the root or a package of a System", "formula": "all c in Component. some c.parent or some c.system or (some s in System. c in s.packages)"}
+    {"id": "system", "about": "Every Component is nested, or is the root or a package of a System", "formula": "all c in Component. some c.parent or some c.system or (some s in System. c in s.packages)"},
+    {"id": "W16", "about": "An identity starts at a placement in a Deployment of the System's root", "formula": "all m in Import, f in m.steps, y in System. no f.previous => f.instance.deployment.component == y.root"}
   ]
 }

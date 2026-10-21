@@ -7,8 +7,8 @@ knows any particular Entity except where Python's natural forms differ from the 
 - navigating an end whose range is at most one gives an Element or None, otherwise a list;
 - an Element has the ends of every Entity its Entity extends: an Interaction is a Function;
 - a Name is its text and a Bound its number;
-- a Function's `parameters` and a Connection's `mediations` are lists, in the order of
-  their previous/next and above/below chains.
+- a Function's `parameters`, a Connection's `mediations` and an identity's `steps` are lists,
+  in the order of their previous/next and above/below chains.
 
 `load` reads a System file (docs/format.md). It is tolerant: a reference to nothing is dropped,
 as the tool's own reader does, so a script can run on an ill-formed System.
@@ -77,7 +77,7 @@ def _steps() -> dict[str, dict[str, _Step | None]]:
 _STEPS = _steps()
 
 #: Ends whose members are ordered by a chain: the end, and the ends to the previous and next member.
-_CHAINS = {"parameters": ("previous", "next"), "mediations": ("above", "below")}
+_CHAINS = {"parameters": ("previous", "next"), "mediations": ("above", "below"), "steps": ("previous", "next")}
 
 
 class Element:
@@ -264,7 +264,7 @@ class _Reader:
             self.model.connect(element, end, target)
 
 
-FORMAT = "systemathic/3"
+FORMAT = "systemathic/4"
 
 
 def read(file: dict) -> System:
@@ -293,7 +293,7 @@ def load(path: str | Path) -> System:
     return read(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-_EXPORTED = ("component", "interaction", "transformation", "language", "medium", "export")
+_EXPORTED = ("component", "interaction", "transformation", "language", "medium", "deployment")
 
 
 def _read_component(reader: _Reader, json: dict, parent: Element | None) -> Element | None:
@@ -309,15 +309,7 @@ def _read_component(reader: _Reader, json: dict, parent: Element | None) -> Elem
             for end in _EXPORTED:
                 if end in export:
                     reader.refer(element, end, export[end])
-    for import_ in json["imports"]:
-        element = reader.create("Import", import_["id"])
-        if element is not None:
-            reader.model.connect(component, "imports", element)
-            reader.refer(element, "from", import_["from"])
-            for id in import_["exports"]:
-                reader.refer(element, "exports", id)
-    for id in json["implements"]:
-        reader.refer(component, "implements", id)
+    _read_imports(reader, component, json["imports"])
     for language in json["languages"]:
         _read_language(reader, component, language)
     for interaction in json["interactions"]:
@@ -382,23 +374,54 @@ def _read_function(reader: _Reader, entity: str, component: Element, end: str, j
     return function
 
 
-def _read_deployment(reader: _Reader, component: Element, json: dict) -> None:
-    deployment = reader.named("Deployment", json, component, "deployments")
+def _read_imports(reader: _Reader, owner: Element, imports: list[dict]) -> None:
+    """The Imports of a Component or a Deployment: from a Component, or an identity's `path`."""
+    for import_ in imports:
+        element = reader.create("Import", import_["id"])
+        if element is None:
+            continue
+        reader.model.connect(owner, "imports", element)
+        if "path" in import_:
+            steps = []
+            for index, id in enumerate(import_["path"]):
+                step = reader.create("Step", f"{import_['id']}#{index}")
+                if step is not None:
+                    reader.model.connect(element, "steps", step)
+                    reader.refer(step, "instance", id)
+                    steps.append(step)
+            reader.chain("steps", steps)
+            continue
+        reader.refer(element, "from", import_["from"])
+        for id in import_["exports"]:
+            reader.refer(element, "exports", id)
+
+
+def _read_deployment(reader: _Reader, keeper: Element, json: dict) -> None:
+    deployment = reader.named("Deployment", json, keeper, "kept")
     if deployment is None:
         return
+    reader.refer(deployment, "component", json.get("of", keeper.id))
     for instance in json["instances"]:
         element = reader.named("Instance", instance, deployment, "instances")
         if element is not None:
             reader.refer(element, "of", instance["of"])
+            if instance.get("runs") is not None:
+                reader.refer(element, "runs", instance["runs"])
             reader.bounds(element, instance)
+    _read_imports(reader, deployment, json.get("imports", []))
+    for exposed in json.get("exposes", []):
+        element = reader.create("Export", exposed["id"])
+        if element is not None:
+            reader.model.connect(deployment, "exposes", element)
+            reader.refer(element, "instance", exposed["instance"])
     for connection in json["connections"]:
         element = reader.create("Connection", connection["id"])
         if element is None:
             continue
         reader.model.connect(deployment, "connections", element)
         reader.refer(element, "from", connection["from"])
-        for end in ("to", "toComponent"):
-            if connection[end] is not None:
+        for end in ("to", "toComponent", "toIdentity"):
+            if connection.get(end) is not None:
                 reader.refer(element, end, connection[end])
         for id in connection["what"]:
             reader.refer(element, "what", id)

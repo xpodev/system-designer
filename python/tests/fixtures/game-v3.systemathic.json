@@ -321,9 +321,7 @@
           ],
           "exports": [],
           "imports": [],
-          "implements": [
-            "game.server"
-          ],
+          "implements": [],
           "languages": [],
           "interactions": [
             {
@@ -910,7 +908,48 @@
     {
       "owner": "example",
       "data": {
-        "note": "W14: Physics implements Server without importing it."
+        "note": "The running example of docs/foundation.md."
+      }
+    },
+    {
+      "owner": "configurations",
+      "data": {
+        "configurations": [
+          {
+            "id": "game.release",
+            "name": "Release",
+            "rules": [],
+            "root": {
+              "id": "game.release#root",
+              "instance": null,
+              "component": "game",
+              "deployment": "game.online",
+              "choices": [
+                {
+                  "id": "game.release#root.0",
+                  "instance": "game.online.server",
+                  "component": "game.server",
+                  "deployment": "game.server.single",
+                  "choices": []
+                },
+                {
+                  "id": "game.release#root.1",
+                  "instance": "game.online.client-1",
+                  "component": "game.client",
+                  "deployment": "game.client.desktop",
+                  "choices": []
+                },
+                {
+                  "id": "game.release#root.2",
+                  "instance": "game.online.client-2",
+                  "component": "game.client",
+                  "deployment": "game.client.desktop",
+                  "choices": []
+                }
+              ]
+            }
+          }
+        ]
       }
     }
   ]

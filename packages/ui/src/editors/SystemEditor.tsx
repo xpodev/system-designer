@@ -172,7 +172,7 @@ function NewConfiguration() {
   const w = useWorkspace();
   const model = useModel();
   const [deployment, setDeployment] = useState<string>();
-  const options = model.root.deployments;
+  const options = model.deploymentsOf(model.root.id);
   if (options.length === 0) return <p className="muted">A Configuration starts with a Deployment of the root: add one first.</p>;
   const taken = model.configurations.map((c) => c.name);
   return (

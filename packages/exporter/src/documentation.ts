@@ -6,7 +6,7 @@
  * Unlike a Specification it is not a contract: it has no ids to cite and does not read back.
  * It says the same facts in prose — a Relationship as what each side has of the other.
  */
-import { boundOf, describe as describeElement, mediationStack, nameOf, parameters, resolve, type Graph } from "@systemathic/core";
+import { boundOf, describe as describeElement, identityTarget, mediationStack, nameOf, parameters, resolve, type Graph } from "@systemathic/core";
 import { descriptions } from "@systemathic/documentation";
 import type { SystemContext } from "@systemathic/tool";
 import type { Profile } from "@systemathic/verifier";
@@ -92,7 +92,7 @@ export interface ComponentDoc extends Documented {
   readonly exports: readonly string[];
   /** Each Component it imports from, and the Exports it takes: `Server: attack (Interaction)`. */
   readonly imports: readonly string[];
-  /** The Components it implements. */
+  /** The boxes it implements: those it keeps a Deployment of, other than itself. */
   readonly implements: readonly string[];
   readonly languages: readonly LanguageDoc[];
   readonly interactions: readonly InteractionDoc[];
@@ -230,7 +230,8 @@ function deployment(described: Described, id: string): DeploymentDoc {
     }),
     connections: graph.navigate(id, "connections").map((c) => {
       const from = name(graph, first(graph, c, "from"));
-      const to = name(graph, first(graph, c, "to") ?? first(graph, c, "toComponent"));
+      const identity = first(graph, c, "toIdentity");
+      const to = name(graph, first(graph, c, "to") ?? first(graph, c, "toComponent") ?? (identity === undefined ? undefined : identityTarget(graph, identity)));
       const what = graph.navigate(c, "what").map((i) => name(graph, i));
       const mediations = mediationStack(graph, c).map((m) => {
         const down = first(graph, m, "down");
@@ -259,12 +260,16 @@ function component(described: Described, id: string): ComponentDoc {
       const taken = graph.navigate(m, "exports").map((e) => exported(graph, e));
       return `${name(graph, graph.navigate(m, "from")[0])}${taken.length > 0 ? `: ${taken.join(", ")}` : ""}`;
     }),
-    implements: graph.navigate(id, "implements").map((c) => name(graph, c)),
+    implements: graph
+      .navigate(id, "kept")
+      .map((d) => graph.navigate(d, "component")[0])
+      .filter((box): box is string => box !== undefined && box !== id)
+      .map((box) => name(graph, box)),
     languages: graph.navigate(id, "languages").map((l) => language(described, l)),
     interactions: graph.navigate(id, "interactions").map((i) => interaction(described, i)),
     transformations: graph.navigate(id, "transformations").map((t) => transformation(described, t)),
     mediums: graph.navigate(id, "mediums").map((m) => ({ ...documented(described, m), language: name(graph, first(graph, m, "language")), call: name(graph, first(graph, m, "call")) })),
-    deployments: graph.navigate(id, "deployments").map((d) => deployment(described, d)),
+    deployments: graph.navigate(id, "kept").map((d) => deployment(described, d)),
     components: graph.navigate(id, "components").map((c) => component(described, c)),
   };
 }

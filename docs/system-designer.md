@@ -2,13 +2,13 @@
 
 The Systemathic tool, designed in itself. It is defined abstractly, at the seams: every part that could be done more than one way is an interface — Repository, Metadata Provider, Edit Kind, Edit Listener, Perspective Kind, Specification Format, Source, Systemathic Verifier — and its concrete implementations, the tool's own among them, are chosen by Configuration. Anyone can add an implementation the same way the tool does, so the tool and those who extend it are equally first-party. Connections are stated without Mediations unless how they pass matters to the design; a Mediation states only that a What passes over another Language, and how is the mediator's business.
 
-This System has 51 Components, and 1 package beside its root.
+This System has 60 Components, and 1 package beside its root.
 
 ## System Designer
 
 - Uses: none
 - Exports: none
-- Imports: HTTP: HTTP (Language), HTTP (Medium)
+- Imports: HTTP: HTTP (Language)
 
 ### Deployment Product
 
@@ -135,11 +135,16 @@ No Component uses it yet.
 
 No Component uses it yet.
 
-- **Component** — A unit of the design. From outside, a Component is only what it **exports**: an interface. Its children, Transformations and Deployments are its own implementation of that interface, the default one. Other Components may **implement** it: each is an alternative implementation, with children of its own, that may stand wherever the Component is placed. An implementer imports what it implements and uses the Languages of the Interactions it exports. Which implementation fills an Instance is chosen by the tool's Configuration.
+- **Component** — A box with an interface: from outside, a Component is only what it **exports**. It imports only vocabulary — the Languages its interface is written in. How it does what it does is a **Deployment** of it, and it may have any number, kept wherever their code is: an alternative implementation, such as a plug-in, is another Deployment of the box. A box with no Deployment is an interface: its implementation is undefined, and nothing relies on more than its interface. Which Deployment a real Instance runs is chosen by the tool's Configuration, unless the design fixes it.
 - **Interaction** : Function
 - **Transformation** : Function — A Function whose inputs are all of one Language and whose output is of a different Language. Nothing is required of how the two Languages relate: neither need extend the other.
-- **Export** — Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums, or one of its children, which others may then place. What is exported, any Component may import, wherever the two are: nesting does not scope it. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports. Exporting a child with children of its own hands out an implementation: the std rule `exports_interfaces` finds it.
-- **Import** — A Component's dependency on another, anywhere, taking some of its Exports. An Import of nothing lets the importer implement the Component, or place Instances of it: of one its parent exports, or one its own ancestors hold. Importing an interface is to implement it or to consume it; importing an implementation is to take part in it.
+- **Export** — Part of a Component's API: one of its own Languages, Interactions, Transformations or Mediums; one of its children — its interface, an API of the Component's, which others may consume or implement but never place: a child is part of its parent's implementation; or a Deployment it keeps. A Deployment exports too: it exposes placements. What is exported, any Component may import, wherever the two are: nesting does not scope it. What a Component does not export, nothing outside it can reach; its children reach their ancestors' parts without exports.
+- **Import** — A dependency on another Component, anywhere, taking some of its Exports — or, for a Deployment, an identity: a path of placements from the root. A box imports only Languages; a Deployment imports its needs — Interactions it calls, Transformations and Mediums its Mediations use, Deployments it is built on, top-level Components it places. What an Import relies on is what it takes: a vocabulary, an interface, what a Deployment exposes, or an object. Importing an interface is to implement it or to consume it; importing an implementation is to take part in it.
+
+**Component.name ⟷ Name.(unnamed)**
+
+- Each Component has exactly one Name, as name. `1..1`
+- Each Name has any number of Components, but cannot navigate to them. `0..N`
 
 **Component.components ⟷ Component.parent**
 
@@ -171,20 +176,10 @@ No Component uses it yet.
 - Each Interaction has exactly one Language, as language. `1..1`
 - Each Language has any number of Interactions, but cannot navigate to them. `0..N`
 
-**Component.name ⟷ Name.(unnamed)**
-
-- Each Component has exactly one Name, as name. `1..1`
-- Each Name has any number of Components, but cannot navigate to them. `0..N`
-
-**Component.implements ⟷ Component.implementations**
-
-- Each Component has any number of Components, as implements. `0..N`
-- Each Component has any number of Components, as implementations. `0..N`
-
 **Component.exports ⟷ Export.exporter**
 
 - Each Component has any number of Exports, as exports. `0..N`
-- Each Export has exactly one Component, as exporter. `1..1`
+- Each Export has at most one Component, as exporter. `0..1`
 
 **Export.component ⟷ Component.(unnamed)**
 
@@ -209,11 +204,11 @@ No Component uses it yet.
 **Component.imports ⟷ Import.importer**
 
 - Each Component has any number of Imports, as imports. `0..N`
-- Each Import has exactly one Component, as importer. `1..1`
+- Each Import has at most one Component, as importer. `0..1`
 
 **Import.from ⟷ Component.(unnamed)**
 
-- Each Import has exactly one Component, as from. `1..1`
+- Each Import has at most one Component, as from. `0..1`
 - Each Component has any number of Imports, but cannot navigate to them. `0..N`
 
 **Import.exports ⟷ Export.imports**
@@ -222,23 +217,46 @@ No Component uses it yet.
 - Each Export has any number of Imports, as imports. `0..N`
 
 - Axiom `all t in Transformation, p in t.parameters, q in t.parameters. p.type.language == q.type.language and p.type.language != t.output.language`
-- Axiom `all c in Component. not c in c.^implements`
-- Axiom `all c in Component, x in c.implements. x in c.imports.from or x in c.imports.exports.component`
-- Axiom `all c in Component, x in c.implements, i in x.interactions. i.language in c.uses`
 - Axiom `all t in Transformation. some t.output`
 
 #### Deployment — extends Contexts
 
 No Component uses it yet.
 
-- **Deployment**
-- **Instance** — A named place for a Component in a Deployment, with a range of how many occupy it, as an end has: `1..1` by default, `0..1` optional, `0..N` any number. Which Component fills it — the placed Component or one implementing it — is chosen by the Configuration, one choice per occupant. A Connection to a ranged Instance reaches every occupant: that is how one caller informs many (an event) without knowing them.
-- **Connection**
+- **Deployment** — One way to build a box: its internal layout, of one box (its Component) and kept in one Component (its keeper) — the box itself, or another, such as a plug-in package, which then imports the box. It is abstract: its Instances are placements, real only where a real Instance runs it. Its Imports are its needs, met by presence in the Configuration, never by its Connections, which are its structure, through the interfaces of what it places. It exposes some of its placements, as APIs and as the steps of identities.
+- **Instance** — A placement of a box in a Deployment's scope, named, with a range of how many occupy it, as an end has: `1..1` by default, `0..1` optional, `0..N` any number. It may run a Deployment of its box, fixed by the design; otherwise the Configuration chooses, one choice per occupant, or leaves it an interface. A Connection to a ranged Instance reaches every occupant: that is how one caller informs many (an event) without knowing them.
+- **Connection** — The layout's structure: from a placement to what offers some Interactions — another placement, whose box offers them or exports an API that does; an identity its Deployment imports; or its Deployment's box, to call out through it. A call binds late, once everything is built: calls may loop. A Connection never supplies a Deployment's needs.
+- **Step** — One step of an identity: a placement, in the Deployment that the step before it is of the box of — or, for the first, in a Deployment of the System's root. An identity is a path of Steps from the one real Instance, the System, since a Deployment is abstract and its placements are real only under a real Instance running it.
+
+**Deployment.name ⟷ Name.(unnamed)**
+
+- Each Deployment has exactly one Name, as name. `1..1`
+- Each Name has any number of Deployments, but cannot navigate to them. `0..N`
+
+**Instance.name ⟷ Name.(unnamed)**
+
+- Each Instance has exactly one Name, as name. `1..1`
+- Each Name has any number of Instances, but cannot navigate to them. `0..N`
+
+**Instance.min ⟷ Bound.(unnamed)**
+
+- Each Instance has exactly one Bound, as min. `1..1`
+- Each Bound has any number of Instances, but cannot navigate to them. `0..N`
+
+**Instance.max ⟷ Bound.(unnamed)**
+
+- Each Instance has at most one Bound, as max. `0..1`
+- Each Bound has any number of Instances, but cannot navigate to them. `0..N`
 
 **Component.deployments ⟷ Deployment.component**
 
 - Each Component has any number of Deployments, as deployments. `0..N`
 - Each Deployment has exactly one Component, as component. `1..1`
+
+**Component.kept ⟷ Deployment.keeper**
+
+- Each Component has any number of Deployments, as kept. `0..N`
+- Each Deployment has exactly one Component, as keeper. `1..1`
 
 **Deployment.instances ⟷ Instance.deployment**
 
@@ -249,6 +267,11 @@ No Component uses it yet.
 
 - Each Instance has exactly one Component, as of. `1..1`
 - Each Component has any number of Instances, as instances. `0..N`
+
+**Deployment.(unnamed) ⟷ Instance.runs**
+
+- Each Deployment has any number of Instances, but cannot navigate to them. `0..N`
+- Each Instance has at most one Deployment, as runs. `0..1`
 
 **Deployment.connections ⟷ Connection.deployment**
 
@@ -270,30 +293,50 @@ No Component uses it yet.
 - Each Component has any number of Connections, but cannot navigate to them. `0..N`
 - Each Connection has at most one Component, as toComponent. `0..1`
 
+**Import.(unnamed) ⟷ Connection.toIdentity**
+
+- Each Import has any number of Connections, but cannot navigate to them. `0..N`
+- Each Connection has at most one Import, as toIdentity. `0..1`
+
 **Connection.what ⟷ Interaction.(unnamed)**
 
 - Each Connection has one or more Interactions, as what. `1..N`
 - Each Interaction has any number of Connections, but cannot navigate to them. `0..N`
 
-**Instance.name ⟷ Name.(unnamed)**
+**Deployment.imports ⟷ Import.deployment**
 
-- Each Instance has exactly one Name, as name. `1..1`
-- Each Name has any number of Instances, but cannot navigate to them. `0..N`
+- Each Deployment has any number of Imports, as imports. `0..N`
+- Each Import has at most one Deployment, as deployment. `0..1`
 
-**Deployment.name ⟷ Name.(unnamed)**
+**Deployment.exposes ⟷ Export.exposer**
 
-- Each Deployment has exactly one Name, as name. `1..1`
-- Each Name has any number of Deployments, but cannot navigate to them. `0..N`
+- Each Deployment has any number of Exports, as exposes. `0..N`
+- Each Export has at most one Deployment, as exposer. `0..1`
 
-**Instance.min ⟷ Bound.(unnamed)**
+**Instance.(unnamed) ⟷ Export.instance**
 
-- Each Instance has exactly one Bound, as min. `1..1`
-- Each Bound has any number of Instances, but cannot navigate to them. `0..N`
+- Each Instance has any number of Exports, but cannot navigate to them. `0..N`
+- Each Export has at most one Instance, as instance. `0..1`
 
-**Instance.max ⟷ Bound.(unnamed)**
+**Deployment.(unnamed) ⟷ Export.deployment**
 
-- Each Instance has at most one Bound, as max. `0..1`
-- Each Bound has any number of Instances, but cannot navigate to them. `0..N`
+- Each Deployment has any number of Exports, but cannot navigate to them. `0..N`
+- Each Export has at most one Deployment, as deployment. `0..1`
+
+**Import.steps ⟷ Step.import**
+
+- Each Import has any number of Steps, as steps. `0..N`
+- Each Step has exactly one Import, as import. `1..1`
+
+**Instance.(unnamed) ⟷ Step.instance**
+
+- Each Instance has any number of Steps, but cannot navigate to them. `0..N`
+- Each Step has exactly one Instance, as instance. `1..1`
+
+**Step.next ⟷ Step.previous**
+
+- Each Step has at most one Step, as next. `0..1`
+- Each Step has at most one Step, as previous. `0..1`
 
 #### Mediation — extends Deployment
 
@@ -452,13 +495,13 @@ The Systemathic tool. It imports the language package, the Verifier, the StdLib 
 
 - Uses: none
 - Exports: none
-- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Systemathic Verifier: Rules (Language), Systemathic StdLib: Standard Assertions (Language), Documentation: Documentation (Language), By Value: By Value (Language), Systemathic Metadata: Metadata (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language), HTTP: HTTP (Language), HTTP (Medium), Configurations: Configurations (Language)
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Systemathic Verifier: Rules (Language), Systemathic StdLib: Standard Assertions (Language), Documentation: Documentation (Language), By Value: By Value (Language), Systemathic Metadata: Metadata (Language), Systemathic Subjects: Subjects (Language), Kernel Subjects (Language), Functions Subjects (Language), Contexts Subjects (Language), Deployment Subjects (Language), Mediation Subjects (Language), Systems Subjects (Language), HTTP: HTTP (Language), Configurations: Configurations (Language)
 
 #### Deployment Local
 
 The Host as a process on this machine: the one authority over every open System. The UI, the MCP server, the CLI and the API each reach it over HTTP — that they do is the design; how each Language is put on HTTP is the mediator's business, left to the implementation. Interface Instances (repository, providers, editKinds, listeners, verifier, perspectiveKinds, formats, sources) are filled by the Configuration.
 
-- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider, 0..N), editor (Editor), editKinds (Edit Kind, 0..N), listeners (Edit Listener, 0..N), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind, 0..N), exporter (Exporter), formats (Specification Format, 0..N), writer (Documentation Writer), sources (Source, 0..N), ui (UI), mcp (MCP Server), cli (CLI), api (API)
+- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider, 0..N), editor (Editor), editKinds (Edit Kind, 0..N), listeners (Edit Listener, 0..N), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind, 0..N), exporter (Exporter), formats (Specification Format, 0..N), writer (Documentation Writer), sources (Source, 0..N), ui (Edit Listener), mcp (Edit Listener), cli (CLI), api (Edit Listener)
 - workspace uses open, save of repository, how it passes is left to the implementation
 - workspace uses load, save of providers, how it passes is left to the implementation
 - workspace uses startSession of editor, how it passes is left to the implementation
@@ -502,7 +545,7 @@ The Host as a process on this machine: the one authority over every open System.
 
 The Host in a browser tab, for solo use, with the UI; Python rules run by Pyodide. Nothing to install. How the UI reaches the Host is not stated: it is an implementation detail.
 
-- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider, 0..N), editor (Editor), editKinds (Edit Kind, 0..N), listeners (Edit Listener, 0..N), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind, 0..N), exporter (Exporter), formats (Specification Format, 0..N), writer (Documentation Writer), sources (Source, 0..N), ui (UI)
+- Places: workspace (Workspace), repository (Repository), providers (Metadata Provider, 0..N), editor (Editor), editKinds (Edit Kind, 0..N), listeners (Edit Listener, 0..N), verifier (Systemathic Verifier), diagnoser (Diagnoser), perspectives (Perspectives), perspectiveKinds (Perspective Kind, 0..N), exporter (Exporter), formats (Specification Format, 0..N), writer (Documentation Writer), sources (Source, 0..N), ui (Edit Listener)
 - workspace uses open, save of repository, how it passes is left to the implementation
 - workspace uses load, save of providers, how it passes is left to the implementation
 - workspace uses startSession of editor, how it passes is left to the implementation
@@ -549,6 +592,10 @@ Implements Repository: a System as a JSON file, and a Location as its path. Writ
 - Imports: Repository: Repository (Language)
 - Implements: Repository
 
+##### Deployment JSON File Repository
+
+- Places: none
+
 #### Metadata Provider
 
 Interface: a provider of one kind of metadata. It loads its metadata for a System when asked, and saves it when asked, its own way and wherever it likes. The Workspace asks every provider connected to it when a System is opened or saved: that fan-out is the event, and neither side knows the other. `save` gives nothing back.
@@ -562,18 +609,17 @@ Interface: a provider of one kind of metadata. It loads its metadata for a Syste
 - `load(system: System): System, over Systems`
 - `save(system: System), over Systems`
 
-#### Documentation Store
+#### Documentation Edits
 
-Implements Metadata Provider for Documentation (loads and saves Descriptions, its own way) and Edit Kind for it: Describe and Undescribe, each carrying a Description by value — its subject and text.
+The kinds of Edit for Documentation, on their own: the clients speak them, and the Documentation Store applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
 
-- Uses: Documentation, Documentation Editing, Editing, Systems
+- Uses: Documentation Editing
 - Exports: Documentation Editing (Language)
-- Imports: Metadata Provider, Systemathic Metadata: Metadata (Language), Documentation: Documentation (Language), Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
-- Implements: Metadata Provider, Edit Kind
+- Imports: Editing: Editing (Language), Documentation: Documentation (Language)
 
 ##### Documentation Editing — extends Editing, Documentation
 
-Used by Documentation Store, UI, MCP Server, API.
+Used by Documentation Edits, Documentation Store, UI, MCP Server, API.
 
 - **Describe** : Edit
 - **Undescribe** : Edit
@@ -588,18 +634,34 @@ Used by Documentation Store, UI, MCP Server, API.
 - Each Undescribe has exactly one Description, as description. `1..1`
 - Each Description has any number of Undescribes, but cannot navigate to them. `0..N`
 
-#### By Value Store
+#### Documentation Store
 
-Implements Metadata Provider for By Value (loads and saves which Entities are by value) and Edit Kind for it: Mark and Unmark an Entity.
+Implements Metadata Provider for Documentation (loads and saves Descriptions, its own way) and Edit Kind for it: Describe and Undescribe, each carrying a Description by value — its subject and text.
 
-- Uses: By Value, By Value Editing, Editing, Systems
-- Exports: By Value Editing (Language)
-- Imports: Metadata Provider, Systemathic Metadata: Metadata (Language), By Value: By Value (Language), Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Uses: Documentation, Documentation Editing, Editing, Systems
+- Exports: none
+- Imports: Systemathic Metadata: Metadata (Language), Documentation: Documentation (Language), Editing: Editing (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Documentation Edits: Documentation Editing (Language)
 - Implements: Metadata Provider, Edit Kind
+
+##### Deployment Documentation Store
+
+- Places: none
+
+##### Deployment Documentation Store
+
+- Places: none
+
+#### By Value Edits
+
+The kinds of Edit for By Value, on their own: the clients speak them, and the By Value Store applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: By Value Editing
+- Exports: By Value Editing (Language)
+- Imports: Editing: Editing (Language), By Value: By Value (Language)
 
 ##### By Value Editing — extends Editing, By Value
 
-Used by By Value Store, UI, MCP Server, API.
+Used by By Value Edits, By Value Store, UI, MCP Server, API.
 
 - **Mark** : Edit
 - **Unmark** : Edit
@@ -614,13 +676,30 @@ Used by By Value Store, UI, MCP Server, API.
 - Each Unmark has exactly one ByValue, as mark. `1..1`
 - Each ByValue has any number of Unmarks, but cannot navigate to them. `0..N`
 
+#### By Value Store
+
+Implements Metadata Provider for By Value (loads and saves which Entities are by value) and Edit Kind for it: Mark and Unmark an Entity.
+
+- Uses: By Value, By Value Editing, Editing, Systems
+- Exports: none
+- Imports: Systemathic Metadata: Metadata (Language), By Value: By Value (Language), Editing: Editing (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), By Value Edits: By Value Editing (Language)
+- Implements: Metadata Provider, Edit Kind
+
+##### Deployment By Value Store
+
+- Places: none
+
+##### Deployment By Value Store
+
+- Places: none
+
 #### Workspace
 
 The Systems open in the tool. `new` starts an empty one; `open` reads one through the Repository and asks every Metadata Provider to load; `save` writes the design through the Repository and asks every provider to save (order left open for now); `close` lets one go. Each Open System is a Target: clients start Sessions on it through the Editor. It is the only part that knows both the Repository and the providers.
 
 - Uses: Workspace, Repository, Editing, Systems
 - Exports: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction)
-- Imports: Repository: Repository (Language), open (Interaction), save (Interaction), Metadata Provider: load (Interaction), save (Interaction), Systemathic Metadata: Metadata (Language), Editing: Editing (Language), Editor: startSession (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Repository: Repository (Language), Systemathic Metadata: Metadata (Language), Editing: Editing (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Workspace — extends Repository, Editing
 
@@ -639,6 +718,10 @@ Used by Workspace, UI, MCP Server, CLI, API.
 - `open(location: Location): Open System, over Workspace`
 - `save(system: Open System, location: Location): Location, over Workspace`
 - `close(system: Open System): Open System, over Workspace`
+
+##### Deployment Workspace
+
+- Places: none
 
 #### Editing
 
@@ -742,6 +825,10 @@ Implements Source: the standard catalog (JSON, HTTP, TCP, SQL, …).
 - Imports: Source: Sources (Language)
 - Implements: Source
 
+##### Deployment Catalog Source
+
+- Places: none
+
 #### File Source
 
 Implements Source: a System file, whose Components are its Packages.
@@ -751,18 +838,21 @@ Implements Source: a System file, whose Components are its Packages.
 - Imports: Source: Sources (Language)
 - Implements: Source
 
-#### Kernel Editor
+##### Deployment File Source
 
-Implements Edit Kind for Kernel. Every editor's kinds follow one pattern, per thing its Language owns: **Add**T (`into` its owner, the T by value), **Change**T (`subject`, and `to`: the T as it should become, by value), **Remove**T (`subject`; the cascade comes with it). Kernel: Entities, Relationships (their Ends inside), Formulas; Languages are changed and removed here, added by Contexts. Each editor's Language extends the one below it and its own Systemathic Language, so an editor covers a whole Language with its extensions.
+- Places: none
 
-- Uses: Kernel Editing, Editing
+#### Kernel Edits
+
+The kinds of Edit for Kernel, on their own: the clients speak them, and the Kernel Editor applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Kernel Editing
 - Exports: Kernel Editing (Language)
-- Imports: Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
-- Implements: Edit Kind
+- Imports: Editing: Editing (Language), Systemathic: Kernel (Language)
 
 ##### Kernel Editing — extends Editing, Kernel
 
-Used by Kernel Editor.
+Used by Kernel Edits, Kernel Editor.
 
 - **AddEntity** : Edit
 - **ChangeEntity** : Edit
@@ -866,18 +956,30 @@ Used by Kernel Editor.
 - Each RemoveLanguage has exactly one Language, as subject. `1..1`
 - Each Language has any number of RemoveLanguages, but cannot navigate to them. `0..N`
 
-#### Functions Editor
+#### Kernel Editor
 
-Implements Edit Kind for Functions: Parameters (added into a Function, changed — type, name, place — and removed), and any Function — Interaction or Transformation — changed or removed. Functions are added by Contexts, where their owner is.
+Implements Edit Kind for Kernel. Every editor's kinds follow one pattern, per thing its Language owns: **Add**T (`into` its owner, the T by value), **Change**T (`subject`, and `to`: the T as it should become, by value), **Remove**T (`subject`; the cascade comes with it). Kernel: Entities, Relationships (their Ends inside), Formulas; Languages are changed and removed here, added by Contexts. Each editor's Language extends the one below it and its own Systemathic Language, so an editor covers a whole Language with its extensions.
 
-- Uses: Functions Editing, Editing
-- Exports: Functions Editing (Language)
-- Imports: Kernel Editor: Kernel Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
+- Uses: Kernel Editing, Editing
+- Exports: none
+- Imports: Editing: Editing (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Kernel Edits: Kernel Editing (Language)
 - Implements: Edit Kind
+
+##### Deployment Kernel Editor
+
+- Places: none
+
+#### Functions Edits
+
+The kinds of Edit for Functions, on their own: the clients speak them, and the Functions Editor applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Functions Editing
+- Exports: Functions Editing (Language)
+- Imports: Kernel Edits: Kernel Editing (Language), Systemathic: Functions (Language)
 
 ##### Functions Editing — extends Kernel Editing, Functions
 
-Used by Functions Editor.
+Used by Functions Edits, Functions Editor.
 
 - **AddParameter** : Edit
 - **ChangeParameter** : Edit
@@ -925,18 +1027,30 @@ Used by Functions Editor.
 - Each RemoveFunction has exactly one Function, as subject. `1..1`
 - Each Function has any number of RemoveFunctions, but cannot navigate to them. `0..N`
 
-#### Contexts Editor
+#### Functions Editor
 
-Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, implements — and removed), the Languages, Interactions and Transformations added into a Component, and its Exports and Imports, each added and removed.
+Implements Edit Kind for Functions: Parameters (added into a Function, changed — type, name, place — and removed), and any Function — Interaction or Transformation — changed or removed. Functions are added by Contexts, where their owner is.
 
-- Uses: Contexts Editing, Editing
-- Exports: Contexts Editing (Language)
-- Imports: Functions Editor: Functions Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
+- Uses: Functions Editing, Editing
+- Exports: none
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Functions Edits: Functions Editing (Language), Kernel Edits: Kernel Editing (Language)
 - Implements: Edit Kind
+
+##### Deployment Functions Editor
+
+- Places: none
+
+#### Contexts Edits
+
+The kinds of Edit for Contexts, on their own: the clients speak them, and the Contexts Editor applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Contexts Editing
+- Exports: Contexts Editing (Language)
+- Imports: Functions Edits: Functions Editing (Language), Systemathic: Contexts (Language)
 
 ##### Contexts Editing — extends Functions Editing, Contexts
 
-Used by Contexts Editor.
+Used by Contexts Edits, Contexts Editor.
 
 - **AddComponent** : Edit
 - **ChangeComponent** : Edit
@@ -1045,18 +1159,30 @@ Used by Contexts Editor.
 - Each RemoveImport has exactly one Import, as subject. `1..1`
 - Each Import has any number of RemoveImports, but cannot navigate to them. `0..N`
 
-#### Deployment Editor
+#### Contexts Editor
 
-Implements Edit Kind for Deployment: Deployments (into a Component), Instances and Connections (into a Deployment) — each added, changed and removed. Changing an Instance covers its name, what it places and its range; changing a Connection, its ends and its What.
+Implements Edit Kind for Contexts: Components (added into a parent; changed — name, parent, uses, implements — and removed), the Languages, Interactions and Transformations added into a Component, and its Exports and Imports, each added and removed.
 
-- Uses: Deployment Editing, Editing
-- Exports: Deployment Editing (Language)
-- Imports: Contexts Editor: Contexts Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
+- Uses: Contexts Editing, Editing
+- Exports: none
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Contexts Edits: Contexts Editing (Language), Functions Edits: Functions Editing (Language)
 - Implements: Edit Kind
+
+##### Deployment Contexts Editor
+
+- Places: none
+
+#### Deployment Edits
+
+The kinds of Edit for Deployment, on their own: the clients speak them, and the Deployment Editor applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Deployment Editing
+- Exports: Deployment Editing (Language)
+- Imports: Contexts Edits: Contexts Editing (Language), Systemathic: Deployment (Language)
 
 ##### Deployment Editing — extends Contexts Editing, Deployment
 
-Used by Deployment Editor.
+Used by Deployment Edits, Deployment Editor.
 
 - **AddDeployment** : Edit
 - **ChangeDeployment** : Edit
@@ -1143,18 +1269,30 @@ Used by Deployment Editor.
 - Each RemoveConnection has exactly one Connection, as subject. `1..1`
 - Each Connection has any number of RemoveConnections, but cannot navigate to them. `0..N`
 
-#### Mediation Editor
+#### Deployment Editor
 
-Implements Edit Kind for Mediation: Mediums (into a Component) and Mediations (into a Connection) — each added, changed (a Medium's Language and call; a Mediation's how, down, up and place in the stack) and removed.
+Implements Edit Kind for Deployment: Deployments (into a Component), Instances and Connections (into a Deployment) — each added, changed and removed. Changing an Instance covers its name, what it places and its range; changing a Connection, its ends and its What.
 
-- Uses: Mediation Editing, Editing
-- Exports: Mediation Editing (Language)
-- Imports: Deployment Editor: Deployment Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
+- Uses: Deployment Editing, Editing
+- Exports: none
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Deployment Edits: Deployment Editing (Language), Contexts Edits: Contexts Editing (Language)
 - Implements: Edit Kind
+
+##### Deployment Deployment Editor
+
+- Places: none
+
+#### Mediation Edits
+
+The kinds of Edit for Mediation, on their own: the clients speak them, and the Mediation Editor applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Mediation Editing
+- Exports: Mediation Editing (Language)
+- Imports: Deployment Edits: Deployment Editing (Language), Systemathic: Mediation (Language)
 
 ##### Mediation Editing — extends Deployment Editing, Mediation
 
-Used by Mediation Editor.
+Used by Mediation Edits, Mediation Editor.
 
 - **AddMedium** : Edit
 - **ChangeMedium** : Edit
@@ -1213,18 +1351,30 @@ Used by Mediation Editor.
 - Each RemoveMediation has exactly one Mediation, as subject. `1..1`
 - Each Mediation has any number of RemoveMediations, but cannot navigate to them. `0..N`
 
-#### Systems Editor
+#### Mediation Editor
 
-Implements Edit Kind for Systems: ChangeSystem (its name), ImportPackage (fetched through a Source and copied in beside the root) and RemovePackage.
+Implements Edit Kind for Mediation: Mediums (into a Component) and Mediations (into a Connection) — each added, changed (a Medium's Language and call; a Mediation's how, down, up and place in the stack) and removed.
 
-- Uses: Systems Editing, Sources, Editing
-- Exports: Systems Editing (Language)
-- Imports: Source: Sources (Language), Mediation Editor: Mediation Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
+- Uses: Mediation Editing, Editing
+- Exports: none
+- Imports: Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Mediation Edits: Mediation Editing (Language), Deployment Edits: Deployment Editing (Language)
 - Implements: Edit Kind
+
+##### Deployment Mediation Editor
+
+- Places: none
+
+#### Systems Edits
+
+The kinds of Edit for Systems, on their own: the clients speak them, and the Systems Editor applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Systems Editing
+- Exports: Systems Editing (Language)
+- Imports: Mediation Edits: Mediation Editing (Language), Source: Sources (Language)
 
 ##### Systems Editing — extends Mediation Editing, Sources
 
-Used by Systems Editor, UI, MCP Server, API.
+Used by Systems Edits, Systems Editor, UI, MCP Server, API.
 
 - **ImportPackage** : Edit
 - **ChangeSystem** : Edit
@@ -1250,18 +1400,35 @@ Used by Systems Editor, UI, MCP Server, API.
 - Each RemovePackage has exactly one Component, as subject. `1..1`
 - Each Component has any number of RemovePackages, but cannot navigate to them. `0..N`
 
+#### Systems Editor
+
+Implements Edit Kind for Systems: ChangeSystem (its name), ImportPackage (fetched through a Source and copied in beside the root) and RemovePackage.
+
+- Uses: Systems Editing, Sources, Editing
+- Exports: none
+- Imports: Source: Sources (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Systems Edits: Systems Editing (Language), Mediation Edits: Mediation Editing (Language)
+- Implements: Edit Kind
+
+##### Deployment Systems Editor
+
+- Places: none
+
 #### Editor
 
 The one seam every client edits through, and the one authority per Target. `startSession` opens a Session on a Target for one client; `apply` applies an Edit of any kind in a Session — through the Edit Kinds connected to it — and appends the applied Edit, with its reverse, to the History. Edits from all Sessions are applied in one order; history only grows; editing never refuses an ill-formed result.
 
 - Uses: Editing
 - Exports: startSession (Interaction), apply (Interaction)
-- Imports: Editing: Editing (Language), Edit Kind: apply (Interaction), Edit Listener: applied (Interaction)
+- Imports: Editing: Editing (Language)
 
 ##### Interactions
 
 - `startSession(target: Target): Session, over Editing`
 - `apply(session: Session, edit: Edit): Edit, over Editing`
+
+##### Deployment Editor
+
+- Places: none
 
 #### Edit Listener
 
@@ -1369,7 +1536,7 @@ What is wrong with a System. `diagnose` verifies it, through the Systemathic Ver
 
 - Uses: Diagnostics
 - Exports: Diagnostics (Language), diagnose (Interaction)
-- Imports: Views: Views (Language), Systemathic Verifier: Rules (Language), verify (Interaction), Systemathic StdLib: Standard Assertions (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
+- Imports: Views: Views (Language), Systemathic Verifier: Rules (Language), Systemathic StdLib: Standard Assertions (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language)
 
 ##### Diagnostics — extends Views, Rules, Standard Assertions, Editing
 
@@ -1429,6 +1596,10 @@ Used by Diagnoser, Perspectives, Exporter, UI, MCP Server, CLI, API.
 
 - `diagnose(system: System, rules: Rule): Report, over Diagnostics`
 
+##### Deployment Diagnoser
+
+- Places: none
+
 #### Perspective Kind
 
 Interface: one point of view on a System. `view` gives the View a Perspective asks for. Implemented by Outline View, Language View, Component View, Deployment View, Mediation Stack View and Statistics View; a new point of view is a new implementation, and nothing else changes.
@@ -1447,11 +1618,15 @@ The one seam clients read a System through. `view` asks the Perspective Kind for
 
 - Uses: Views, Diagnostics
 - Exports: view (Interaction)
-- Imports: Views: Views (Language), Perspective Kind: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction)
+- Imports: Views: Views (Language), Diagnoser: Diagnostics (Language)
 
 ##### Interactions
 
 - `view(system: System, perspective: Perspective): View, over Views`
+
+##### Deployment Perspectives
+
+- Places: none
 
 #### Outline View
 
@@ -1459,8 +1634,12 @@ Implements Perspective Kind: Everything in the System as a tree: its Components,
 
 - Uses: Views
 - Exports: none
-- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
+
+##### Deployment Outline View
+
+- Places: none
 
 #### Language View
 
@@ -1468,8 +1647,12 @@ Implements Perspective Kind: One Language: its Entities and what they extend, th
 
 - Uses: Views
 - Exports: none
-- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
+
+##### Deployment Language View
+
+- Places: none
 
 #### Component View
 
@@ -1477,8 +1660,12 @@ Implements Perspective Kind: One Component: its Languages and what they extend, 
 
 - Uses: Views
 - Exports: none
-- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
+
+##### Deployment Component View
+
+- Places: none
 
 #### Deployment View
 
@@ -1486,8 +1673,12 @@ Implements Perspective Kind: One Deployment: its Instances, with their ranges, a
 
 - Uses: Views
 - Exports: none
-- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
+
+##### Deployment Deployment View
+
+- Places: none
 
 #### Mediation Stack View
 
@@ -1495,8 +1686,12 @@ Implements Perspective Kind: Which Language is mediated over which, through whic
 
 - Uses: Views
 - Exports: none
-- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
+
+##### Deployment Mediation Stack View
+
+- Places: none
 
 #### Statistics View
 
@@ -1504,8 +1699,12 @@ Implements Perspective Kind: Counts, depths, fan-in and fan-out.
 
 - Uses: Views
 - Exports: none
-- Imports: Perspective Kind, Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 - Implements: Perspective Kind
+
+##### Deployment Statistics View
+
+- Places: none
 
 #### Exporter
 
@@ -1513,7 +1712,7 @@ A verified design, as a contract for implementers — people or LLMs. `specify` 
 
 - Uses: Specification, Diagnostics
 - Exports: Specification (Language), specify (Interaction)
-- Imports: Views: Views (Language), Diagnoser: Diagnostics (Language), diagnose (Interaction), Systemathic Verifier: Rules (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Views: Views (Language), Diagnoser: Diagnostics (Language), Systemathic Verifier: Rules (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
 
 ##### Specification — extends Views, Rules
 
@@ -1592,6 +1791,10 @@ Used by Exporter, Specification Format, Markdown Format, JSON Format, UI, MCP Se
 
 - `specify(system: System, rules: Rule): Specification, over Specification`
 
+##### Deployment Exporter
+
+- Places: none
+
 #### Specification Format
 
 Interface: one representation of a Specification. `render` writes it as a Document. Implemented by Markdown Format (for a person or an LLM, with stable identifiers) and JSON Format (for a machine). The Specification does not depend on its representation.
@@ -1610,8 +1813,12 @@ Implements Specification Format: Markdown, for a person or an LLM: Sections as h
 
 - Uses: Specification
 - Exports: none
-- Imports: Specification Format, Exporter: Specification (Language)
+- Imports: Exporter: Specification (Language)
 - Implements: Specification Format
+
+##### Deployment Markdown Format
+
+- Places: none
 
 #### JSON Format
 
@@ -1619,8 +1826,12 @@ Implements Specification Format: JSON, for a machine.
 
 - Uses: Specification
 - Exports: none
-- Imports: Specification Format, Exporter: Specification (Language)
+- Imports: Exporter: Specification (Language)
 - Implements: Specification Format
+
+##### Deployment JSON Format
+
+- Places: none
 
 #### Python Verifier
 
@@ -1630,6 +1841,10 @@ Implements Systemathic Verifier: Rules and Assertions as Python, over the genera
 - Exports: none
 - Imports: Systemathic Verifier: Rules (Language)
 - Implements: Systemathic Verifier
+
+##### Deployment Python Verifier
+
+- Places: none
 
 #### Documentation Writer
 
@@ -1653,8 +1868,12 @@ The visual editor, for people: Explorer, Graph, the editors' panels, the Script 
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
 - Exports: none
-- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Editor: startSession (Interaction), apply (Interaction), Perspectives: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Source: Sources (Language), contents (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Edit Listener, Systems Editor: Systems Editing (Language), Documentation Store: Documentation Editing (Language), By Value Store: By Value Editing (Language), Editing: Editing (Language), Views: Views (Language), Configuration Store: Configuration Editing (Language)
+- Imports: Workspace: Workspace (Language), Diagnoser: Diagnostics (Language), Exporter: Specification (Language), Documentation Writer: Written Documentation (Language), Source: Sources (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Views: Views (Language), Systems Edits: Systems Editing (Language), Documentation Edits: Documentation Editing (Language), By Value Edits: By Value Editing (Language), Configuration Edits: Configuration Editing (Language)
 - Implements: Edit Listener
+
+##### Deployment UI
+
+- Places: none
 
 #### MCP Server
 
@@ -1662,8 +1881,12 @@ The tool for LLMs: every seam as an MCP tool — Views as structured data, every
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
 - Exports: none
-- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Editor: startSession (Interaction), apply (Interaction), Perspectives: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Source: Sources (Language), contents (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Edit Listener, Systems Editor: Systems Editing (Language), Documentation Store: Documentation Editing (Language), By Value Store: By Value Editing (Language), Editing: Editing (Language), Views: Views (Language), Configuration Store: Configuration Editing (Language)
+- Imports: Workspace: Workspace (Language), Diagnoser: Diagnostics (Language), Exporter: Specification (Language), Documentation Writer: Written Documentation (Language), Source: Sources (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Editing: Editing (Language), Views: Views (Language), Systems Edits: Systems Editing (Language), Documentation Edits: Documentation Editing (Language), By Value Edits: By Value Editing (Language), Configuration Edits: Configuration Editing (Language)
 - Implements: Edit Listener
+
+##### Deployment MCP Server
+
+- Places: none
 
 #### CLI
 
@@ -1671,7 +1894,11 @@ The command line, for automation: `new`, `check` (diagnose, with an exit code), 
 
 - Uses: Workspace, Diagnostics, Specification, Written Documentation
 - Exports: none
-- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+- Imports: Workspace: Workspace (Language), Diagnoser: Diagnostics (Language), Exporter: Specification (Language), Documentation Writer: Written Documentation (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
+
+##### Deployment CLI
+
+- Places: none
 
 #### API
 
@@ -1679,23 +1906,26 @@ The tool for programs: every seam — Workspace, Editor, Perspectives, Diagnoser
 
 - Uses: Workspace, Editing, Views, Diagnostics, Specification, Written Documentation, Sources, Systems Editing, Documentation Editing, By Value Editing, Configuration Editing
 - Exports: none
-- Imports: Workspace: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction), Editor: startSession (Interaction), apply (Interaction), Perspectives: view (Interaction), Diagnoser: Diagnostics (Language), diagnose (Interaction), Exporter: Specification (Language), specify (Interaction), Specification Format: render (Interaction), Documentation Writer: Written Documentation (Language), write (Interaction), Source: Sources (Language), contents (Interaction), Edit Listener, Editing: Editing (Language), Views: Views (Language), Systems Editor: Systems Editing (Language), Documentation Store: Documentation Editing (Language), By Value Store: By Value Editing (Language), Configuration Store: Configuration Editing (Language)
+- Imports: Workspace: Workspace (Language), Diagnoser: Diagnostics (Language), Exporter: Specification (Language), Documentation Writer: Written Documentation (Language), Source: Sources (Language), Editing: Editing (Language), Views: Views (Language), Systems Edits: Systems Editing (Language), Documentation Edits: Documentation Editing (Language), By Value Edits: By Value Editing (Language), Configuration Edits: Configuration Editing (Language)
 - Implements: Edit Listener
 
-#### Configuration Store
+##### Deployment API
 
-Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.
+- Places: none
 
-- Uses: Configurations, Configuration Editing, Editing, Systems
+#### Configuration Edits
+
+The kinds of Edit for Configurations, on their own: the clients speak them, and the Configuration Store applies them, and neither depends on the other for it. Importing an interface is to implement or consume it; importing an implementation is to take part in it, and a client takes part in none.
+
+- Uses: Configuration Editing
 - Exports: Configuration Editing (Language)
-- Imports: Metadata Provider, Systemathic Metadata: Metadata (Language), Configurations: Configurations (Language), Editing: Editing (Language), Edit Kind, Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language)
-- Implements: Metadata Provider, Edit Kind
+- Imports: Editing: Editing (Language), Configurations: Configurations (Language)
 
 ##### Configuration Editing — extends Editing, Configurations
 
 The kinds of Edit of Configurations, in the pattern every editor follows: AddConfiguration (the Configuration, by value), ChangeConfiguration and RemoveConfiguration; AddChoice (into the Choice above it), ChangeChoice and RemoveChoice.
 
-Used by UI, MCP Server, API, Configuration Store.
+Used by UI, MCP Server, API, Configuration Edits, Configuration Store.
 
 - **AddConfiguration** : Edit
 - **ChangeConfiguration** : Edit
@@ -1748,6 +1978,23 @@ Used by UI, MCP Server, API, Configuration Store.
 
 - Each RemoveChoice has exactly one Choice, as subject. `1..1`
 - Each Choice has any number of RemoveChoices, but cannot navigate to them. `0..N`
+
+#### Configuration Store
+
+Implements Metadata Provider for Configurations (loads and saves them, its own way) and Edit Kind for it: Configurations and their Choices, each added, changed and removed.
+
+- Uses: Configurations, Configuration Editing, Editing, Systems
+- Exports: none
+- Imports: Systemathic Metadata: Metadata (Language), Configurations: Configurations (Language), Editing: Editing (Language), Systemathic: Kernel (Language), Functions (Language), Contexts (Language), Deployment (Language), Mediation (Language), Systems (Language), Configuration Edits: Configuration Editing (Language)
+- Implements: Metadata Provider, Edit Kind
+
+##### Deployment Configuration Store
+
+- Places: none
+
+##### Deployment Configuration Store
+
+- Places: none
 
 ### Systemathic Metadata
 
@@ -1917,7 +2164,7 @@ No Component uses it yet.
 
 ### Configurations
 
-A metadata type provider: how a System is put together to run, and checked. A **Configuration** is about the System: from its root, it chooses for each Instance occupant the Component that fills it — the placed Component or one implementing it — and, for that Component, the Deployment it runs as; and it names its profile, the Rules it is verified against. Like every provider, it stores and loads its own metadata; the core knows nothing of it.
+A metadata type provider: how a System is put together to run, and checked. A **Configuration** is about the System: from its root, it chooses for each Instance occupant the Deployment of its box it runs — or none, leaving the box an interface — and names its profile, the Rules it is verified against. One is current: the one the verifier verifies, the chosen Deployments and nothing else. Like every provider, it stores and loads its own metadata; the core knows nothing of it.
 
 - Uses: none
 - Exports: Configurations (Language)
@@ -1929,8 +2176,8 @@ Configurations and their Choices. A Choice is for one occupant of an Instance: a
 
 Used by Configuration Store.
 
-- **Configuration** : Custom Metadata — One way to put the whole System together, and the Rules it must satisfy. Its root Choice is for the System's root Component.
-- **Choice** — Which Component fills one occupant of an Instance (the Instance's own Component, or one implementing it), and which of that Component's Deployments it runs as; the Choices below it are for the Instances of that Deployment. A Component without Deployments is chosen with none.
+- **Configuration** : Custom Metadata — One way to put the whole System together, and the Rules it must satisfy. Its root Choice is of a Deployment of the System's root: the solution chosen.
+- **Choice** — Which Deployment of its box one occupant of an Instance runs, or none: an occupant with none is an interface, relied on for nothing more. A Deployment the Instance fixes (`runs`) is the one chosen. The Choices below it are for the placements of that Deployment.
 
 **Configuration.name ⟷ Name.(unnamed)**
 
@@ -1957,11 +2204,6 @@ Used by Configuration Store.
 - Each Choice has at most one Instance, as instance. `0..1`
 - Each Instance has any number of Choices, but cannot navigate to them. `0..N`
 
-**Choice.component ⟷ Component.(unnamed)**
-
-- Each Choice has exactly one Component, as component. `1..1`
-- Each Component has any number of Choices, but cannot navigate to them. `0..N`
-
 **Choice.deployment ⟷ Deployment.(unnamed)**
 
 - Each Choice has at most one Deployment, as deployment. `0..1`
@@ -1970,8 +2212,8 @@ Used by Configuration Store.
 - Axiom `all c in Configuration. no c.root.parent and no c.root.instance`
 - Axiom `all h in Choice. some h.parent or some h.configuration`
 - Axiom `all h in Choice, p in h.parent. some h.instance and h.instance.deployment == p.deployment`
-- Axiom `all h in Choice, i in h.instance. h.component == i.of or i.of in h.component.^implements`
-- Axiom `all h in Choice, d in h.deployment. d.component == h.component`
+- Axiom `all h in Choice, i in h.instance, x in h.deployment. x.component == i.of`
+- Axiom `all h in Choice, i in h.instance, x in h.deployment, r in i.runs. x == r`
 - Axiom `all h in Choice. not h in h.^parent`
 
 ## Packages
@@ -2044,8 +2286,8 @@ Used by HTTP.
 Every mediated Connection is opaque: what uses and what offers do not know how they are connected.
 
 For a Connection mediated over a stack, neither end's Component uses any Language below
-its What's — the Languages of the Mediums it passes through. They import the realization,
-and only the Deployment, and the realization, know the how.
+its What's — the Languages of the Mediums it passes through. The realization is the
+Deployment's, and only the Deployment, through it, knows the how.
 
 This is what makes a how swappable: the Connection can move from one Medium to another
 without touching either end. An end that speaks the Medium's Language is coupled to it.
@@ -2128,17 +2370,6 @@ the callee's, and a notification goes through an interface the caller owns.
 To fix it, move what both need into a Component of its own, which both import, or turn
 one direction around, through an interface.
 
-### `deployments_complete` — error, standard
-
-In every Deployment, every Interaction an Instance's Component imports is reached by a Connection.
-
-An import says a Component needs another's operation. A Deployment that places the
-Component and connects none of its Instance's needs leaves that need unmet: the
-Deployment does not say who serves it.
-
-To fix it, connect the Instance to an Instance that offers the Interaction, or to the
-deployed Component.
-
 ### `interactions_abstract` — warning, standard
 
 Every imported Interaction is abstract: no Component is reached through an implementation vocabulary.
@@ -2148,16 +2379,41 @@ to one way of carrying things out.
 
 To fix it, offer the Interaction over the abstract Language, and mediate it over the how.
 
-### `exports_interfaces` — warning, standard
+### `construction_acyclic` — error, standard
 
-Only interfaces are exported: no Export makes reachable a Component that has children.
+The current Configuration can be built: no occupant waits, eventually, on itself.
 
-A Component's children are its implementation. Exporting one with children of its own
-hands that implementation out as API: whoever imports it can place it, and depends on
-how it is built.
+Building a Deployment's occupant waits for what it is built on: some occupant running each
+Deployment it imports, and the very occupant of each identity it imports, if that runs a
+Deployment. Calls bind late, once everything is built, and do not count: construction
+performs no Interactions. Build, repeatedly, any occupant whose waits are met; whatever is
+left waits on itself, or on a Deployment no occupant runs.
 
-To fix it, export an interface — a Component without children, offering what the API
-needs — and keep the Component with children as its implementation, unexported.
+To fix it, take one Import out of the loop — often one that only calls, and so need not be a
+Deployment's — or choose a Deployment that does not wait on it.
+
+### `apis_placed` — warning, standard
+
+A Deployment places every API its box exports: an extension point an interface declares is
+there in every implementation.
+
+A box that exports a child as an API says that whoever implements the box offers it, and that
+plug-ins can attach to it. A Deployment that places none of it leaves them nothing to attach
+to in that implementation. A Deployment with nothing placed has its insides redacted, and is
+not judged.
+
+To fix it, place an Instance of the API in the Deployment.
+
+### `fan_out_silent` — warning, standard
+
+An Interaction carried to a ranged Instance gives nothing back.
+
+A Connection to an Instance of range more than one reaches every occupant: that is how one
+caller informs many without knowing them. A reply from each would leave the caller with as
+many answers as there are occupants, and the design saying nothing of which it gets.
+
+To fix it, give the Interaction no output, and have each occupant answer through an
+interface the caller owns, if it must answer at all.
 
 ### `core_is_pure` — error
 
@@ -2210,6 +2466,15 @@ No Component imports a client, clients offer no Interactions, and no Connection 
 The UI, the MCP server, the CLI and the API are ways in. They are told of Edits only as Edit
 Listeners, an interface they implement; nothing calls a client by name.
 
+### `clients_import_interfaces` — error
+
+Clients import no implementation: nothing a client, or a Deployment of one, imports from keeps an implementation of something else.
+
+Importing an interface is to implement it or to consume it; importing an implementation is to
+take part in it. A client takes part in no implementation: it speaks the tool's Languages and
+calls its seams, and whatever a Language of Edits is, it is a vocabulary it imports, not a
+Store or an Editor.
+
 ### `every_interface_implemented` — error
 
 Every seam offers Interactions and has an implementation; each implementation uses the Languages of its Interactions; and only the seams are implemented.
@@ -2221,8 +2486,9 @@ seam this profile does not know of.
 
 ### `editors_follow_layers` — error
 
-Each concept editor implements Edit Kind, and its Language extends the editor's below it and speaks its own Systemathic layer.
+Each concept editor implements Edit Kind and uses its kinds of Edit, a vocabulary of their own, whose Language extends the editor's below it and speaks its own Systemathic layer.
 
 So an editor covers a whole Language with its extensions, and the editors stack exactly as the
-Languages they edit do.
+Languages they edit do. The kinds of Edit are a vocabulary, not the editor's, so that clients
+speak them without taking part in the editor.
 

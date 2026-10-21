@@ -108,7 +108,7 @@ export function Explorer() {
             icon: "Deployment",
             tab: { kind: "deployment", id: d.id } as Tab,
             subject: d.id,
-            detail: `${d.instances.length} instance${d.instances.length === 1 ? "" : "s"}`,
+            detail: `${d.of === c.id ? "" : `of ${model.name(d.of)} · `}${d.instances.length} instance${d.instances.length === 1 ? "" : "s"}`,
             menu: [{ label: "Open", icon: "open", onSelect: () => w.open({ kind: "deployment", id: d.id }) }, remove("DeploymentEditor", "item", d.id, "Deployment")],
           })),
           ...c.components.map((child) => component(child)),

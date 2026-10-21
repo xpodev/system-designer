@@ -61,8 +61,8 @@ describe("the UI, standing alone in the browser", () => {
     render(<App />);
     fireEvent.click(await screen.findByText("Open a file…"));
     const input = document.querySelector<HTMLInputElement>(".upload-row input[type=file]")!;
-    const root = { id: "shop.root", name: "Shop", uses: [], exports: [], imports: [], implements: [], languages: [], interactions: [], transformations: [], mediums: [], deployments: [], components: [] };
-    const file = { name: "shop.systemathic.json", format: "systemathic/3", design: { id: "shop", name: "Shop", root, packages: [] }, attachments: [] };
+    const root = { id: "shop.root", name: "Shop", uses: [], exports: [], imports: [], languages: [], interactions: [], transformations: [], mediums: [], deployments: [], components: [] };
+    const file = { name: "shop.systemathic.json", format: "systemathic/4", design: { id: "shop", name: "Shop", root, packages: [] }, attachments: [] };
     const { name, ...content } = file;
     Object.defineProperty(input, "files", { value: [new dom.window.File([JSON.stringify(content)], name)] });
     fireEvent.change(input);
