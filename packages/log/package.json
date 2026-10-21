@@ -1,0 +1,22 @@
+{
+  "name": "@systemathic/log",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Log: who did what to a System, and when, kept with it across saves and reopenings.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@systemathic/editing": "workspace:*",
+    "@systemathic/tool": "workspace:*"
+  },
+  "devDependencies": {
+    "@systemathic/editors": "workspace:*"
+  }
+}

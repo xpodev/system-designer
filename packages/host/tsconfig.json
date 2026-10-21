@@ -18,6 +18,9 @@
       "path": "../configurations"
     },
     {
+      "path": "../log"
+    },
+    {
       "path": "../documentation-store"
     },
     {

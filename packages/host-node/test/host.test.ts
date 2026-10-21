@@ -103,6 +103,30 @@ describe("Host", () => {
     expect([...notes.values()]).toEqual(["saved with the System"]);
   });
 
+  it("keeps a Log of who did what, if told to, saved with the System, which outlives its History", async () => {
+    const dir = workspace();
+    const host = nodeHost({ cwd: dir });
+    const { id } = await host.open("game.json");
+    const { session } = await host.startSession(id, "ui");
+    await host.apply(id, session, "LanguageEditor", "addEntity", { language: "core", name: "Gem" });
+    expect(await host.log(id)).toEqual({ kept: false, entries: [] });
+    await host.keepLog(id, true);
+    await host.apply(id, session, "LanguageEditor", "addEntity", { language: "core", name: "Item" });
+    await host.undo(id, session);
+    expect((await host.log(id)).entries.map((entry) => [entry.client, entry.role, entry.summary])).toEqual([
+      ["ui", "do", "addEntity Item"],
+      ["ui", "undo", "undo addEntity Item"],
+    ]);
+    await host.save(id);
+    const again = nodeHost({ cwd: dir });
+    const reopened = await again.open("game.json");
+    expect(await again.history(reopened.id)).toEqual([]);
+    expect((await again.log(reopened.id)).entries.map((entry) => entry.summary)).toEqual(["addEntity Item", "undo addEntity Item"]);
+    await again.keepLog(reopened.id, false);
+    await again.save(reopened.id);
+    expect(JSON.parse(readFileSync(join(dir, "game.json"), "utf8")).attachments.map((a: { owner: string }) => a.owner)).not.toContain("log");
+  });
+
   it("keeps the script named from the System's file, wherever the System is saved", async () => {
     const dir = workspace();
     mkdirSync(join(dir, "sub"));

@@ -4,7 +4,7 @@ import type { Documentation, Specification } from "@systemathic/exporter";
 import type { PerspectiveInfo, View } from "@systemathic/perspectives";
 import type { SystemFile } from "@systemathic/tool-json";
 import type { ScriptCheck, ScriptSymbol } from "@systemathic/verifier";
-import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
+import { HostError, type ContextInfo, type EditInfo, type HostApi, type HostEvent, type LogEntry, type OperationInfo, type PackageSummary, type RunInfo } from "./api.js";
 
 const enc = encodeURIComponent;
 
@@ -69,6 +69,8 @@ export class HostClient implements HostApi {
     this.call<{ edits: EditInfo[]; reused: string[] }>("POST", `${this.s(context, session)}/import`, from);
   system = (context: string) => this.call<SystemFile>("GET", `${this.c(context)}/system`);
   history = (context: string) => this.call<EditInfo[]>("GET", `${this.c(context)}/history`);
+  log = (context: string) => this.call<{ kept: boolean; entries: LogEntry[] }>("GET", `${this.c(context)}/log`);
+  keepLog = (context: string, kept: boolean) => this.call<void>("PUT", `${this.c(context)}/log`, { kept });
   diagnostics = (context: string) => this.call<Diagnostic[]>("GET", `${this.c(context)}/diagnostics`);
   view = (context: string, perspective: string, subject?: string) =>
     this.call<View>("GET", `${this.c(context)}/views/${enc(perspective)}${subject === undefined ? "" : `?subject=${enc(subject)}`}`);

@@ -92,9 +92,19 @@ Beyond the foundation changes, the tool itself:
   needs and identities, what an Instance runs, exposing placements, the current Configuration.
 - Rule scripts read the current Configuration from the System's attachment; the Workspace in
   scripts (`workspace.plugins`) is still to be designed.
-- The tool's own architecture as the design draws it: Edits as data with a single
-  `Editor.apply`, and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
-  the current shape (Effects on a History; the Host holding open Systems).
+- Edits as data. An Edit is already data where it travels: a request, `{editor, name, args}`,
+  is the mediation of `Editor.apply`, and each kind of Edit is its own editor's, so nothing
+  knows them all. Still to do: Edit Kinds plug into the Host, as Metadata Providers and Edit
+  Listeners do, instead of the Host listing the editors' operations; and a Diagnostic's
+  Suggestion carries the request that fixes it.
+- ~~A readable record of edits that outlives the History~~: done. The Log, an Edit Listener,
+  records who did what, and when, in its own attachment, kept with the System — only for a
+  System told to keep one; stopping forgets it. Undo still ends
+  with the History: undoing across reopening would take a durable author in place of the
+  session, every Edit Kind's Effect as data, the whole History saved, and the Descriptions and
+  Choices of removed things saved with it.
+- Workspace and Repository as separate parts. Today the Host holds open Systems and reads and
+  writes their files itself.
 - ~~Removing a thing removes what depends on it, metadata included~~: done. Removing an Entity
   takes every Relationship with an end of it. A Description or a Choice of what is no longer
   there is kept only for undo, and not saved; a Choice of a removed Deployment chooses none.

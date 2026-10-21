@@ -15,6 +15,7 @@
   "dependencies": {
     "@systemathic/catalog": "workspace:*",
     "@systemathic/configurations": "workspace:*",
+    "@systemathic/log": "workspace:*",
     "@systemathic/core": "workspace:*",
     "@systemathic/diagnoser": "workspace:*",
     "@systemathic/documentation-store": "workspace:*",

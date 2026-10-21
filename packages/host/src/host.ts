@@ -13,6 +13,7 @@ import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
+import { ATTACHMENT_OWNER as LOG, entries, keep, keeping, log, type Entry } from "@systemathic/log";
 import { configurationEditor, configurationsProvider, problems as configurationProblems } from "@systemathic/configurations";
 import { documentationEditor, documentationProvider } from "@systemathic/documentation-store";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
@@ -40,6 +41,12 @@ export type { MetadataProvider };
 
 /** The tool's own Metadata Providers, connected to every Host that is not given others. */
 export const STANDARD_PROVIDERS: readonly MetadataProvider[] = [documentationProvider, configurationsProvider];
+
+/** Connects an Edit Listener to the Target of an open System, to be told of every Edit on it. */
+export type Listen = (target: Target) => unknown;
+
+/** The tool's own Edit Listeners, connected to every open System unless the Host is given others: the Log. */
+export const STANDARD_LISTENERS: readonly Listen[] = [log];
 
 /** Every operation a client may apply: the concept editors', and the tool contexts' that edit on the History too. */
 const OPERATIONS: readonly Operation[] = [...Object.values(editors).flat(), ...documentationEditor, ...configurationEditor];
@@ -73,6 +80,8 @@ export interface HostOptions {
   readonly scripts: ScriptHost & ScriptAssistant;
   /** The Metadata Providers asked whenever a System is opened or saved; the standard ones if none are given. */
   readonly providers?: readonly MetadataProvider[];
+  /** The Edit Listeners connected to every open System; the standard ones if none are given. */
+  readonly listeners?: readonly Listen[];
 }
 
 export class Host implements HostApi {
@@ -83,6 +92,7 @@ export class Host implements HostApi {
   private readonly verifier: Verifier;
   private readonly scripts: ScriptHost & ScriptAssistant;
   private readonly providers: readonly MetadataProvider[];
+  private readonly connected: readonly Listen[];
   private next = 1;
 
   constructor(options: HostOptions) {
@@ -90,6 +100,7 @@ export class Host implements HostApi {
     this.library = options.catalog;
     this.scripts = options.scripts;
     this.providers = options.providers ?? STANDARD_PROVIDERS;
+    this.connected = options.listeners ?? STANDARD_LISTENERS;
     this.verifier = new Verifier(this.scripts);
   }
 
@@ -219,6 +230,16 @@ export class Host implements HostApi {
   async history(context: string): Promise<EditInfo[]> {
     const target = this.get(context).target;
     return target.history.edits.map((edit) => this.edit(target, edit));
+  }
+
+  async log(context: string): Promise<{ kept: boolean; entries: readonly Entry[] }> {
+    const system = this.get(context).target.context;
+    return { kept: keeping(system), entries: entries(system) };
+  }
+
+  async keepLog(context: string, kept: boolean) {
+    keep(this.get(context).target.context, kept);
+    this.emit({ type: "attachments", context, owner: LOG });
   }
 
   async diagnostics(context: string): Promise<Diagnostic[]> {
@@ -374,6 +395,7 @@ export class Host implements HostApi {
     const id = `c${this.next++}`;
     const target = new Target(context);
     const hosted: Hosted = path === undefined ? { id, target, saved: 0 } : { id, target, path, saved: 0 };
+    for (const listen of this.connected) listen(target);
     target.onEdit((edit) => this.emit({ type: "edit", context: id, edit: this.edit(target, edit) }));
     this.hosted.set(id, hosted);
     this.emit({ type: "contexts" });

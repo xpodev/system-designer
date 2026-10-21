@@ -121,6 +121,16 @@ export async function createServer(host: HostApi): Promise<McpServer> {
   server.registerTool("history", { description: "Every edit to a system context, by every client, in order.", inputSchema: { context: CONTEXT } }, ({ context }) =>
     guarded(() => host.history(context)),
   );
+  server.registerTool(
+    "log",
+    { description: "Who did what to a System, and when, across saves and reopenings: its Log, oldest first, if the System keeps one. Unlike the history, it cannot be undone from.", inputSchema: { context: CONTEXT } },
+    ({ context }) => guarded(() => host.log(context)),
+  );
+  server.registerTool(
+    "keep_log",
+    { description: "Makes a System keep a Log of who did what, saved with it, or stop keeping one and forget it. A System keeps none unless told to.", inputSchema: { context: CONTEXT, kept: z.boolean() } },
+    ({ context, kept }) => guarded(async () => (await host.keepLog(context, kept), kept ? "the System keeps a Log" : "the System keeps no Log")),
+  );
 
   // Diagnostics and points of view.
   server.registerTool(

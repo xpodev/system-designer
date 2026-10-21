@@ -7,6 +7,7 @@
 import type { Diagnostic } from "@systemathic/diagnoser";
 import type { Documentation, Specification } from "@systemathic/exporter";
 import type { ParameterSpec } from "@systemathic/editors";
+import type { Entry as LogEntry } from "@systemathic/log";
 import type { PerspectiveInfo, View } from "@systemathic/perspectives";
 import type { SystemFile } from "@systemathic/tool-json";
 import type { ScriptCheck, ScriptSymbol } from "@systemathic/verifier";
@@ -32,6 +33,8 @@ export interface OperationInfo {
   readonly kind: "addition" | "change" | "removal";
   readonly parameters: readonly ParameterSpec[];
 }
+
+export type { LogEntry };
 
 export interface EditInfo {
   readonly id: number;
@@ -108,6 +111,10 @@ export interface HostApi {
 
   system(context: string): Promise<SystemFile>;
   history(context: string): Promise<EditInfo[]>;
+  /** Who did what to the System, and when, across saves and reopenings: its Log, oldest first, if it keeps one. */
+  log(context: string): Promise<{ kept: boolean; entries: readonly LogEntry[] }>;
+  /** Makes the System keep a Log from now on, or stop keeping one and forget it. */
+  keepLog(context: string, kept: boolean): Promise<void>;
   diagnostics(context: string): Promise<Diagnostic[]>;
   /** A point of view; `subject` is the Language, Component or Deployment a perspective that needs one is of. */
   view(context: string, perspective: string, subject?: string): Promise<View>;

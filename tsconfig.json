@@ -26,6 +26,9 @@
       "path": "packages/configurations"
     },
     {
+      "path": "packages/log"
+    },
+    {
       "path": "packages/verifier"
     },
     {

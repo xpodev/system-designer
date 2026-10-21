@@ -27,6 +27,8 @@ function routes(host: HostApi): [method: string, pattern: string, handler: Handl
     ["POST", `${C}/save`, (p, b) => host.save(p.context!, b.path)],
     ["GET", `${C}/system`, (p) => host.system(p.context!)],
     ["GET", `${C}/history`, (p) => host.history(p.context!)],
+    ["GET", `${C}/log`, (p) => host.log(p.context!)],
+    ["PUT", `${C}/log`, (p, b) => host.keepLog(p.context!, b.kept === true)],
     ["GET", `${C}/diagnostics`, (p) => host.diagnostics(p.context!)],
     ["GET", `${C}/views/:perspective`, (p, _, q) => host.view(p.context!, p.perspective!, q.get("subject") ?? undefined)],
     ["POST", `${C}/verify`, (p, b) => host.verify(p.context!, b.script, b.profile)],

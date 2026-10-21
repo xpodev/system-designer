@@ -183,6 +183,9 @@ importers:
       '@systemathic/exporter':
         specifier: workspace:*
         version: link:../exporter
+      '@systemathic/log':
+        specifier: workspace:*
+        version: link:../log
       '@systemathic/perspectives':
         specifier: workspace:*
         version: link:../perspectives
@@ -226,6 +229,19 @@ importers:
       '@systemathic/python-host':
         specifier: workspace:*
         version: link:../python-host
+
+  packages/log:
+    dependencies:
+      '@systemathic/editing':
+        specifier: workspace:*
+        version: link:../editing
+      '@systemathic/tool':
+        specifier: workspace:*
+        version: link:../tool
+    devDependencies:
+      '@systemathic/editors':
+        specifier: workspace:*
+        version: link:../editors
 
   packages/mcp:
     dependencies:

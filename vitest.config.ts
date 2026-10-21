@@ -14,6 +14,7 @@ export default defineConfig({
       "@systemathic/documentation": source("documentation"),
       "@systemathic/documentation-store": source("documentation-store"),
       "@systemathic/configurations": source("configurations"),
+      "@systemathic/log": source("log"),
       "@systemathic/diagnoser": source("diagnoser"),
       "@systemathic/verifier": source("verifier"),
       "@systemathic/python-host": source("python-host"),
