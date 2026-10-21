@@ -60,6 +60,26 @@ group("extension", () => {
     expect(analysis.ok && analysis.ends).toEqual(["leader"]);
   });
 
+  it("removes a Relationship with an Entity at either end; what extended the Entity only loses it", () => {
+    const graph = extended();
+    graph.add("Entity", "pet");
+    setName(graph, "pet", "Pet");
+    graph.connect("core", "entities", "pet");
+    graph.add("Relationship", "owns");
+    graph.connect("core", "relationships", "owns");
+    for (const [end, entity] of [["owner", "monster"], ["owned", "pet"]] as const) {
+      graph.add("End", end);
+      graph.connect(end, "entity", entity);
+      graph.connect("owns", "ends", end);
+    }
+    expect(remove(graph, "pet").sort()).toEqual(["owned", "owner", "owns", "pet"]);
+    expect(graph.navigate("monster", "ends").sort()).toEqual(["followers", "leader"]);
+    expect(remove(graph, "monster")).toEqual(expect.arrayContaining(["pack", "leader", "followers"]));
+    expect(graph.has("fighter")).toBe(true);
+    expect(graph.navigate("fighter", "extends")).toEqual([]);
+    expect(graph.ofEntity("End")).toEqual([]);
+  });
+
   it("compares a projection with what it extends, and stays inside the Language's vocabulary", () => {
     const graph = extended();
     graph.add("Formula", "ok", "all f in CombatMonster, m in Monster. f == m => f in m.followers");

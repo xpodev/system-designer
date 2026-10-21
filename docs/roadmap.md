@@ -96,9 +96,9 @@ Beyond the foundation changes, the tool itself:
   `Editor.apply`, Readers that take a System, structural errors as StdLib Formula Assertions,
   and Workspace, Repository and Metadata Providers as separate parts. Today's packages keep
   the current shape (Effects on a History; the Host holding open Systems).
-- Removing a thing removes what depends on it, metadata included. Today removing an Entity leaves
-  its Relationships dangling. (A removed thing's Description is no longer saved; it is kept only
-  for undo.)
+- ~~Removing a thing removes what depends on it, metadata included~~: done. Removing an Entity
+  takes every Relationship with an end of it. A Description or a Choice of what is no longer
+  there is kept only for undo, and not saved; a Choice of a removed Deployment chooses none.
 - Readers take a System, not a Target; structural errors are the Systemathic formulas verified as
   StdLib Formula Assertions.
 - Each metadata provider stores and loads its own metadata; the Repository knows none.

@@ -14,6 +14,7 @@ import {
   current,
   occupants,
   problems,
+  saved,
   setCurrent,
   setRules,
   unchoose,
@@ -100,6 +101,27 @@ group("configurations", () => {
     unchoose(s, client.id);
     expect(configuration(target.context, "game.release")!.root.choices).toHaveLength(2);
     expect(() => unchoose(s, root.id)).toThrow(ArgumentError);
+  });
+
+  it("go with what they choose, until the System is saved, so undo brings them back", () => {
+    const { target, s } = load();
+    const choices = () => configuration(target.context, "game.release")!.root.choices.map((c) => [c.instance, c.deployment]);
+    const before = choices();
+    DeploymentEditor.remove(s, "game.online.client-2");
+    DeploymentEditor.remove(s, "game.server.single");
+    expect(choices()).toEqual([
+      ["game.online.server", null],
+      ["game.online.client-1", "game.client.desktop"],
+    ]);
+    expect(problems(target.context).filter((p) => p.check === "C1")).toEqual([]);
+    const file = writeSystem(saved(save(target.context)));
+    expect(file.attachments).toContainEqual({
+      owner: "configurations",
+      data: expect.objectContaining({ configurations: [expect.objectContaining({ id: "game.release", root: expect.objectContaining({ choices: [expect.anything(), expect.anything()] }) })] }),
+    });
+    undo(s);
+    undo(s);
+    expect(choices()).toEqual(before);
   });
 
   it("name their profile, one is current, and leave the design untouched", () => {

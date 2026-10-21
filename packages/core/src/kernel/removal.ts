@@ -6,9 +6,12 @@
  * - the Entities that are **dependents** — things that only make sense while everything they
  *   refer to exists (a mapping);
  * - what an Entity **requires**: groups of ends, each of which must lead somewhere for it to
- *   exist at all (a Transformation its source; a Connection something to go to).
+ *   exist at all (a Transformation its source; a Connection something to go to);
+ * - the ends through which an instance is a **part** of a whole that cannot exist without it
+ *   (an End of its Relationship).
  *
- * Removing an instance removes what it owns, and every dependent that referred to it. Then
+ * Removing an instance removes what it owns, the whole it is a part of, and every dependent
+ * that referred to it. Then
  * whatever met its requirements before the removal and no longer does goes too, and so on.
  * Everything else that referred to a removed instance just loses the link — and something
  * that was already ill-formed stays, for the diagnoser to show.
@@ -21,25 +24,35 @@ export interface Composition {
   readonly dependents: ReadonlySet<string>;
   /** Entity → groups of ends; each group must lead somewhere through at least one of its ends. */
   readonly requires: ReadonlyMap<string, readonly (readonly string[])[]>;
+  /** Entity → the ends through which its instances are parts of a whole, which goes with any of them. */
+  readonly partOf: ReadonlyMap<string, readonly string[]>;
 }
 
 export function composition(
   owning: Record<string, readonly string[]>,
   dependents: readonly string[],
   requires: Record<string, readonly (readonly string[])[]> = {},
+  partOf: Record<string, readonly string[]> = {},
 ): Composition {
-  return { owning: new Map(Object.entries(owning)), dependents: new Set(dependents), requires: new Map(Object.entries(requires)) };
+  return {
+    owning: new Map(Object.entries(owning)),
+    dependents: new Set(dependents),
+    requires: new Map(Object.entries(requires)),
+    partOf: new Map(Object.entries(partOf)),
+  };
 }
 
 /** The layers' compositions together. */
 export function compose(...parts: readonly Composition[]): Composition {
   const owning = new Map<string, string[]>();
   const requires = new Map<string, (readonly string[])[]>();
+  const partOf = new Map<string, string[]>();
   for (const part of parts) {
     for (const [entity, ends] of part.owning) owning.set(entity, [...(owning.get(entity) ?? []), ...ends]);
     for (const [entity, groups] of part.requires) requires.set(entity, [...(requires.get(entity) ?? []), ...groups]);
+    for (const [entity, ends] of part.partOf) partOf.set(entity, [...(partOf.get(entity) ?? []), ...ends]);
   }
-  return { owning, dependents: new Set(parts.flatMap((part) => [...part.dependents])), requires };
+  return { owning, dependents: new Set(parts.flatMap((part) => [...part.dependents])), requires, partOf };
 }
 
 /** Removes `roots` and everything that goes with them; returns every removed id, in order. */
@@ -51,6 +64,7 @@ export function cascade(graph: Graph, roots: readonly string[], rules: Compositi
     if (!graph.has(id)) continue;
     const entity = graph.get(id).entity;
     const ownedEnds = rules.owning.get(entity) ?? [];
+    const wholes = (rules.partOf.get(entity) ?? []).flatMap((end) => graph.navigate(id, end));
     const owned: string[] = [];
     const dependents: string[] = [];
     for (const [end, steps] of graph.vocabulary.reachable(entity)) {
@@ -66,7 +80,7 @@ export function cascade(graph: Graph, roots: readonly string[], rules: Compositi
     }
     graph.remove(id);
     removed.push(id);
-    pending.push(...owned, ...dependents);
+    pending.push(...owned, ...wholes, ...dependents);
   }
   return removed;
 }
@@ -88,11 +102,16 @@ export function removeAll(graph: Graph, roots: readonly string[], rules: Composi
   }
 }
 
-/** What the Kernel owns: a Language its Entities, Relationships and Formulas; a Relationship its ends. */
+/**
+ * What the Kernel owns: a Language its Entities, Relationships and Formulas; a Relationship its
+ * ends. An End exists only while its Entity does, and a Relationship only while both its ends do.
+ */
 export const kernelComposition = composition(
   {
     Language: ["entities", "relationships", "formulas"],
     Relationship: ["ends"],
   },
   [],
+  { End: [["entity"]] },
+  { End: ["relationship"] },
 );

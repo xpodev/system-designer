@@ -55,14 +55,14 @@ describe("deletion", () => {
     expect(removed).toEqual(["game.online.client-2", "game.online.client-2-attacks", "game.online.client-2-attacks#m0", "game.online.client-2-attacks#m1"]);
   });
 
-  it("ends, outputs and Entities that refer to a deleted Entity stay, ill-formed", () => {
+  it("deleting an Entity takes the Relationships with an end of it; outputs and Entities that refer to it only lose it", () => {
     const system = load();
     expect(remove(system.design, "fighting.damage")).toEqual(["fighting.damage"]);
     expect(system.design.navigate("game.server.attack", "output")).toEqual([]);
     const removed = remove(system.design, "core.player");
-    expect(removed).toEqual(["core.player"]);
-    expect(system.design.has("core.hunts.hunters")).toBe(true);
-    expect(system.design.navigate("core.hunts.hunters", "entity")).toEqual([]);
+    expect(removed).toEqual(expect.arrayContaining(["core.player", "core.hunts", "core.hunts.hunters"]));
+    expect(system.design.has("core.hunts")).toBe(false);
+    expect(system.design.has("core.monster")).toBe(true);
     expect(system.design.navigate("combat.combat-player", "extends")).toEqual(["fighting.attacker"]);
   });
 

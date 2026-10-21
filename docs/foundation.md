@@ -739,6 +739,8 @@ referencing what was deleted.
   Relationship, axiom, Parameter or output, in any Language or Function, that names any
   of them; every Function with a Parameter or output of it; every Interaction over it;
   every `extends` and `uses` of it; every Export of it.
+- **Deleting an Entity** removes every Relationship with an end of it, and every Parameter of
+  it.
 - **Deleting an Interaction** removes every Export of it, and removes it from every
   Connection's What; a Connection left with no What is removed. A Medium whose call it
   was is left without one, and ill-formed until it is given another.

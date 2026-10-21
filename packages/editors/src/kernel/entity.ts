@@ -27,7 +27,7 @@ export function unextend(session: EditSession, entity: string, extended: string)
   });
 }
 
-/** Removes an Entity, the mappings and deferrals naming it; ends and Parameters of it are left without one. */
+/** Removes an Entity, every Relationship with an end of it, and every Parameter of it. */
 export function remove(session: EditSession, entity: string): Edit {
   return session.edit("removal", "remove Entity", [entity], (graph) => {
     removeFromModel(graph, entity);
@@ -44,5 +44,5 @@ export const entityEditor: readonly Operation[] = [
   operation(EDITOR, "unextend", "change", "Stops an Entity extending another.", [ENTITY, element("extended", "Entity", "the Entity extended")], (s, a) =>
     unextend(s, str(a, "entity"), str(a, "extended")),
   ),
-  operation(EDITOR, "remove", "removal", "Removes an Entity, and the mappings and deferrals that name it.", [ENTITY], (s, a) => remove(s, str(a, "entity"))),
+  operation(EDITOR, "remove", "removal", "Removes an Entity, every Relationship with an end of it, and every Parameter of it.", [ENTITY], (s, a) => remove(s, str(a, "entity"))),
 ];

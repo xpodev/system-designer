@@ -13,7 +13,7 @@ import { describe as describeElement, nameOf } from "@systemathic/core";
 import { exportSelection, importPackage, parsePackage, type Catalog } from "@systemathic/catalog";
 import { diagnose, structuralErrors, type Diagnostic } from "@systemathic/diagnoser";
 import { Target, type Edit, type EditSession } from "@systemathic/editing";
-import { configurationEditor, problems as configurationProblems } from "@systemathic/configurations";
+import { configurationEditor, problems as configurationProblems, saved as savedConfigurations } from "@systemathic/configurations";
 import { documentationEditor, saved } from "@systemathic/documentation";
 import { ArgumentError, editors, type Operation } from "@systemathic/editors";
 import { document, documentationMarkdown, specify, toMarkdown } from "@systemathic/exporter";
@@ -123,7 +123,7 @@ export class Host implements HostApi {
     const hosted = this.get(context);
     const file = path === undefined ? hosted.path : this.store.resolve(path);
     if (file === undefined) throw new HostError(400, "this System has no file yet: save it to a path");
-    await this.store.write(file, JSON.stringify(writeSystem(saved(save(hosted.target.context))), null, 2) + "\n");
+    await this.store.write(file, JSON.stringify(writeSystem(saved(savedConfigurations(save(hosted.target.context)))), null, 2) + "\n");
     hosted.path = file;
     hosted.saved = hosted.target.history.edits.length;
     this.emit({ type: "contexts" });
@@ -195,7 +195,7 @@ export class Host implements HostApi {
   }
 
   async system(context: string): Promise<SystemFile> {
-    return writeSystem(saved(save(this.get(context).target.context)));
+    return writeSystem(saved(savedConfigurations(save(this.get(context).target.context))));
   }
 
   async history(context: string): Promise<EditInfo[]> {

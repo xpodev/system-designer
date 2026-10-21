@@ -8,12 +8,15 @@
  * the verifier verifies. They are kept with the System, as this provider's own attachment.
  *
  * Changing a Configuration is an Edit like any other: on the one History, told to every
- * session, and undone with the rest, because its Effect knows how to revert itself.
+ * session, and undone with the rest, because its Effect knows how to revert itself. What it
+ * chooses goes with the design: a Choice for an Instance no longer there goes, with what was
+ * chosen below it, and one of a Deployment no longer there chooses none. Both are kept until
+ * the System is saved, so undoing the removal brings them back.
  */
 import { boundOf, identityPath, nameOf, resolve, type Graph } from "@systemathic/core";
 import type { Effect, Edit, EditSession } from "@systemathic/editing";
 import { ArgumentError, type Operation } from "@systemathic/editors";
-import type { SystemContext } from "@systemathic/tool";
+import type { SystemContext, ToolSystem } from "@systemathic/tool";
 
 /** Who the attachment the Configurations are kept in belongs to. */
 export const ATTACHMENT_OWNER = "configurations";
@@ -45,10 +48,39 @@ function stored(context: SystemContext): Partial<Stored> | undefined {
   return context.attachments.find((attachment) => attachment.owner === ATTACHMENT_OWNER)?.data as Partial<Stored> | undefined;
 }
 
-/** The Configurations kept with the System, as they are stored. */
-export function configurations(context: SystemContext): readonly Configuration[] {
-  const data = stored(context);
+/** Every Configuration kept, with Choices of what is no longer in the design, so undoing a removal brings them back. */
+function kept(data: Partial<Stored> | undefined): readonly Configuration[] {
   return Array.isArray(data?.configurations) ? data.configurations : [];
+}
+
+/** A Configuration as it is about `design`: without what was chosen for what is no longer there. */
+function present(design: Graph, configuration: Configuration): Configuration {
+  const there = (id: string | null) => id === null || design.has(id);
+  const prune = (choice: Choice): Choice => ({
+    ...choice,
+    deployment: there(choice.deployment) ? choice.deployment : null,
+    choices: choice.choices.filter((child) => there(child.instance)).map(prune),
+  });
+  return { ...configuration, root: prune(configuration.root) };
+}
+
+/** The Configurations kept with the System. */
+export function configurations(context: SystemContext): readonly Configuration[] {
+  return kept(stored(context)).map((c) => present(context.design, c));
+}
+
+/**
+ * `system` as it is saved: the Choices of what is no longer in the design, kept only so undo can
+ * bring them back, are left behind with the History.
+ */
+export function saved(system: ToolSystem): ToolSystem {
+  const attachments = system.attachments.map((attachment) => {
+    if (attachment.owner !== ATTACHMENT_OWNER) return attachment;
+    const data = attachment.data as Partial<Stored> | undefined;
+    if (!Array.isArray(data?.configurations)) return attachment;
+    return { owner: ATTACHMENT_OWNER, data: { ...data, configurations: kept(data).map((c) => present(system.design, c)) } };
+  });
+  return { design: system.design, attachments };
 }
 
 /** The Configuration with this id, if there is one. */
@@ -75,7 +107,7 @@ export function findChoice(context: SystemContext, id: string): { configuration:
 
 /** Replaces every Configuration, and which is current; the Effect says how to put back what was there. */
 function write(context: SystemContext, next: readonly Configuration[], touched: readonly string[], currentId: string | undefined): Effect {
-  const before = configurations(context);
+  const before = kept(stored(context));
   const beforeCurrent = stored(context)?.current;
   for (const attachment of context.attachments.filter((a) => a.owner === ATTACHMENT_OWNER)) context.detach(attachment);
   const keep = currentId !== undefined && next.some((c) => c.id === currentId) ? currentId : undefined;
@@ -83,10 +115,10 @@ function write(context: SystemContext, next: readonly Configuration[], touched: 
   return { touched, revert: () => write(context, before, touched, beforeCurrent) };
 }
 
-/** Every Configuration, with `change` applied to the one with this id. */
+/** Every Configuration kept, with `change` applied to the one with this id. */
 function changed(context: SystemContext, id: string, change: (c: Configuration) => Configuration | undefined): Configuration[] {
   if (configuration(context, id) === undefined) throw new ArgumentError(`there is no Configuration ${id}`);
-  return configurations(context).flatMap((c) => (c.id === id ? [change(c)].filter((x): x is Configuration => x !== undefined) : [c]));
+  return kept(stored(context)).flatMap((c) => (c.id === id ? [change(c)].filter((x): x is Configuration => x !== undefined) : [c]));
 }
 
 /** The Choice tree with `change` applied to the Choice with this id; `undefined` removes it. */
@@ -102,7 +134,7 @@ function fresh(context: SystemContext, base: string): string {
     used.add(choice.id);
     choice.choices.forEach(collect);
   };
-  for (const c of configurations(context)) {
+  for (const c of kept(stored(context))) {
     used.add(c.id);
     collect(c.root);
   }
@@ -120,7 +152,7 @@ export function addConfiguration(session: EditSession, name: string, deployment?
   if (root === undefined) throw new ArgumentError("the System has no root to configure");
   const id = fresh(context, `${context.system ?? "system"}.${slug(name)}`);
   const configuration: Configuration = { id, name, rules: [], root: { id: `${id}#root`, instance: null, deployment: deployment ?? null, choices: [] } };
-  return session.record("addition", `addConfiguration ${name}`, [id], () => write(context, [...configurations(context), configuration], [root], stored(context)?.current));
+  return session.record("addition", `addConfiguration ${name}`, [id], () => write(context, [...kept(stored(context)), configuration], [root], stored(context)?.current));
 }
 
 export function renameConfiguration(session: EditSession, id: string, name: string): Edit {
@@ -137,7 +169,7 @@ export function removeConfiguration(session: EditSession, id: string): Edit {
 export function setCurrent(session: EditSession, id: string): Edit {
   const context = session.target.context;
   if (configuration(context, id) === undefined) throw new ArgumentError(`there is no Configuration ${id}`);
-  return session.record("change", "setCurrent", [], () => write(context, configurations(context), [], id));
+  return session.record("change", "setCurrent", [], () => write(context, kept(stored(context)), [], id));
 }
 
 /** Sets a Configuration's profile: the rules, by name, it is verified against. */
