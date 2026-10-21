@@ -566,7 +566,7 @@ The Host in a browser tab, for solo use, with the UI; Python rules run by Pyodid
 
 #### Repository
 
-Interface: where Systems are stored. It stores the design only and knows nothing of metadata. `open` reads the System at a Location; `save` writes one there and gives back where it was saved. Implemented by JSON File Repository; others (browser storage, a database) are alternatives chosen by Configuration.
+Interface: where Systems are stored. It stores the design, and each Metadata Provider's attachment with it as it is, reading none of them: it knows nothing of metadata, and a provider may keep its own elsewhere instead. `open` reads the System at a Location; `save` writes one there and gives back where it was saved. Implemented by JSON File Repository; others (browser storage, a database) are alternatives chosen by Configuration.
 
 - Uses: Repository
 - Exports: Repository (Language), open (Interaction), save (Interaction)
@@ -598,7 +598,7 @@ Implements Repository: a System as a JSON file, and a Location as its path. Writ
 
 #### Metadata Provider
 
-Interface: a provider of one kind of metadata. It loads its metadata for a System when asked, and saves it when asked, its own way and wherever it likes. The Workspace asks every provider connected to it when a System is opened or saved: that fan-out is the event, and neither side knows the other. `save` gives nothing back.
+Interface: a provider of one kind of metadata. It loads its metadata for a System when asked, and saves it when asked, its own way and wherever it likes: in its attachment, which the Repository stores with the design without reading it, or elsewhere. The Workspace asks every provider connected to it when a System is opened or saved: that fan-out is the event, and neither side knows the other. `save` gives nothing back.
 
 - Uses: Systems
 - Exports: load (Interaction), save (Interaction)
@@ -695,7 +695,7 @@ Implements Metadata Provider for By Value (loads and saves which Entities are by
 
 #### Workspace
 
-The Systems open in the tool. `new` starts an empty one; `open` reads one through the Repository and asks every Metadata Provider to load; `save` writes the design through the Repository and asks every provider to save (order left open for now); `close` lets one go. Each Open System is a Target: clients start Sessions on it through the Editor. It is the only part that knows both the Repository and the providers.
+The Systems open in the tool. `new` starts an empty one; `open` reads one through the Repository and asks every Metadata Provider to load; `save` asks every provider to save into a copy of the System, then writes the copy through the Repository, so what is stored is what the providers left; `close` lets one go. Each Open System is a Target: clients start Sessions on it through the Editor. It is the only part that knows both the Repository and the providers.
 
 - Uses: Workspace, Repository, Editing, Systems
 - Exports: Workspace (Language), new (Interaction), open (Interaction), save (Interaction), close (Interaction)

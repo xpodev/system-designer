@@ -92,7 +92,7 @@ Beyond the foundation changes, the tool itself:
   needs and identities, what an Instance runs, exposing placements, the current Configuration.
 - Rule scripts read the current Configuration from the System's attachment; the Workspace in
   scripts (`workspace.plugins`) is still to be designed.
-- Edits as data. An Edit is already data where it travels: a request, `{editor, name, args}`,
+- ~~Edits as data~~: done. An Edit is already data where it travels: a request, `{editor, name, args}`,
   is the mediation of `Editor.apply`, and each kind of Edit is its own editor's, so nothing
   knows them all; the Host is given its editors, as it is given Metadata Providers and Edit
   Listeners, and names none. A Suggestion with one fix, and nothing to choose for it, carries
@@ -143,11 +143,9 @@ Beyond the foundation changes, the tool itself:
   nor is how an Edit kind's own content is written, for kinds that extensions add.
 - **Rule.** The name is provisional, and the StdLib's Assertions for standard terms are to be
   defined.
-- **Saving.** The order in which the Workspace saves through the Repository and asks the providers.
-  The tool asks the providers first, each saving into a copy of the System, and then writes the
-  copy through the Repository; the design does not say so yet. Nor does it say that a System
-  the Repository stores carries the providers' attachments, a segment it keeps without reading:
-  the Repository is described as storing the design only.
+- ~~**Saving.**~~ Done: the Workspace asks every provider to save into a copy of the System, then
+  writes the copy through the Repository, which stores each provider's attachment with the
+  design without reading it; a provider may keep its metadata elsewhere instead.
 - ~~**Clients and Edit Languages.**~~ Done: each Edit Language is a vocabulary of its own
   (Kernel Edits … Configuration Edits), and the profile says clients import no implementation.
 - **Dispatch by kind.** The tool routes each call to the one occupant of a fan-out for its kind —
