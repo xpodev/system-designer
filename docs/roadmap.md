@@ -94,9 +94,10 @@ Beyond the foundation changes, the tool itself:
   scripts (`workspace.plugins`) is still to be designed.
 - Edits as data. An Edit is already data where it travels: a request, `{editor, name, args}`,
   is the mediation of `Editor.apply`, and each kind of Edit is its own editor's, so nothing
-  knows them all. Still to do: Edit Kinds plug into the Host, as Metadata Providers and Edit
-  Listeners do, instead of the Host listing the editors' operations; and a Diagnostic's
-  Suggestion carries the request that fixes it.
+  knows them all; the Host is given its editors, as it is given Metadata Providers and Edit
+  Listeners, and names none. Still to do: a Diagnostic's Suggestion carries the request that
+  fixes it. And the Host still asks Configurations by name for its checks (C1–C4) when it
+  diagnoses.
 - ~~A readable record of edits that outlives the History~~: done. The Log, an Edit Listener,
   records who did what, and when, in its own attachment, kept with the System — only for a
   System told to keep one; stopping forgets it. Undo still ends

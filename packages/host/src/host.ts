@@ -48,8 +48,12 @@ export type Listen = (target: Target) => unknown;
 /** The tool's own Edit Listeners, connected to every open System unless the Host is given others: the Log. */
 export const STANDARD_LISTENERS: readonly Listen[] = [log];
 
-/** Every operation a client may apply: the concept editors', and the tool contexts' that edit on the History too. */
-const OPERATIONS: readonly Operation[] = [...Object.values(editors).flat(), ...documentationEditor, ...configurationEditor];
+/**
+ * The tool's own editors, each the operations of one Language's kinds of Edit, given to every
+ * Host unless it is given others: the concept editors', and those of the tool contexts that
+ * edit on the History too.
+ */
+export const STANDARD_EDITORS: readonly (readonly Operation[])[] = [...Object.values(editors), documentationEditor, configurationEditor];
 
 /**
  * The files a Host reads and writes: Systems, scripts, packages. Paths are relative to the
@@ -82,6 +86,8 @@ export interface HostOptions {
   readonly providers?: readonly MetadataProvider[];
   /** The Edit Listeners connected to every open System; the standard ones if none are given. */
   readonly listeners?: readonly Listen[];
+  /** The editors whose operations clients may apply, each one Language's kinds of Edit; the standard ones if none are given. */
+  readonly editors?: readonly (readonly Operation[])[];
 }
 
 export class Host implements HostApi {
@@ -93,6 +99,8 @@ export class Host implements HostApi {
   private readonly scripts: ScriptHost & ScriptAssistant;
   private readonly providers: readonly MetadataProvider[];
   private readonly connected: readonly Listen[];
+  /** Every operation a client may apply, of every editor the Host was given. */
+  private readonly operations: readonly Operation[];
   private next = 1;
 
   constructor(options: HostOptions) {
@@ -101,11 +109,12 @@ export class Host implements HostApi {
     this.scripts = options.scripts;
     this.providers = options.providers ?? STANDARD_PROVIDERS;
     this.connected = options.listeners ?? STANDARD_LISTENERS;
+    this.operations = (options.editors ?? STANDARD_EDITORS).flat();
     this.verifier = new Verifier(this.scripts);
   }
 
   async editors(): Promise<OperationInfo[]> {
-    return OPERATIONS.map(({ editor, name, about, kind, parameters }) => ({ editor, name, about, kind, parameters }));
+    return this.operations.map(({ editor, name, about, kind, parameters }) => ({ editor, name, about, kind, parameters }));
   }
 
   async perspectives() {
@@ -173,7 +182,7 @@ export class Host implements HostApi {
 
   async apply(context: string, session: string, editor: string, name: string, args: Record<string, unknown>): Promise<EditInfo> {
     const target = this.get(context).target;
-    const operation = OPERATIONS.find((o) => o.editor === editor && o.name === name);
+    const operation = this.operations.find((o) => o.editor === editor && o.name === name);
     if (!operation) throw new HostError(404, `no operation ${editor}.${name}`);
     try {
       return this.edit(target, operation.run(this.session(target, session), args));

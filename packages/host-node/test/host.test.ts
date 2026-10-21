@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HostClient, HostError, STANDARD_PROVIDERS, type HostEvent, type MetadataProvider } from "@systemathic/host";
+import { HostClient, HostError, STANDARD_EDITORS, STANDARD_PROVIDERS, type HostEvent, type MetadataProvider } from "@systemathic/host";
 
+import type { Operation } from "@systemathic/editors";
 import { nodeHost, serve } from "../src/index.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -101,6 +102,31 @@ describe("Host", () => {
     const reopened = nodeHost({ cwd: dir, providers: [notesProvider] });
     await reopened.open("copy.json");
     expect([...notes.values()]).toEqual(["saved with the System"]);
+  });
+
+  it("offers the operations of every editor it is given, its own and others' alike", async () => {
+    const touched: string[] = [];
+    const markEditor: Operation[] = [
+      {
+        editor: "MarkEditor",
+        name: "mark",
+        about: "Marks a Component.",
+        kind: "change",
+        parameters: [{ name: "component", kind: "element", of: ["Component"], about: "the Component" }],
+        run: (session, args) => session.edit("change", "mark", [args.component as string], () => void touched.push(args.component as string)),
+      },
+    ];
+    const host = nodeHost({ cwd: workspace(), editors: [...STANDARD_EDITORS, markEditor] });
+    const { id } = await host.open("game.json");
+    const { session } = await host.startSession(id, "ui");
+    expect((await host.editors()).some((o) => o.editor === "MarkEditor" && o.name === "mark")).toBe(true);
+    expect((await host.apply(id, session, "MarkEditor", "mark", { component: "game.server" })).summary).toBe("mark");
+    expect(touched).toEqual(["game.server"]);
+
+    const bare = nodeHost({ cwd: workspace(), editors: [markEditor] });
+    const opened = await bare.open("game.json");
+    expect((await bare.editors()).map((o) => o.editor)).toEqual(["MarkEditor"]);
+    await expect(bare.apply(opened.id, (await bare.startSession(opened.id, "ui")).session, "DocumentationEditor", "describe", { subject: "game.server", text: "x" })).rejects.toThrow(HostError);
   });
 
   it("keeps a Log of who did what, if told to, saved with the System, which outlives its History", async () => {
